@@ -9,5 +9,4 @@ class CFCTape : baseTape() {
         "CFC_REGISTER_DEVICE",
         "CFC_ACCEPT_TNC"
     )
-
 }

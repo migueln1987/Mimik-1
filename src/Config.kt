@@ -1,9 +1,7 @@
 package com.fiserv.ktmimic
 
-import io.ktor.util.url
 import okhttp3.HttpUrl
 import okreplay.OkReplayConfig
-import java.io.File
 
 object Project {
     val tapeDir = "src/tapes"

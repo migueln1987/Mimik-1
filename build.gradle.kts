@@ -2,6 +2,7 @@ val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
 val fuel_version: String by project
+val ktlint by configurations.creating
 
 plugins {
     application
@@ -36,6 +37,8 @@ dependencies {
     compile("com.airbnb.okreplay:okreplay:1.4.0")
     compile("com.beust:klaxon:5.0.1")
     testCompile("io.ktor:ktor-server-tests:$ktor_version")
+
+    ktlint("com.github.shyiko:ktlint:0.29.0")
 }
 
 kotlin.sourceSets["main"].kotlin.srcDirs("src")
@@ -43,3 +46,23 @@ kotlin.sourceSets["test"].kotlin.srcDirs("test")
 
 sourceSets["main"].resources.srcDirs("resources")
 sourceSets["test"].resources.srcDirs("testresources")
+
+tasks.register<JavaExec>("ktlint") {
+    group = "verification"
+    description = "Check Kotlin code style."
+    classpath = ktlint
+    main = "com.github.shyiko.ktlint.Main"
+    args("--android", "src/**/*.kt")
+}
+
+//tasks.named("check") {
+//    dependsOn(ktlint)
+//}
+
+tasks.register<JavaExec>("ktlintFormat") {
+    group = "formatting"
+    description = "Fix Kotlin code style deviations."
+    classpath = ktlint
+    main = "com.github.shyiko.ktlint.Main"
+    args("--android", "-F", "src/**/*.kt")
+}

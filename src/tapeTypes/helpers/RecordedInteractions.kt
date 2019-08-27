@@ -2,7 +2,7 @@ package com.fiserv.ktmimic.tapeTypes.helpers
 
 import okreplay.Request
 import okreplay.Response
-import java.util.*
+import java.util.Date
 
 class RecordedInteractions {
     @Transient

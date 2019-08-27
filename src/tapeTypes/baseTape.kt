@@ -5,8 +5,16 @@ import com.fiserv.ktmimic.tapeTypes.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.stream.JsonWriter
 import okhttp3.Protocol
-import okreplay.*
+import okreplay.ComposedMatchRule
+import okreplay.DefaultTapeRoot
+import okreplay.MatchRule
+import okreplay.MatchRules
 import okreplay.OkReplayConfig.DEFAULT_TAPE_ROOT
+import okreplay.Request
+import okreplay.Response
+import okreplay.Tape
+import okreplay.TapeMode
+import okreplay.TapeRoot
 import java.io.File
 import java.nio.charset.Charset
 
@@ -45,10 +53,10 @@ abstract class baseTape : Tape {
     }
 
     override fun setMode(mode: TapeMode?) {}
-    override fun getMode(): TapeMode = TapeMode.READ_WRITE
-    override fun isReadable(): Boolean = mode.isReadable
+    override fun getMode() = TapeMode.READ_WRITE
+    override fun isReadable() = mode.isReadable
     override fun isWritable() = mode.isWritable
-    override fun isSequential(): Boolean = mode.isSequential
+    override fun isSequential() = mode.isSequential
 
     override fun size() = tapeChapters.size
 
