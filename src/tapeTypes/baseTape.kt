@@ -3,8 +3,7 @@ package com.fiserv.ktmimic.tapeTypes
 import com.fiserv.ktmimic.tapeTypes.helpers.RecordedInteractions
 import com.fiserv.ktmimic.tapeTypes.helpers.filteredBody
 import com.google.gson.Gson
-import io.ktor.html.each
-import okhttp3.Headers
+import com.google.gson.stream.JsonWriter
 import okhttp3.Protocol
 import okreplay.*
 import okreplay.OkReplayConfig.DEFAULT_TAPE_ROOT
@@ -12,12 +11,15 @@ import java.io.File
 import java.nio.charset.Charset
 
 abstract class baseTape : Tape {
-    abstract val opIds: Array<String>
+    /**
+     * How the API calls will be separated within this tape
+     */
+    abstract val chapterTitles: Array<String>
 
     private val tapeChapters: MutableList<RecordedInteractions> = mutableListOf()
 
     private val tapeName
-        get() = "$name.json"
+        get() = "$name.json".replace(" ", "_")
 
     companion object {
         var tapeRoot: TapeRoot = DefaultTapeRoot(File(DEFAULT_TAPE_ROOT))
@@ -28,16 +30,13 @@ abstract class baseTape : Tape {
         if (tapeRoot.tapeExists(tapeName)) {
             val reader = tapeRoot.readerFor(tapeName)
             gson.fromJson(reader, this::class.java)
-                ?.also {
+                ?.also { loadFile ->
                     tapeChapters.clear()
-                    tapeChapters.addAll(0, it.tapeChapters)
+                    tapeChapters.addAll(0, loadFile.tapeChapters)
+                    loadFile.tapeChapters.forEach { it.loadReplayData() }
                 }
         }
     }
-
-    override fun setMode(mode: TapeMode?) {}
-
-    override fun getMode(): TapeMode = TapeMode.READ_WRITE
 
     override fun setMatchRule(matchRule: MatchRule?) {}
 
@@ -45,6 +44,8 @@ abstract class baseTape : Tape {
         return ComposedMatchRule.of(MatchRules.method, MatchRules.queryParams, filteredBody)
     }
 
+    override fun setMode(mode: TapeMode?) {}
+    override fun getMode(): TapeMode = TapeMode.READ_WRITE
     override fun isReadable(): Boolean = mode.isReadable
     override fun isWritable() = mode.isWritable
     override fun isSequential(): Boolean = mode.isSequential
@@ -66,38 +67,35 @@ abstract class baseTape : Tape {
             RecordedInteractions(request, response)
         )
 
-        tapeRoot.writerFor(tapeName).also {
-            it.write(gson.toJson(this))
+        tapeRoot.writerFor(tapeName).let {
+            JsonWriter(it).apply {
+                setIndent(" ")
+                isHtmlSafe = true
+            }
+        }.also {
+            gson.toJson(this, this::class.java, it)
         }.close()
     }
 
     override fun isDirty() = false
 
-
     @Transient
     private val defaultResponse = object : Response {
-        override fun getEncoding() = "None"
-
-        override fun body() = byteArrayOf()
-
-        override fun newBuilder() = TODO()
-
-        override fun getContentType() = "None"
-
-        override fun hasBody() = false
-
-        override fun toYaml(): YamlRecordedMessage = TODO()
-
+        override fun code() = 0
         override fun protocol() = Protocol.HTTP_1_0
 
-        override fun bodyAsText() = ""
-
+        override fun getEncoding() = ""
         override fun getCharset() = Charset.defaultCharset()
 
+        override fun headers() = okhttp3.Headers.Builder().build()
         override fun header(name: String?) = ""
+        override fun getContentType() = ""
 
-        override fun code(): Int = 0
+        override fun hasBody() = false
+        override fun body() = byteArrayOf()
+        override fun bodyAsText() = ""
 
-        override fun headers(): Headers = TODO()
+        override fun newBuilder() = TODO()
+        override fun toYaml() = TODO()
     }
 }

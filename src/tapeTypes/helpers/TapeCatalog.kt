@@ -4,6 +4,7 @@ import com.fiserv.ktmimic.tapeTypes.CFCTape
 import com.fiserv.ktmimic.tapeTypes.NewTapes
 import com.fiserv.ktmimic.tapeTypes.baseTape
 import io.ktor.application.ApplicationCall
+import kotlinx.coroutines.*
 import okreplay.OkReplayConfig
 import okreplay.OkReplayInterceptor
 import okhttp3.Response
@@ -37,9 +38,9 @@ class TapeCatalog(private val config: OkReplayConfig) : OkReplayInterceptor() {
      */
     private fun catalogTapeCalls() {
         tapes.forEach { tape ->
-            tape.opIds.forEach { key ->
+            tape.chapterTitles.forEach { key ->
                 if (tapeCalls.containsKey(key)) {
-                    log.warning("Catalog already contains a opId call of $key")
+                    log.warning("Catalog already contains a tape chapter title of $key")
                 } else {
                     tapeCalls[key] = tape
                 }
@@ -56,6 +57,8 @@ class TapeCatalog(private val config: OkReplayConfig) : OkReplayInterceptor() {
             start(config, getTape(key))
         }
 
-        return intercept(call.toChain())
+        return withContext(Dispatchers.IO) {
+            intercept(call.toChain())
+        }
     }
 }

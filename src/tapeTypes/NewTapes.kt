@@ -3,5 +3,5 @@ package com.fiserv.ktmimic.tapeTypes
 class NewTapes : baseTape() {
     override fun getName() = "New Tapes"
 
-    override val opIds = arrayOf("")
+    override val chapterTitles = arrayOf("")
 }
