@@ -5,17 +5,20 @@ import okreplay.Response
 import java.util.Date
 
 class RecordedInteractions {
-    @Transient
-    lateinit var request: Request
-    lateinit var requestData: RequestTapedata
-
-    @Transient
-    lateinit var response: Response
-    lateinit var responseData: ResponseTapedata
 
     constructor(request: Request, response: Response) {
         this.request = request
         this.response = response
+
+        val callName = request.url().queryParameter("opId")
+            ?: request.url().query()
+            ?: request.url().encodedPath()
+
+        chapterName = "%s_[%s]_%s".format(
+            request.method(),
+            callName,
+            request.filterBody().hashCode()
+        )
         updateTapeData()
     }
 
@@ -23,6 +26,17 @@ class RecordedInteractions {
         this.requestData = requestData
         this.responseData = responseData
     }
+
+    val recorded = Date()
+    var chapterName = ""
+
+    @Transient
+    lateinit var request: Request
+    lateinit var requestData: RequestTapedata
+
+    @Transient
+    lateinit var response: Response
+    lateinit var responseData: ResponseTapedata
 
     /**
      * Loads json data back into request/ response data for Replay
@@ -39,15 +53,4 @@ class RecordedInteractions {
         requestData = RequestTapedata(request)
         responseData = ResponseTapedata(response)
     }
-
-    val ChapterName: String
-        get() {
-            return "%s_%s_%s".format(
-                request.method(),
-                request.url().encodedPathSegments(),
-                request.filterBody().hashCode()
-            )
-        }
-
-    val recorded = Date()
 }

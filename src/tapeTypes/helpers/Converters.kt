@@ -6,6 +6,7 @@ import io.ktor.application.ApplicationCall
 import io.ktor.request.contentType
 import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
+import okhttp3.Headers
 import okhttp3.Interceptor
 import okhttp3.MediaType
 import okhttp3.Request
@@ -21,9 +22,16 @@ suspend fun ApplicationCall.toChain(): Interceptor.Chain {
                 "%s://%s%s".format(outboundUrl.scheme(), outboundUrl.host(), request.local.uri)
             )
 
+            val headerCache = Headers.Builder()
             request.headers.forEach { s, list ->
-                list.forEach { build.header(s, it) }
+                list.forEach { headerCache.set(s, it) }
             }
+
+            // resolve what host would be taking to
+            if ((headerCache.get("Host") ?: "").startsWith("0.0.0.0"))
+                headerCache.set("Host", outboundUrl.host())
+
+            build.headers(headerCache.build())
 
             build.method(
                 request.httpMethod.value,

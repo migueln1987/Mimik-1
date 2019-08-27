@@ -1,5 +1,6 @@
 package com.fiserv.ktmimic.tapeTypes.helpers
 
+import com.fiserv.ktmimic.toJson
 import okhttp3.Protocol
 import okreplay.Response
 import java.nio.charset.Charset

@@ -4,7 +4,6 @@ import okhttp3.HttpUrl
 import okreplay.OkReplayConfig
 
 object Project {
-    val tapeDir = "src/tapes"
     val outboundUrl: HttpUrl = HttpUrl.get("https://dit1-cardvalet-m.fiservapps.com")
 
     val ignoreParams = listOf(

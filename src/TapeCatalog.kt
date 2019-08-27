@@ -1,8 +1,10 @@
-package com.fiserv.ktmimic.tapeTypes.helpers
+package com.fiserv.ktmimic
 
 import com.fiserv.ktmimic.tapeTypes.CFCTape
+import com.fiserv.ktmimic.tapeTypes.GeneralTape
 import com.fiserv.ktmimic.tapeTypes.NewTapes
 import com.fiserv.ktmimic.tapeTypes.baseTape
+import com.fiserv.ktmimic.tapeTypes.helpers.toChain
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,6 +22,7 @@ class TapeCatalog(private val config: OkReplayConfig) : OkReplayInterceptor() {
     private val tapes by lazy {
         arrayOf(
             defaultTape,
+            GeneralTape(),
             CFCTape()
         )
     }

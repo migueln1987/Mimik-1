@@ -35,6 +35,10 @@ abstract class baseTape : Tape {
     }
 
     init {
+        loadTapeFromFile()
+    }
+
+    private fun loadTapeFromFile() {
         if (tapeRoot.tapeExists(tapeName)) {
             val reader = tapeRoot.readerFor(tapeName)
             gson.fromJson(reader, this::class.java)
@@ -48,9 +52,8 @@ abstract class baseTape : Tape {
 
     override fun setMatchRule(matchRule: MatchRule?) {}
 
-    override fun getMatchRule(): MatchRule {
-        return ComposedMatchRule.of(MatchRules.method, MatchRules.queryParams, filteredBody)
-    }
+    override fun getMatchRule(): MatchRule =
+        ComposedMatchRule.of(MatchRules.method, MatchRules.queryParams, filteredBody)
 
     override fun setMode(mode: TapeMode?) {}
     override fun getMode() = TapeMode.READ_WRITE
@@ -78,7 +81,7 @@ abstract class baseTape : Tape {
         tapeRoot.writerFor(tapeName).let {
             JsonWriter(it).apply {
                 setIndent(" ")
-                isHtmlSafe = true
+                isHtmlSafe = false
             }
         }.also {
             gson.toJson(this, this::class.java, it)
@@ -90,12 +93,12 @@ abstract class baseTape : Tape {
     @Transient
     private val defaultResponse = object : Response {
         override fun code() = 0
-        override fun protocol() = Protocol.HTTP_1_0
+        override fun protocol() = Protocol.HTTP_2
 
         override fun getEncoding() = ""
         override fun getCharset() = Charset.defaultCharset()
 
-        override fun headers() = okhttp3.Headers.Builder().build()
+        override fun headers() = okhttp3.Headers.of("", "")
         override fun header(name: String?) = ""
         override fun getContentType() = ""
 
