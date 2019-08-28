@@ -1,6 +1,8 @@
 package com.fiserv.ktmimic.tapeTypes
 
 import com.fiserv.ktmimic.tapeTypes.helpers.RecordedInteractions
+import com.fiserv.ktmimic.tapeTypes.helpers.chapterName
+import com.fiserv.ktmimic.tapeTypes.helpers.chapterNameHead
 import com.fiserv.ktmimic.tapeTypes.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.stream.JsonWriter
@@ -24,9 +26,11 @@ abstract class baseTape : Tape {
      */
     abstract val chapterTitles: Array<String>
 
-    private val tapeChapters: MutableList<RecordedInteractions> = mutableListOf()
+    internal val tapeChapters: MutableList<RecordedInteractions> = mutableListOf()
 
-    private val tapeName
+    internal val requestMockResponses: MutableList<RecordedInteractions> = mutableListOf()
+
+    val tapeName
         get() = "$name.json".replace(" ", "_")
 
     companion object {
@@ -34,20 +38,10 @@ abstract class baseTape : Tape {
         val gson = Gson()
     }
 
-    init {
-        loadTapeFromFile()
-    }
-
-    private fun loadTapeFromFile() {
-        if (tapeRoot.tapeExists(tapeName)) {
-            val reader = tapeRoot.readerFor(tapeName)
-            gson.fromJson(reader, this::class.java)
-                ?.also { loadFile ->
-                    tapeChapters.clear()
-                    tapeChapters.addAll(0, loadFile.tapeChapters)
-                    loadFile.tapeChapters.forEach { it.loadReplayData() }
-                }
-        }
+    fun loadTapeData(data: Collection<RecordedInteractions>) {
+        tapeChapters.clear()
+        tapeChapters.addAll(0, data)
+        tapeChapters.forEach { it.updateReplayData() }
     }
 
     override fun setMatchRule(matchRule: MatchRule?) {}
@@ -63,11 +57,31 @@ abstract class baseTape : Tape {
 
     override fun size() = tapeChapters.size
 
-    override fun seek(request: Request?) = tapeChapters.any {
-        matchRule.isMatch(request, it.request)
+    override fun seek(request: Request): Boolean {
+        val hasRequestMock =
+            requestMockResponses.any {
+                it.mockUses > 0 &&
+                    it.chapterName.startsWith(request.chapterNameHead)
+            }
+
+        if (hasRequestMock)
+            return true
+
+        return tapeChapters.any {
+            matchRule.isMatch(request, it.request)
+        }
     }
 
-    override fun play(request: Request?): Response {
+    override fun play(request: Request): Response {
+        // try returning the first requested response
+        requestMockResponses.firstOrNull {
+            it.mockUses > 0 &&
+                it.chapterName.startsWith(request.chapterNameHead)
+        }?.also {
+            it.mockUses--
+            return it.response
+        }
+
         return tapeChapters.firstOrNull { matchRule.isMatch(request, it.request) }
             ?.response
             ?: defaultResponse

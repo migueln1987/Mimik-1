@@ -20,23 +20,27 @@ repositories {
     mavenLocal()
 //    jcenter()
     maven("http://jcenter.bintray.com")
-    maven { url = uri("https://kotlin.bintray.com/ktor") }
+    maven("https://kotlin.bintray.com/ktor")
 }
 
 dependencies {
-    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
-    compile("io.ktor:ktor-server-netty:$ktor_version")
-    compile("ch.qos.logback:logback-classic:$logback_version")
-    compile("io.ktor:ktor-server-core:$ktor_version")
-    compile("io.ktor:ktor-html-builder:$ktor_version")
-    compile("io.ktor:ktor-gson:$ktor_version")
-    compile("io.ktor:ktor-client-core:$ktor_version")
-    compile("io.ktor:ktor-client-core-jvm:$ktor_version")
-    compile("io.ktor:ktor-client-cio:$ktor_version")
-    compile("io.ktor:ktor-client-okhttp:$ktor_version")
-    compile("com.airbnb.okreplay:okreplay:1.4.0")
-    compile("com.beust:klaxon:5.0.1")
-    testCompile("io.ktor:ktor-server-tests:$ktor_version")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
+    implementation("io.ktor:ktor-server-netty:$ktor_version")
+
+    implementation("ch.qos.logback:logback-classic:$logback_version")
+
+    implementation("io.ktor:ktor-client-cio:$ktor_version")
+    implementation("io.ktor:ktor-client-core-jvm:$ktor_version")
+    implementation("io.ktor:ktor-client-core:$ktor_version")
+    implementation("io.ktor:ktor-client-okhttp:$ktor_version")
+    implementation("io.ktor:ktor-gson:$ktor_version")
+    implementation("io.ktor:ktor-html-builder:$ktor_version")
+    implementation("io.ktor:ktor-locations:$ktor_version")
+    implementation("io.ktor:ktor-server-core:$ktor_version")
+
+    implementation("com.airbnb.okreplay:okreplay:1.4.0")
+    implementation("com.beust:klaxon:5.0.1")
+    testImplementation("io.ktor:ktor-server-tests:$ktor_version")
 
     ktlint("com.github.shyiko:ktlint:0.29.0")
 }

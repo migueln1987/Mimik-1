@@ -9,16 +9,7 @@ class RecordedInteractions {
     constructor(request: Request, response: Response) {
         this.request = request
         this.response = response
-
-        val callName = request.url().queryParameter("opId")
-            ?: request.url().query()
-            ?: request.url().encodedPath()
-
-        chapterName = "%s_[%s]_%s".format(
-            request.method(),
-            callName,
-            request.filterBody().hashCode()
-        )
+        chapterName = request.chapterName
         updateTapeData()
     }
 
@@ -27,8 +18,14 @@ class RecordedInteractions {
         this.responseData = responseData
     }
 
-    val recorded = Date()
+    @Suppress("unused")
+    val recordedDate = Date()
     var chapterName = ""
+
+    /**
+     * Remaining uses of this mock interaction
+     */
+    var mockUses = 0
 
     @Transient
     lateinit var request: Request
@@ -38,10 +35,13 @@ class RecordedInteractions {
     lateinit var response: Response
     lateinit var responseData: ResponseTapedata
 
+    val bodyKey: String
+        get() = request.filterBody().hashCode().toString()
+
     /**
-     * Loads json data back into request/ response data for Replay
+     * Updates Replay data using json request/ response data from the tapeData
      */
-    fun loadReplayData() {
+    fun updateReplayData() {
         request = requestData.replayRequest
         response = responseData.replayResponse
     }

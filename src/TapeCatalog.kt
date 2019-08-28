@@ -5,21 +5,22 @@ import com.fiserv.ktmimic.tapeTypes.GeneralTape
 import com.fiserv.ktmimic.tapeTypes.NewTapes
 import com.fiserv.ktmimic.tapeTypes.baseTape
 import com.fiserv.ktmimic.tapeTypes.helpers.toChain
+import com.google.gson.Gson
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okreplay.OkReplayConfig
 import okreplay.OkReplayInterceptor
 import okhttp3.Response
-import okreplay.Tape
 import java.util.logging.Logger
 
-class TapeCatalog(private val config: OkReplayConfig) : OkReplayInterceptor() {
+class TapeCatalog private constructor() : OkReplayInterceptor() {
     private val log by lazy { Logger.getLogger("TapeCatalog") }
+
+    private val config = VCRConfig.getConfig
 
     private val defaultTape = NewTapes()
 
-    private val tapes by lazy {
+    val tapes by lazy {
         arrayOf(
             defaultTape,
             GeneralTape(),
@@ -27,12 +28,17 @@ class TapeCatalog(private val config: OkReplayConfig) : OkReplayInterceptor() {
         )
     }
 
-    private val tapeCalls: HashMap<String, Tape> = hashMapOf()
+    val tapeCalls: HashMap<String, baseTape> = hashMapOf()
 
     private var lastLoadedTape: String? = null
 
+    companion object {
+        var Instance = TapeCatalog()
+    }
+
     init {
         baseTape.tapeRoot = config.tapeRoot
+        loadTapeData()
         catalogTapeCalls()
     }
 
@@ -47,6 +53,20 @@ class TapeCatalog(private val config: OkReplayConfig) : OkReplayInterceptor() {
                 } else {
                     tapeCalls[key] = tape
                 }
+            }
+        }
+    }
+
+    private fun loadTapeData() {
+        val gson = Gson()
+
+        tapes.forEach {
+            if (config.tapeRoot.tapeExists(it.tapeName)) {
+                val reader = baseTape.tapeRoot.readerFor(it.tapeName)
+                gson.fromJson(reader, it::class.java)
+                    ?.also { loadFile ->
+                        it.loadTapeData(loadFile.tapeChapters)
+                    }
             }
         }
     }
