@@ -1,10 +1,10 @@
-package com.fiserv.ktmimic
+package com.fiserv.mimik
 
-import com.fiserv.ktmimic.tapeTypes.CFCTape
-import com.fiserv.ktmimic.tapeTypes.GeneralTape
-import com.fiserv.ktmimic.tapeTypes.NewTapes
-import com.fiserv.ktmimic.tapeTypes.baseTape
-import com.fiserv.ktmimic.tapeTypes.helpers.toChain
+import com.fiserv.mimik.tapeTypes.CFCTape
+import com.fiserv.mimik.tapeTypes.GeneralTape
+import com.fiserv.mimik.tapeTypes.NewTapes
+import com.fiserv.mimik.tapeTypes.baseTape
+import com.fiserv.mimik.tapeTypes.helpers.toChain
 import com.google.gson.Gson
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.Dispatchers

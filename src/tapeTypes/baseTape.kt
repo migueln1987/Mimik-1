@@ -1,9 +1,9 @@
-package com.fiserv.ktmimic.tapeTypes
+package com.fiserv.mimik.tapeTypes
 
-import com.fiserv.ktmimic.tapeTypes.helpers.RecordedInteractions
-import com.fiserv.ktmimic.tapeTypes.helpers.chapterName
-import com.fiserv.ktmimic.tapeTypes.helpers.chapterNameHead
-import com.fiserv.ktmimic.tapeTypes.helpers.filteredBody
+import com.fiserv.mimik.tapeTypes.helpers.RecordedInteractions
+import com.fiserv.mimik.tapeTypes.helpers.chapterName
+import com.fiserv.mimik.tapeTypes.helpers.chapterNameHead
+import com.fiserv.mimik.tapeTypes.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.stream.JsonWriter
 import okhttp3.Protocol

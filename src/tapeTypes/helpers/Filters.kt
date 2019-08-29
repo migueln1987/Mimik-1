@@ -1,7 +1,7 @@
-package com.fiserv.ktmimic.tapeTypes.helpers
+package com.fiserv.mimik.tapeTypes.helpers
 
 import com.beust.klaxon.Parser
-import com.fiserv.ktmimic.Project.ignoreParams
+import com.fiserv.mimik.Project.ignoreParams
 import okreplay.MatchRule
 import okreplay.Request
 import java.lang.StringBuilder

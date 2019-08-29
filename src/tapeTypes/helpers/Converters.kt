@@ -1,7 +1,7 @@
-package com.fiserv.ktmimic.tapeTypes.helpers
+package com.fiserv.mimik.tapeTypes.helpers
 
-import com.fiserv.ktmimic.Networking
-import com.fiserv.ktmimic.Project.outboundUrl
+import com.fiserv.mimik.Networking
+import com.fiserv.mimik.Project.outboundUrl
 import io.ktor.application.ApplicationCall
 import io.ktor.request.contentType
 import io.ktor.request.httpMethod

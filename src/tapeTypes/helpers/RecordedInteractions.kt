@@ -1,4 +1,4 @@
-package com.fiserv.ktmimic.tapeTypes.helpers
+package com.fiserv.mimik.tapeTypes.helpers
 
 import okreplay.Request
 import okreplay.Response

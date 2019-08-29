@@ -9,7 +9,7 @@ plugins {
     kotlin("jvm") version "1.3.41"
 }
 
-group = "com.fiserv.ktmimic"
+group = "com.fiserv.mimik"
 version = "0.0.1"
 
 application {

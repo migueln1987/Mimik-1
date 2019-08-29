@@ -1,4 +1,4 @@
-package com.fiserv.ktmimic
+package com.fiserv.mimik
 
 import okhttp3.HttpUrl
 import okreplay.OkReplayConfig

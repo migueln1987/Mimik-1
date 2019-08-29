@@ -1,10 +1,10 @@
-package com.fiserv.ktmimic.networkRouting
+package com.fiserv.mimik.networkRouting
 
-import com.fiserv.ktmimic.TapeCatalog
-import com.fiserv.ktmimic.tapeTypes.helpers.RecordedInteractions
-import com.fiserv.ktmimic.tapeTypes.helpers.mockChapterName
-import com.fiserv.ktmimic.tapeTypes.helpers.toChain
-import com.fiserv.ktmimic.toJson
+import com.fiserv.mimik.TapeCatalog
+import com.fiserv.mimik.tapeTypes.helpers.RecordedInteractions
+import com.fiserv.mimik.tapeTypes.helpers.mockChapterName
+import com.fiserv.mimik.tapeTypes.helpers.toChain
+import com.fiserv.mimik.toJson
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode

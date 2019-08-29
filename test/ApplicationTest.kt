@@ -1,4 +1,4 @@
-package com.fiserv.ktmimic
+package com.fiserv.mimik
 
 import io.ktor.application.*
 import io.ktor.response.*

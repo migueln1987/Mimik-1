@@ -1,4 +1,4 @@
-package com.fiserv.ktmimic.tapeTypes
+package com.fiserv.mimik.tapeTypes
 
 class CFCTape : baseTape() {
     override fun getName() = "CFC_Tape"

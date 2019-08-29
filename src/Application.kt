@@ -1,8 +1,8 @@
-package com.fiserv.ktmimic
+package com.fiserv.mimik
 
-import com.fiserv.ktmimic.networkRouting.ChatSession
-import com.fiserv.ktmimic.networkRouting.FiservRouting
-import com.fiserv.ktmimic.networkRouting.TapeRouting
+import com.fiserv.mimik.networkRouting.ChatSession
+import com.fiserv.mimik.networkRouting.FiservRouting
+import com.fiserv.mimik.networkRouting.TapeRouting
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.client.HttpClient

@@ -1,6 +1,6 @@
-package com.fiserv.ktmimic.tapeTypes.helpers
+package com.fiserv.mimik.tapeTypes.helpers
 
-import com.fiserv.ktmimic.toJson
+import com.fiserv.mimik.toJson
 import okhttp3.HttpUrl
 import okreplay.Request
 import java.nio.charset.Charset

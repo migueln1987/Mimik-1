@@ -1,4 +1,4 @@
-package com.fiserv.ktmimic.tapeTypes.helpers
+package com.fiserv.mimik.tapeTypes.helpers
 
 import okhttp3.Headers
 

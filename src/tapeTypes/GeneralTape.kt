@@ -1,4 +1,4 @@
-package com.fiserv.ktmimic.tapeTypes
+package com.fiserv.mimik.tapeTypes
 
 class GeneralTape : baseTape() {
     override fun getName() = "General Tape"

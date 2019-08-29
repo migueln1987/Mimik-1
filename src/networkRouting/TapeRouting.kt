@@ -1,6 +1,6 @@
-package com.fiserv.ktmimic.networkRouting
+package com.fiserv.mimik.networkRouting
 
-import com.fiserv.ktmimic.TapeCatalog
+import com.fiserv.mimik.TapeCatalog
 import io.ktor.application.call
 import io.ktor.html.respondHtml
 import io.ktor.response.respond

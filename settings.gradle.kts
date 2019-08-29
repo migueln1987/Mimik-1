@@ -1,1 +1,1 @@
-rootProject.name = "KtMimic"
+rootProject.name = "mimik"
