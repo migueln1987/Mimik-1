@@ -20,6 +20,7 @@ import okhttp3.Headers
 import okhttp3.Protocol
 import okio.Buffer
 import java.nio.charset.Charset
+import kotlin.math.max
 
 class FiservRouting(private val routing: Routing) {
 
@@ -35,7 +36,10 @@ class FiservRouting(private val routing: Routing) {
                 call.request.queryParameters["opId"] ?: ""
             }
 
-            call.respondText(ContentType.parse("application/json"), HttpStatusCode.OK) {
+            val contentType = response.header("content-type") ?: "text/plain"
+            val code = HttpStatusCode.fromValue(response.code())
+
+            call.respondText(ContentType.parse(contentType), code) {
                 withContext(Dispatchers.IO) {
                     response.toJson()
                 }
@@ -53,7 +57,7 @@ class FiservRouting(private val routing: Routing) {
 
                 val mockResponse = RecordedInteractions(
                     callChain.request().toRequest,
-                    mockResponse(callChain.request().toRequest)
+                    callChain.request().toMockResponse
                 )
 
                 val mockMethod = call.request.header("mockMethod")
@@ -73,18 +77,21 @@ class FiservRouting(private val routing: Routing) {
                         mockResponse
                     }
 
-                val mockUseRequest = call.request.header("MockUse")
-
-                if (!mockUseRequest.isNullOrBlank())
+                if (!call.request.header("mockUse").isNullOrBlank())
                     savedResponse.mockUses = 1 // set as "1-time use"
 
-                val mockUseRequests = call.request.header("MockUses")
-                    ?.toIntOrNull() ?: 0
-
-                if (mockUseRequests > 0)
-                    savedResponse.mockUses += mockUseRequests // increment by request
-                else // decrement mock requests
-                    savedResponse.mockUses = Math.max(0, savedResponse.mockUses - mockUseRequests)
+                if (call.request.header("mockUses")?.isNotEmpty() == true)
+                    when (val mockUseRequests = call.request.header("mockUses")?.toIntOrNull()) {
+                        null, 0 -> { // reset usage count
+                            savedResponse.mockUses = 0
+                        }
+                        in 1..Int.MAX_VALUE -> { // increment by request
+                            savedResponse.mockUses += mockUseRequests
+                        }
+                        in Int.MIN_VALUE..0 -> { // decrement mock requests, to a limit of 0
+                            savedResponse.mockUses = max(0, savedResponse.mockUses - mockUseRequests)
+                        }
+                    }
 
                 call.respondText(ContentType.parse("text/plain"), HttpStatusCode.OK) {
                     savedResponse.bodyKey
@@ -94,77 +101,76 @@ class FiservRouting(private val routing: Routing) {
     }
 
     private val okhttp3.Request.toRequest: okreplay.Request
-        get() {
-            return object : okreplay.Request {
-                override fun url() = this@toRequest.url()
+        get() = object : okreplay.Request {
+            override fun url() = this@toRequest.url()
 
-                override fun method() = this@toRequest.method()
+            override fun method() = this@toRequest.method()
 
-                override fun body(): ByteArray {
-                    return this@toRequest.body()?.let {
-                        val buffer = Buffer()
-                        it.writeTo(buffer)
-                        buffer.readByteArray()
-                    } ?: byteArrayOf()
+            override fun body(): ByteArray {
+                return this@toRequest.body()?.let {
+                    val buffer = Buffer()
+                    it.writeTo(buffer)
+                    buffer.readByteArray()
+                } ?: byteArrayOf()
+            }
+
+            override fun hasBody() = body().isNotEmpty()
+
+            override fun bodyAsText() = this@toRequest.body().toString()
+
+            override fun getContentType(): String =
+                this@toRequest.body()?.contentType().toString() ?: ""
+
+            override fun headers() = this@toRequest.headers()
+
+            override fun getEncoding(): String = TODO("not implemented")
+
+            override fun getCharset() = Charset.defaultCharset()
+
+            override fun header(name: String) = headers().get(name)
+
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
+        }
+
+    private val okhttp3.Request.toMockResponse: okreplay.Response
+        get() = toRequest.let { request ->
+            object : okreplay.Response {
+                override fun code(): Int {
+                    return (this@toMockResponse.header("mockResponseCode")?.toIntOrNull()?.let {
+                        HttpStatusCode.fromValue(it)
+                    } ?: HttpStatusCode.OK).value
                 }
 
-                override fun hasBody() = body().isNotEmpty()
+                override fun getEncoding() = request.encoding
 
-                override fun bodyAsText() = this@toRequest.body().toString()
+                override fun body() = request.body()
 
-                override fun getContentType(): String =
-                    this@toRequest.body()?.contentType().toString() ?: ""
+                override fun newBuilder() = null
 
-                override fun headers() = this@toRequest.headers()
+                override fun getContentType() = request.contentType
 
-                override fun getEncoding(): String = TODO("not implemented")
+                override fun hasBody() = request.hasBody()
 
-                override fun getCharset() = Charset.defaultCharset()
+                override fun toYaml() = request.toYaml()
 
-                override fun header(name: String) = headers().get(name)
+                override fun protocol() = Protocol.HTTP_2
 
-                override fun newBuilder() = TODO()
-                override fun toYaml() = TODO()
+                override fun bodyAsText() = request.bodyAsText()
+
+                override fun getCharset() = request.charset
+
+                override fun header(name: String) = request.header(name)
+
+                override fun headers(): Headers {
+                    return Headers.of(request.headers().toMultimap()
+                        .filter { !it.key.startsWith("mock") }
+                        .flatMap {
+                            it.value.map { mvalue -> it.key to mvalue }
+                        }
+                        .toMap()
+                    )
+                }
             }
         }
-
-    private fun mockResponse(request: okreplay.Request): okreplay.Response {
-        return object : okreplay.Response {
-            override fun code(): Int {
-                return (request.header("mockResponseCode")?.toIntOrNull()?.let {
-                    HttpStatusCode.fromValue(it)
-                } ?: HttpStatusCode.OK).value
-            }
-
-            override fun getEncoding() = request.encoding
-
-            override fun body() = request.body()
-
-            override fun newBuilder() = null
-
-            override fun getContentType() = request.contentType
-
-            override fun hasBody() = request.hasBody()
-
-            override fun toYaml() = request.toYaml()
-
-            override fun protocol() = Protocol.HTTP_2
-
-            override fun bodyAsText() = request.bodyAsText()
-
-            override fun getCharset() = request.charset
-
-            override fun header(name: String) = request.header(name)
-
-            override fun headers(): Headers {
-                return Headers.of(request.headers().toMultimap()
-                    .filter { !it.key.startsWith("mock") }
-                    .flatMap {
-                        it.value.map { mvalue -> it.key to mvalue }
-                    }
-                    .toMap()
-                )
-            }
-        }
-    }
 }
