@@ -30,6 +30,9 @@ abstract class baseTape : Tape {
 
     internal val requestMockResponses: MutableList<RecordedInteractions> = mutableListOf()
 
+    /**
+     * Tape name in the form of: {name}.json
+     */
     val tapeName
         get() = "$name.json".replace(" ", "_")
 

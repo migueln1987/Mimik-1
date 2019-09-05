@@ -3,7 +3,15 @@ package com.fiserv.mimik
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import okreplay.Request
+import org.w3c.dom.Node
+import org.w3c.dom.NodeList
 import java.lang.StringBuilder
+import java.util.Collections
+import java.util.RandomAccess
+import java.util.NoSuchElementException
+import java.util.stream.IntStream
+import kotlin.streams.toList
+
 
 fun Request.toJson(): String {
     val bodyString = StringBuilder()
@@ -31,3 +39,5 @@ fun okhttp3.Response.toJson(): String {
         null
     }) ?: ""
 }
+
+fun NodeList.asList() = (0..length).mapNotNull(this::item)

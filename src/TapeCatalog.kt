@@ -28,6 +28,9 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
         )
     }
 
+    /**
+     * [chapter key, tape]
+     */
     val tapeCalls: HashMap<String, baseTape> = hashMapOf()
 
     private var lastLoadedTape: String? = null

@@ -1,6 +1,5 @@
 package com.fiserv.mimik
 
-import com.fiserv.mimik.networkRouting.ChatSession
 import com.fiserv.mimik.networkRouting.FiservRouting
 import com.fiserv.mimik.networkRouting.TapeRouting
 import io.ktor.application.Application
@@ -10,8 +9,6 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.routing.routing
-import io.ktor.sessions.Sessions
-import io.ktor.sessions.cookie
 import org.slf4j.event.Level
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -33,10 +30,7 @@ fun Application.module(testing: Boolean = false) {
             importResponse("/fiserver/mock")
         }
 
-        TapeRouting(this).apply {
-            view("/view")
-            test("/test")
-        }
+        TapeRouting().init(this)
     }
 }
 
@@ -47,9 +41,5 @@ private fun Application.installFeatures() {
 
     install(CallLogging) {
         level = Level.DEBUG
-    }
-
-    install(Sessions) {
-        cookie<ChatSession>("SESSION")
     }
 }
