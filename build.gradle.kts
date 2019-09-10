@@ -6,7 +6,6 @@ val ktlint by configurations.creating
 
 plugins {
     application
-
     kotlin("jvm") version "1.3.50"
 }
 
@@ -19,7 +18,6 @@ application {
 
 repositories {
     mavenLocal()
-//    jcenter()
     maven("http://jcenter.bintray.com")
     maven("https://kotlin.bintray.com/ktor")
 }
@@ -49,29 +47,29 @@ dependencies {
 kotlin {
     sourceSets["main"].kotlin.srcDirs("src")
     sourceSets["test"].kotlin.srcDirs("test")
-//    target.nodejs { }
 }
-
 
 sourceSets["main"].resources.srcDirs("resources")
 sourceSets["test"].resources.srcDirs("testresources")
 
-tasks.register<JavaExec>("ktlint") {
-    group = "verification"
-    description = "Check Kotlin code style."
-    classpath = ktlint
-    main = "com.github.shyiko.ktlint.Main"
-    args("--android", "src/**/*.kt")
-}
+tasks {
+    register<JavaExec>("ktlint") {
+        group = "verification"
+        description = "Check Kotlin code style."
+        classpath = ktlint
+        main = "com.github.shyiko.ktlint.Main"
+        args("--android", "src/**/*.kt")
+    }
 
-//tasks.named("check") {
-//    dependsOn(ktlint)
-//}
+    named<Task>("check") {
+        dependsOn(ktlint)
+    }
 
-tasks.register<JavaExec>("ktlintFormat") {
-    group = "formatting"
-    description = "Fix Kotlin code style deviations."
-    classpath = ktlint
-    main = "com.github.shyiko.ktlint.Main"
-    args("--android", "-F", "src/**/*.kt")
+    register<JavaExec>("ktlintFormat") {
+        group = "formatting"
+        description = "Fix Kotlin code style deviations."
+        classpath = ktlint
+        main = "com.github.shyiko.ktlint.Main"
+        args("--android", "-F", "src/**/*.kt")
+    }
 }
