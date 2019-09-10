@@ -32,6 +32,7 @@ import kotlinx.html.table
 import kotlinx.html.td
 import kotlinx.html.th
 import kotlinx.html.tr
+import kotlinx.html.unsafe
 
 class TapeRouting {
 
@@ -87,11 +88,11 @@ class TapeRouting {
         get() = apply {
             val path = RoutePaths.EDIT.value
             get(path) {
-                val tt = call.parameters
-                val aa = tt.entries()
-                val headerValues = call.request.headers.entries().flatMap {
-                    it.value.map { mValue -> it.key to mValue }
-                }.toMap()
+//                val tt = call.parameters
+//                val aa = tt.entries()
+//                val headerValues = call.request.headers.entries().flatMap {
+//                    it.value.map { mValue -> it.key to mValue }
+//                }.toMap()
 
                 call.respondHtml { getEditChapterPage(call.parameters) }
             }
@@ -126,24 +127,28 @@ class TapeRouting {
     private fun HTML.getTapesPage() {
         body {
             style {
-                +"""
-                    table {
-                        font: 1em Arial;
-                        border: 1px solid black;
-                        width: 100%;
-                    }
-                    th {
-                        background-color: #ccc;
-                        width: 200px;
-                    }
-                    td {
-                        background-color: #eee;
-                    }
-                    th, td {
-                        text-align: left;
-                        padding: 0.5em 1em;
-                    }
-                """.trimIndent()
+                unsafe {
+                    raw(
+                        """
+                        table {
+                            font: 1em Arial;
+                            border: 1px solid black;
+                            width: 100%;
+                        }
+                        th {
+                            background-color: #ccc;
+                            width: 200px;
+                        }
+                        td {
+                            background-color: #eee;
+                        }
+                        th, td {
+                            text-align: left;
+                            padding: 0.5em 1em;
+                        }
+                        """.trimIndent()
+                    )
+                }
             }
 
             tapeCatalog.tapes
@@ -159,8 +164,12 @@ class TapeRouting {
                                         action = RoutePaths.ACTION.value,
                                         encType = FormEncType.multipartFormData
                                     ) {
-                                        p { hiddenInput(name = "tape") { value = t.tapeName } }
-                                        p { hiddenInput(name = "chapter") { value = it.chapterName } }
+                                        p {
+                                            hiddenInput(name = "tape") { value = t.tapeName }
+                                        }
+                                        p {
+                                            hiddenInput(name = "chapter") { value = it.chapterName }
+                                        }
 
                                         p {
                                             submitInput(name = "Action") { value = "Edit" }
@@ -181,9 +190,7 @@ class TapeRouting {
      * Page to edit all the chapters in the tape or other global tape settings
      * todo; is this needed?
      */
-    private fun HTML.getEditTapePage() {
-
-    }
+    private fun HTML.getEditTapePage() {}
 
     /**
      * Page to edit individual chapters in a tape
@@ -209,7 +216,12 @@ class TapeRouting {
         }
 
         body {
-            h1 { +"This page is intentionally left blank. Waiting for the \"Edit Chapter\" html page" }
+            h1 {
+                text(
+                    "This page is intentionally left blank. " +
+                        "Waiting for the \"Edit Chapter\" html page"
+                )
+            }
         }
     }
 }

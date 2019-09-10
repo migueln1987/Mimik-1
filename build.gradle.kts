@@ -6,7 +6,8 @@ val ktlint by configurations.creating
 
 plugins {
     application
-    kotlin("jvm") version "1.3.41"
+
+    kotlin("jvm") version "1.3.50"
 }
 
 group = "com.fiserv.mimik"
@@ -24,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
+    implementation(kotlin("stdlib-jdk8", kotlin_version))
     implementation("io.ktor:ktor-server-netty:$ktor_version")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
@@ -45,8 +46,12 @@ dependencies {
     ktlint("com.github.shyiko:ktlint:0.29.0")
 }
 
-kotlin.sourceSets["main"].kotlin.srcDirs("src")
-kotlin.sourceSets["test"].kotlin.srcDirs("test")
+kotlin {
+    sourceSets["main"].kotlin.srcDirs("src")
+    sourceSets["test"].kotlin.srcDirs("test")
+//    target.nodejs { }
+}
+
 
 sourceSets["main"].resources.srcDirs("resources")
 sourceSets["test"].resources.srcDirs("testresources")

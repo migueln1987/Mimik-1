@@ -25,10 +25,7 @@ fun Application.module(testing: Boolean = false) {
     }
 
     routing {
-        FiservRouting(this).apply {
-            perform()
-            importResponse("/fiserver/mock")
-        }
+        FiservRouting().init(this)
 
         TapeRouting().init(this)
     }
