@@ -32,6 +32,7 @@ dependencies {
     implementation("io.ktor:ktor-client-core-jvm:$ktor_version")
     implementation("io.ktor:ktor-client-core:$ktor_version")
     implementation("io.ktor:ktor-client-okhttp:$ktor_version")
+
     implementation("io.ktor:ktor-gson:$ktor_version")
     implementation("io.ktor:ktor-html-builder:$ktor_version")
     implementation("io.ktor:ktor-locations:$ktor_version")
@@ -58,7 +59,7 @@ tasks {
         description = "Check Kotlin code style."
         classpath = ktlint
         main = "com.github.shyiko.ktlint.Main"
-        args("--android", "src/**/*.kt")
+        args("--android", "src/**/*.kt", "--verbose")
     }
 
     named<Task>("check") {

@@ -1,7 +1,8 @@
 package com.fiserv.mimik.networkRouting
 
 import com.fiserv.mimik.TapeCatalog
-import com.fiserv.mimik.tapeTypes.helpers.RecordedInteractions
+import com.fiserv.mimik.helpers.toReplayRequest
+import com.fiserv.mimik.mimikMockHelpers.RecordedInteractions
 import com.fiserv.mimik.tapeTypes.helpers.mockChapterName
 import com.fiserv.mimik.tapeTypes.helpers.toChain
 import com.google.gson.internal.LinkedTreeMap
@@ -16,26 +17,22 @@ import io.ktor.routing.Routing
 import io.ktor.routing.put
 import okhttp3.Headers
 import okhttp3.Protocol
-import okio.Buffer
-import java.nio.charset.Charset
 import kotlin.math.max
 
-class MimikMock {
+class MimikMock(path: String) : RoutingContract(path) {
 
     private val tapeCatalog = TapeCatalog.Instance
 
-    companion object {
-        enum class RoutePaths(val value: String) {
-            MOCK("/mock")
-        }
+    private enum class RoutePaths(val value: String) {
+        MOCK("");
+
+        val path: String
+            get() = "$selfPath/$value"
     }
 
-    fun init(route: Routing) {
+    override fun init(route: Routing) {
         route.apply {
-            //            view
-//            action
-//            edit
-//            delete
+            mock
         }
     }
 
@@ -70,6 +67,7 @@ class MimikMock {
             }
         }
 
+    // todo; update to use BlankTapes??
     private fun Routing.importResponse(path: String) {
         apply {
             put(path) {
@@ -78,9 +76,10 @@ class MimikMock {
                 val tape = tapeCatalog.tapeCalls[opId]
                     ?: return@put call.respond(HttpStatusCode.FailedDependency, "")
 
+                val callChainRequest = callChain.request()
                 val mockResponse = RecordedInteractions(
-                    callChain.request().toRequest,
-                    callChain.request().toMockResponse
+                    callChainRequest.toReplayRequest,
+                    callChainRequest.toMockResponse
                 )
 
                 val mockMethod = call.request.header("mockMethod")
@@ -124,41 +123,8 @@ class MimikMock {
         }
     }
 
-    private val okhttp3.Request.toRequest: okreplay.Request
-        get() = object : okreplay.Request {
-            override fun url() = this@toRequest.url()
-
-            override fun method() = this@toRequest.method()
-
-            override fun body(): ByteArray {
-                return this@toRequest.body()?.let {
-                    val buffer = Buffer()
-                    it.writeTo(buffer)
-                    buffer.readByteArray()
-                } ?: byteArrayOf()
-            }
-
-            override fun hasBody() = body().isNotEmpty()
-
-            override fun bodyAsText() = this@toRequest.body().toString()
-
-            override fun getContentType(): String =
-                this@toRequest.body()?.contentType().toString()
-
-            override fun headers() = this@toRequest.headers()
-
-            override fun getEncoding(): String = TODO("not implemented")
-
-            override fun getCharset() = Charset.defaultCharset()
-
-            override fun header(name: String) = headers().get(name)
-
-            override fun newBuilder() = TODO()
-            override fun toYaml() = TODO()
-        }
-
     private val okhttp3.Request.toMockResponse: okreplay.Response
-        get() = toRequest.let { request ->
+        get() = toReplayRequest.let { request ->
             object : okreplay.Response {
                 override fun code(): Int {
                     return (this@toMockResponse.header("mockResponseCode")?.toIntOrNull()?.let {

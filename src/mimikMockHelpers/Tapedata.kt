@@ -1,4 +1,4 @@
-package com.fiserv.mimik.tapeTypes.helpers
+package com.fiserv.mimik.mimikMockHelpers
 
 import okhttp3.Headers
 

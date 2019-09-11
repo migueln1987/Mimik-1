@@ -1,42 +1,38 @@
-package com.fiserv.mimik.tapeTypes.helpers
+package com.fiserv.mimik.mimikMockHelpers
 
+import com.fiserv.mimik.tapeItems.RequestAttractors
+import com.fiserv.mimik.tapeTypes.helpers.chapterName
+import com.fiserv.mimik.tapeTypes.helpers.filterBody
 import okreplay.Request
 import okreplay.Response
 import java.util.Date
 
-class RecordedInteractions {
-
-    constructor(request: Request, response: Response) {
-        this.request = request
-        this.response = response
-        chapterName = request.chapterName
-        updateTapeData()
-    }
-
-    constructor(requestData: RequestTapedata, responseData: ResponseTapedata) {
-        this.requestData = requestData
-        this.responseData = responseData
-    }
-
-    @Suppress("unused")
+@Suppress("unused")
+class RecordedInteractions(
+    @Transient var request: Request,
+    @Transient var response: Response
+) {
     val recordedDate = Date()
     var chapterName = ""
+    val exportData = true
+    var attractors: RequestAttractors? = null
 
     /**
      * Remaining uses of this mock interaction
      */
     var mockUses = 0
 
-    @Transient
-    lateinit var request: Request
     lateinit var requestData: RequestTapedata
-
-    @Transient
-    lateinit var response: Response
     lateinit var responseData: ResponseTapedata
 
     val bodyKey: String
         get() = request.filterBody().hashCode().toString()
+
+    init {
+        if (chapterName.isBlank())
+            chapterName = request.chapterName
+        updateTapeData()
+    }
 
     /**
      * Updates Replay data using json request/ response data from the tapeData

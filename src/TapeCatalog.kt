@@ -1,28 +1,25 @@
 package com.fiserv.mimik
 
+import com.fiserv.mimik.helpers.fileListing
+import com.fiserv.mimik.helpers.toReplayRequest
+import com.fiserv.mimik.tapeItems.BlankTape
 import com.fiserv.mimik.tapeTypes.CFCTape
 import com.fiserv.mimik.tapeTypes.GeneralTape
-import com.fiserv.mimik.tapeTypes.NewTapes
 import com.fiserv.mimik.tapeTypes.baseTape
 import com.fiserv.mimik.tapeTypes.helpers.toChain
 import com.google.gson.Gson
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okreplay.OkReplayInterceptor
 import okhttp3.Response
-import java.util.logging.Logger
+import okreplay.OkReplayInterceptor
 
 class TapeCatalog private constructor() : OkReplayInterceptor() {
-    private val log by lazy { Logger.getLogger("TapeCatalog") }
-
     private val config = VCRConfig.getConfig
 
-    private val defaultTape = NewTapes()
-
-    val tapes by lazy {
+    @Deprecated("use tapes instead")
+    val tapes_old by lazy {
         arrayOf(
-            defaultTape,
             GeneralTape(),
             CFCTape()
         )
@@ -31,60 +28,63 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
     /**
      * [chapter key, tape]
      */
+    @Deprecated("use tapes instead")
     val tapeCalls: HashMap<String, baseTape> = hashMapOf()
 
-    private var lastLoadedTape: String? = null
+    val tapes: MutableList<BlankTape> = mutableListOf()
 
     companion object {
         var Instance = TapeCatalog()
+
+        private val defaultBlankTape = BlankTape
+            .Builder() { tapeName = "Default Tape" }
+            .build()
     }
 
     init {
-        baseTape.tapeRoot = config.tapeRoot
+        BlankTape.tapeRoot = config.tapeRoot
         loadTapeData()
-        catalogTapeCalls()
     }
 
     /**
-     * Parses all the tape into [opId, Tape] for easy tape recall
+     * Loads all the *.json tapes within the okreplay.tapeRoot directory
      */
-    private fun catalogTapeCalls() {
-        tapes.forEach { tape ->
-            tape.chapterTitles.forEach { key ->
-                if (tapeCalls.containsKey(key)) {
-                    log.warning("Catalog already contains a tape chapter title of $key")
-                } else {
-                    tapeCalls[key] = tape
-                }
-            }
-        }
-    }
-
+    @Suppress("USELESS_ELVIS")
     private fun loadTapeData() {
+        val root = config.tapeRoot.get() ?: return
         val gson = Gson()
 
-        tapes.forEach {
-            if (config.tapeRoot.tapeExists(it.tapeName)) {
-                val reader = baseTape.tapeRoot.readerFor(it.tapeName)
-                gson.fromJson(reader, it::class.java)
-                    ?.also { loadFile ->
-                        it.loadTapeData(loadFile.tapeChapters)
-                    }
+        root.fileListing().asSequence()
+            .map { it to it.readText() }
+            .mapNotNull {
+                // try converting into a tape
+                try {
+                    gson.fromJson(it.second, BlankTape::class.java)
+                        ?.also { tape ->
+                            tape.file = it.first
+                            tape.tapeName = tape.tapeName ?: tape.hashCode().toString()
+                        }
+                } catch (e: Exception) {
+                    println(e.toString())
+                    null
+                }
             }
-        }
+            .forEach { tapes.add(it) }
     }
 
-    private fun getTape(opId: String) = tapeCalls.getOrDefault(opId, defaultTape)
+    private fun getTape(request: okreplay.Request): BlankTape {
+        return tapes.firstOrNull {
+            it.containsRecording(request)
+        } ?: defaultBlankTape
+    }
 
-    suspend fun processCall(call: ApplicationCall, tapeKey: () -> String): Response {
-        val key = tapeKey.invoke()
-        if (lastLoadedTape != key) {
-            lastLoadedTape = key
-            start(config, getTape(key))
-        }
+    suspend fun processCall(call: ApplicationCall): Response {
+        val callChain = call.toChain()
+        val loadTape = getTape(callChain.toReplayRequest)
+        start(config, loadTape)
 
         return withContext(Dispatchers.IO) {
-            intercept(call.toChain())
+            intercept(callChain)
         }
     }
 }

@@ -4,7 +4,6 @@ import com.beust.klaxon.Parser
 import com.fiserv.mimik.Project.ignoreParams
 import okreplay.MatchRule
 import okreplay.Request
-import java.lang.StringBuilder
 
 fun Request.filterBody(): String {
     val bodyString = StringBuilder()

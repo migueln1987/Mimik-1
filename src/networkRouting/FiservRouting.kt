@@ -8,27 +8,22 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.response.respondText
 import io.ktor.routing.Routing
 import io.ktor.routing.post
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-class FiservRouting {
+/**
+ * Networking call for all POSTs to "/fiserver/cbes/perform.do"
+ */
+class FiservRouting(path: String) : RoutingContract(path) {
 
     private val tapeCatalog = TapeCatalog.Instance
 
-    /**
-     * Networking call for all POSTs to "/fiserver/cbes/perform.do"
-     */
-    fun init(routing: Routing) {
-        routing.post("/fiserver/cbes/perform.do") {
-            val response = tapeCatalog.processCall(call) {
-                call.request.queryParameters["opId"] ?: ""
-            }
+    override fun init(route: Routing) {
+        route.apply {
+            post(path) {
+                val response = tapeCatalog.processCall(call)
+                val contentType = response.header("content-type") ?: "text/plain"
+                val code = HttpStatusCode.fromValue(response.code())
 
-            val contentType = response.header("content-type") ?: "text/plain"
-            val code = HttpStatusCode.fromValue(response.code())
-
-            call.respondText(ContentType.parse(contentType), code) {
-                withContext(Dispatchers.IO) {
+                call.respondText(ContentType.parse(contentType), code) {
                     response.toJson()
                 }
             }

@@ -4,7 +4,6 @@ import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import okreplay.Request
 import org.w3c.dom.NodeList
-import java.lang.StringBuilder
 
 fun Request.toJson(): String {
     val bodyString = StringBuilder()

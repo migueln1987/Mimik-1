@@ -1,28 +1,28 @@
-package com.fiserv.mimik.tapeTypes.helpers
+package com.fiserv.mimik.mimikMockHelpers
 
 import com.fiserv.mimik.toJson
-import okhttp3.Protocol
-import okreplay.Response
+import okhttp3.HttpUrl
+import okreplay.Request
 import java.nio.charset.Charset
 
-class ResponseTapedata : Tapedata {
+class RequestTapedata : Tapedata {
 
     constructor()
-    constructor(response: Response) {
-        code = response.code()
-        protocol = response.protocol()
-        headers = response.headers()
-        body = response.toJson()
+    constructor(request: Request) {
+        method = request.method()
+        url = request.url()
+        headers = request.headers()
+        body = request.toJson()
     }
 
-    var code: Int = 0
-    lateinit var protocol: Protocol
+    lateinit var method: String
+    lateinit var url: HttpUrl
 
-    val replayResponse: Response
+    val replayRequest: Request
         get() {
-            return object : Response {
-                override fun code() = code
-                override fun protocol() = protocol
+            return object : Request {
+                override fun url() = url
+                override fun method() = method
 
                 override fun getEncoding() = ""
                 override fun getCharset() = Charset.forName("UTF-8")

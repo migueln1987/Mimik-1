@@ -1,23 +1,15 @@
 package com.fiserv.mimik.tapeTypes
 
-import com.fiserv.mimik.tapeTypes.helpers.RecordedInteractions
-import com.fiserv.mimik.tapeTypes.helpers.chapterName
+import com.fiserv.mimik.mimikMockHelpers.RecordedInteractions
 import com.fiserv.mimik.tapeTypes.helpers.chapterNameHead
 import com.fiserv.mimik.tapeTypes.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.stream.JsonWriter
 import okhttp3.Protocol
-import okreplay.ComposedMatchRule
-import okreplay.DefaultTapeRoot
-import okreplay.MatchRule
-import okreplay.MatchRules
+import okreplay.* // ktlint-disable no-wildcard-imports
 import okreplay.OkReplayConfig.DEFAULT_TAPE_ROOT
-import okreplay.Request
-import okreplay.Response
-import okreplay.Tape
-import okreplay.TapeMode
-import okreplay.TapeRoot
 import java.io.File
+import java.io.Writer
 import java.nio.charset.Charset
 
 abstract class baseTape : Tape {
@@ -61,10 +53,14 @@ abstract class baseTape : Tape {
     override fun size() = tapeChapters.size
 
     override fun seek(request: Request): Boolean {
+        // todo; finish merging mockResponses variable with tapes
+        tapeChapters
+            .filter { it.mockUses > 0 }
+
         val hasRequestMock =
             requestMockResponses.any {
                 it.mockUses > 0 &&
-                    it.chapterName.startsWith(request.chapterNameHead)
+                        it.chapterName.startsWith(request.chapterNameHead)
             }
 
         if (hasRequestMock)
@@ -79,7 +75,7 @@ abstract class baseTape : Tape {
         // try returning the first requested response
         requestMockResponses.firstOrNull {
             it.mockUses > 0 &&
-                it.chapterName.startsWith(request.chapterNameHead)
+                    it.chapterName.startsWith(request.chapterNameHead)
         }?.also {
             it.mockUses--
             return it.response
@@ -95,15 +91,22 @@ abstract class baseTape : Tape {
             RecordedInteractions(request, response)
         )
 
-        tapeRoot.writerFor(tapeName).let {
-            JsonWriter(it).apply {
-                setIndent(" ")
-                isHtmlSafe = false
-            }
-        }.also {
-            gson.toJson(this, this::class.java, it)
-        }.close()
+        val tree = gson.toJsonTree(this)
+
+        tapeRoot.writerFor(tapeName).jWriter
+            .also {
+                gson.toJson(this, this::class.java, it)
+            }.close()
     }
+
+    /**
+     * Creates a JsonWriter from an input Writer
+     */
+    private val Writer.jWriter: JsonWriter
+        get() = JsonWriter(this).apply {
+            setIndent(" ")
+            isHtmlSafe = false
+        }
 
     override fun isDirty() = false
 
