@@ -5,7 +5,7 @@ import okio.Buffer
 import java.nio.charset.Charset
 
 val Interceptor.Chain.toReplayRequest: okreplay.Request
-    get() = this.request().toReplayRequest
+    get() = request().toReplayRequest
 
 val okhttp3.Request.toReplayRequest: okreplay.Request
     get() = object : okreplay.Request {

@@ -2,6 +2,7 @@ package com.fiserv.mimik.networkRouting
 
 import com.fiserv.mimik.TapeCatalog
 import com.fiserv.mimik.VCRConfig
+import com.fiserv.mimik.helpers.RandomHost
 import com.fiserv.mimik.helpers.getFolders
 import com.fiserv.mimik.tapeItems.BlankTape
 import com.fiserv.mimik.tapeItems.RequestAttractors
@@ -15,17 +16,25 @@ import io.ktor.request.* // ktlint-disable no-wildcard-imports
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.* // ktlint-disable no-wildcard-imports
-import java.util.Random
-import kotlin.math.abs
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import okhttp3.HttpUrl
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
 
     private val tapeCatalog = TapeCatalog.Instance
+    private val randomHost = RandomHost()
 
     private val subDirectoryDefault = "[ Default Directory ]"
     private val subDirectoryCustom = "[ Custom Directory ]"
+
+    companion object {
+        internal var selfPath = ""
+    }
+
+    init {
+        selfPath = path
+    }
 
     enum class RoutePaths(private val value: String) {
         ALL("all"),
@@ -127,7 +136,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
      */
     private suspend fun ApplicationCall.processData(data: Map<String, String>) {
         when (data["CreateTape"]) {
-            "SaveView" -> {
+            "SaveAddChapters" -> {
                 val newTape = data.saveToTape()
                 tapeCatalog.tapes.add(newTape)
                 respondRedirect {
@@ -137,7 +146,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 return
             }
 
-            "SaveContinue" -> {
+            "SaveViewTapes" -> {
                 val newTape = data.saveToTape()
                 tapeCatalog.tapes.add(newTape)
                 respondRedirect(RoutePaths.ALL.path)
@@ -178,15 +187,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private fun Map<String, String>.saveToTape(): BlankTape {
         return BlankTape.Builder() {
-            subDirectory = get("SubDirectory")
-            if (!get("TapeName")?.trim().isNullOrBlank())
-                tapeName = get("TapeName")?.trim()
-        }.build().also {
-            it.RoutingUrl = get("RoutingUrl")?.trim()
-            it.attractors = RequestAttractors() {
-                routingPath = get("RoutingPath")
+            subDirectory = get("SubDirectory")?.trim()
+            tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
+            attractors = RequestAttractors() {
+                routingPath = get("RoutingPath")?.trim()
             }
-        }
+            routingURL = get("RoutingUrl")?.trim()
+        }.build()
     }
 
     private val CommonAttributeGroupFacade.disableEnterKey: Unit
@@ -239,28 +246,43 @@ class TapeRouting(path: String) : RoutingContract(path) {
             }
             br()
 
+            if (tapeCatalog.tapes.isEmpty()) {
+                h2 { +"No tapes were found." }
+                h3 {
+                    +"Click 'Create new tape' or route API calls through here to create tapes"
+                }
+                return@body
+            }
+
             tapeCatalog.tapes.forEach { t ->
-                val xx = t.file
                 table {
                     tr {
                         th { +t.tapeName }
+
                         td {
                             p { +"File path: ${t.file?.path}" }
                             p { +"Recordings: ${t.tapeChapters.size}" }
-                            if (!t.RoutingUrl.isNullOrBlank())
-                                p { +"Routing URL: ${t.RoutingUrl}" }
+
+                            val routingUrl = t.HttpRoutingUrl
+                            val isInvalidRouting = !t.routingUrl.isNullOrBlank() &&
+                                    routingUrl == null
+                            if (isInvalidRouting) {
+                                p { +"Routing URL: [ Invalid ]" }
+                            } else {
+                                if (routingUrl != null)
+                                    p { +"Routing URL: $routingUrl" }
+                            }
                             if (!t.attractors?.routingPath.isNullOrBlank()) {
                                 p { +"Routing Path: ${t.attractors?.routingPath}" }
                             }
                         }
+
                         td {
                             postForm(
                                 action = RoutePaths.ACTION.path,
                                 encType = FormEncType.multipartFormData
                             ) {
-                                p {
-                                    hiddenInput(name = "tape") { value = t.tapeName }
-                                }
+                                hiddenInput(name = "tape") { value = t.tapeName }
                                 p {
                                     submitInput(name = "Action") { value = "Edit" }
                                 }
@@ -271,54 +293,33 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         }
                     }
                 }
-
-                repeat(3) { br() }
-
-                h3 {
-                    hidden = true
-                    +t.tapeName
-                }
-                table {
-                    hidden = true
-                    t.tapeChapters.forEach {
-                        tr {
-                            th { +it.chapterName }
-                            td {
-                                postForm(
-                                    action = RoutePaths.ACTION.path,
-                                    encType = FormEncType.multipartFormData
-                                ) {
-                                    p {
-                                        hiddenInput(name = "tape") { value = t.tapeName }
-                                    }
-                                    p {
-                                        hiddenInput(name = "chapter") { value = it.chapterName }
-                                    }
-
-                                    p {
-                                        submitInput(name = "Action") { value = "Edit" }
-                                    }
-                                    p {
-                                        submitInput(name = "Action") { value = "Delete" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
 
     private fun HTML.getCreateTape() {
-        val randomVal = abs(Random().nextInt())
+        val randomVal = randomHost.nextRandom()
         val currentPath = VCRConfig.getConfig.tapeRoot.get().path
 
         val folders = mutableListOf(subDirectoryDefault)
             .apply { addAll(VCRConfig.getConfig.tapeRoot.get().getFolders()) }
 
+
         body {
             setupStyle()
+            script {
+                unsafe {
+                    raw(
+                        """
+                            function updateSaveBtns() {
+                                var isDisabled = !RoutingUrl.value.trim();
+                                SaveAddChapters.disabled = isDisabled;
+                                SaveViewTapes.disabled = isDisabled;
+                            }
+                        """.trimIndent()
+                    )
+                }
+            }
 
             getForm(action = RoutePaths.ALL.path) {
                 button { +"Back to View Tapes" }
@@ -336,7 +337,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     tr {
                         th { +"Sub directory (optional)" }
                         td {
-                            p {
+                            div {
                                 textInput(name = "SubDirectory") {
                                     id = "SubDirectory"
                                     placeholder = "/$currentPath"
@@ -371,7 +372,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     }
                                 }
                             }
-                            p(classes = "infoText") {
+                            br()
+                            div(classes = "infoText") {
                                 +"Where the tape will be saved to"
                             }
                         }
@@ -380,12 +382,16 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     tr {
                         th { +"Tape name" }
                         td {
-                            p {
+                            div {
                                 textInput(name = "TapeName") {
+                                    id = "TapeName"
+                                    placeholder = randomVal.toString()
                                     value = randomVal.toString()
+                                    onKeyUp = "updateSaveBtns();"
                                 }
                             }
-                            p(classes = "infoText") {
+                            br()
+                            div(classes = "infoText") {
                                 +"Tape name. Example: 'General' becomes '/General.json'"
                             }
                         }
@@ -394,21 +400,29 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     tr {
                         th { +"Routing url" }
                         td {
-                            p {
+                            div {
                                 textInput(name = "RoutingUrl") {
-                                    placeholder = "http://google.com"
+                                    id = "RoutingUrl"
+                                    placeholder = "Example: http://google.com"
+                                    size = "${placeholder.length + 20}"
                                     value = ""
+                                    onKeyUp = "updateSaveBtns();"
                                 }
                             }
-                            p(classes = "infoText") {
+                            br()
+                            div(classes = "infoText") {
                                 +"The live URl which this tape will connect to, to get data"
                             }
                         }
                     }
 
                     tr {
-                        td { text("Request Attractors") }
+                        th { +"Request Attractors (optional)" }
                         td {
+                            div(classes = "infoText") {
+                                +"Setting attractor values will allow new API calls to be added to this tape"
+                            }
+                            br()
                             table {
                                 tr {
                                     th { +"Routing Path" }
@@ -416,7 +430,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                         textInput(name = "RoutingPath") {
                                             placeholder = "sub/path/here"
                                             onKeyUp =
-                                                "SaveContinue.hidden = value.trim().length == 0"
+                                                "SaveViewTapes.hidden = value.trim().length == 0"
                                         }
                                     }
                                 }
@@ -425,17 +439,20 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
 
                     tr {
-                        td {}
+                        td()
                         td {
                             button(name = "CreateTape", classes = "btn_50wide") {
-                                value = "SaveView"
-                                +"Save and view"
+                                value = "SaveAddChapters"
+                                id = "SaveAddChapters"
+                                disabled = true
+                                +"Save and add tape chapters"
                             }
                             button(name = "CreateTape", classes = "btn_50wide") {
-                                value = "SaveContinue"
-                                id = "SaveContinue"
+                                value = "SaveViewTapes"
+                                id = "SaveViewTapes"
                                 hidden = true
-                                +"Save and continue"
+                                disabled = true
+                                +"Save and view tapes"
                             }
                         }
                     }

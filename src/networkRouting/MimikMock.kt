@@ -1,33 +1,47 @@
 package com.fiserv.mimik.networkRouting
 
 import com.fiserv.mimik.TapeCatalog
+import com.fiserv.mimik.helpers.toHeaders
 import com.fiserv.mimik.helpers.toReplayRequest
 import com.fiserv.mimik.mimikMockHelpers.RecordedInteractions
-import com.fiserv.mimik.tapeTypes.helpers.mockChapterName
-import com.fiserv.mimik.tapeTypes.helpers.toChain
-import com.google.gson.internal.LinkedTreeMap
+import com.fiserv.mimik.mimikMockHelpers.RequestTapedata
+import com.fiserv.mimik.mimikMockHelpers.ResponseTapedata
+import com.fiserv.mimik.tapeItems.BlankTape
+import com.fiserv.mimik.tapeItems.RequestAttractors
+import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.header
-import io.ktor.response.respond
+import io.ktor.request.receiveText
 import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.put
+import io.ktor.util.filter
+import kotlinx.coroutines.runBlocking
 import okhttp3.Headers
 import okhttp3.Protocol
 import kotlin.math.max
 
+@Suppress("RemoveRedundantQualifierName")
 class MimikMock(path: String) : RoutingContract(path) {
 
     private val tapeCatalog = TapeCatalog.Instance
 
-    private enum class RoutePaths(val value: String) {
+    companion object {
+        internal var selfPath = ""
+    }
+
+    init {
+        selfPath = path
+    }
+
+    private enum class RoutePaths(private val value: String) {
         MOCK("");
 
         val path: String
-            get() = "$selfPath/$value"
+            get() = selfPath + if (value.isBlank())
+                "" else "/$value"
     }
 
     override fun init(route: Routing) {
@@ -36,88 +50,119 @@ class MimikMock(path: String) : RoutingContract(path) {
         }
     }
 
-    var additionalInfo: Any? = null
-
-    val additionalInfoAsMap: LinkedTreeMap<String, Any?>
-        get() {
-            val additionalHolding = additionalInfo
-            @Suppress("UNCHECKED_CAST")
-            if (additionalHolding is LinkedTreeMap<*, *> &&
-                additionalHolding.keys.all { it is String }
-            )
-                return additionalHolding as LinkedTreeMap<String, Any?>
-            return LinkedTreeMap()
-        }
-
     private val Routing.mock: Route
         get() = apply {
-            put(RoutePaths.MOCK.value) {
-                /*
-                Mock input:
-                - query (as regex?)
-                - headers
-                -- url_path
-                -- mockMethod
-                -- mockResponseCode
-                -- mockUse/ mockUses
-                - body
-                -- request
-                -- response
-                 */
+            put(RoutePaths.MOCK.path) {
+                val mockInteraction = call.processPutMock()
+                call.respondText(ContentType.parse("text/plain"), HttpStatusCode.OK) {
+                    mockInteraction.bodyKey
+                }
             }
         }
 
-    // todo; update to use BlankTapes??
-    private fun Routing.importResponse(path: String) {
-        apply {
-            put(path) {
-                val callChain = call.toChain()
-                val opId = call.request.queryParameters["opId"] ?: ""
-                val tape = tapeCatalog.tapeCalls[opId]
-                    ?: return@put call.respond(HttpStatusCode.FailedDependency, "")
+    private fun ApplicationCall.processPutMock(): RecordedInteractions {
+        /*
+           Mock input:
+           - query (as regex?)
+           - headers
+           -- url_path
+           -- mockMethod
+           -- mockResponseCode
+           -- mockUse/ mockUses
+           - body
+           -- request
+           -- response
+            */
+        val headers = request.headers
+        val mockParams = headers.entries()
+            .filter { it.key.startsWith("mock") }
+            .associateBy({ it.key.removePrefix("mock") }, { it.value[0] })
 
-                val callChainRequest = callChain.request()
-                val mockResponse = RecordedInteractions(
-                    callChainRequest.toReplayRequest,
-                    callChainRequest.toMockResponse
-                )
-
-                val mockMethod = call.request.header("mockMethod")
-                if (mockMethod != null) {
-                    mockResponse.chapterName = mockResponse.request
-                        .mockChapterName(mockMethod, mockResponse.bodyKey)
+        // Step 1: get existing tape (using attractors) or create a new tape
+        var creatingNewTape = false
+        val tape = if (mockParams.containsKey("Url_path")) {
+            tapeCatalog.tapes
+                .firstOrNull {
+                    // attempt to use an existing tape
+                    it.attractors?.routingPath == mockParams["Url_path"]
                 }
-
-                val savedResponse = tape.requestMockResponses
-                    .firstOrNull {
-                        // try using the existing previous requested response
-                        it.chapterName == mockResponse.chapterName
+                ?: BlankTape.Builder() {
+                    creatingNewTape = true
+                    subDirectory = "NewTapes"
+                    tapeName = String.format(
+                        "%s_%d",
+                        mockParams["Url_path"],
+                        mockParams["Url_path"].hashCode()
+                    )
+                    attractors = RequestAttractors {
+                        routingPath = mockParams["Url_path"]
                     }
-                    ?: let {
-                        // or save the new response, and return this instance
-                        tape.requestMockResponses.add(mockResponse)
-                        mockResponse
+                }.build()
+        } else {
+            BlankTape.Builder() {
+                creatingNewTape = true
+                subDirectory = "NewTapes"
+                tapeName = mockParams.hashCode().toString()
+            }.build()
+        }
+
+        if (creatingNewTape) tapeCatalog.tapes.add(tape)
+
+        // Step 2: get existing chapter (to override) or create a new one
+        val requestMock = RequestTapedata() {
+            it.method = mockParams["Method"]
+
+            if (mockParams.containsKey("Url_path")) {
+                it.url = tape.HttpRoutingUrl?.newBuilder()
+                    ?.addPathSegments(
+                        mockParams["Url_path"]?.removePrefix("/") ?: ""
+                    )
+                    ?.build()
+            }
+
+            it.headers = request.headers
+                .filter { s, _ -> !s.startsWith("mock") }
+                .toHeaders()
+        }
+
+        val chapter = tape.tapeChapters
+            .firstOrNull {
+                it.attractors?.matchesRequest(requestMock.replayRequest) == true
+            }
+            ?: tape.createNewInteraction {
+                it.requestData = requestMock
+            }
+
+        // Step 3: start setting the MimikMock data
+        return chapter.apply {
+            responseData = ResponseTapedata {
+                it.code = mockParams["ResponseCode"]?.toIntOrNull()
+                    ?: HttpStatusCode.OK.value
+
+                it.headers = headers.entries()
+                    .filter { f -> f.key.startsWith("mockHEADER") }
+                    .associateBy(
+                        { kv -> kv.key.removePrefix("mockHEADER") },
+                        { kv -> kv.value[0] }
+                    )
+                    .toHeaders()
+
+                it.body = runBlocking { receiveText() }
+            }
+            updateReplayData()
+
+            if (mockParams.containsKey("Use"))
+                mockUses = 1 // set as "1-time use"
+
+            if (mockParams.containsKey("Uses")) {
+                mockUses = when (val usesRequest = mockParams["Uses"]?.toIntOrNull()) {
+                    null, 0 -> {// reset usage count
+                        0
                     }
-
-                if (!call.request.header("mockUse").isNullOrBlank())
-                    savedResponse.mockUses = 1 // set as "1-time use"
-
-                if (call.request.header("mockUses")?.isNotEmpty() == true)
-                    when (val mockUseRequests = call.request.header("mockUses")?.toIntOrNull()) {
-                        null, 0 -> { // reset usage count
-                            savedResponse.mockUses = 0
-                        }
-                        in 1..Int.MAX_VALUE -> { // increment by request
-                            savedResponse.mockUses += mockUseRequests
-                        }
-                        in Int.MIN_VALUE..0 -> { // decrement mock requests, to a limit of 0
-                            savedResponse.mockUses =
-                                max(0, savedResponse.mockUses - mockUseRequests)
-                        }
+                    in Int.MIN_VALUE..0 -> {// decrement mock requests, to a limit of 0
+                        max(0, mockUses - usesRequest)
                     }
-
-                call.respondText(ContentType.parse("text/plain"), HttpStatusCode.OK) {
-                    savedResponse.bodyKey
+                    else -> usesRequest
                 }
             }
         }

@@ -12,6 +12,7 @@ import io.ktor.routing.post
 /**
  * Networking call for all POSTs to "/fiserver/cbes/perform.do"
  */
+@Deprecated("Convert into a tape")
 class FiservRouting(path: String) : RoutingContract(path) {
 
     private val tapeCatalog = TapeCatalog.Instance

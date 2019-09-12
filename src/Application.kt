@@ -31,8 +31,8 @@ fun Application.module(testing: Boolean = false) {
     routing {
         arrayOf(
             MimikMock("/mock"),
-            FiservRouting("/fiserver/cbes/perform.do"),
-            TapeRouting("/tapes")
+            TapeRouting("/tapes"),
+            FiservRouting("/fiserver/cbes/perform.do")
         ).forEach { it.init(this) }
 
         get("/") {

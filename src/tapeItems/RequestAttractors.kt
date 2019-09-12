@@ -9,7 +9,6 @@ class RequestAttractors(
     var queryParams: Array<Pair<String, String>>? = null,
     var queryBody: String? = null
 ) {
-
     constructor(config: RequestAttractors.() -> Unit) : this() {
         config.invoke(this)
     }
@@ -23,9 +22,8 @@ class RequestAttractors(
         val matchPath = routingPath?.run { url.path == this } ?: true
 
         val matchQuery = queryParams?.run {
-            // Key1=Val1&Key2=Val2 -> [(Key1, Val1), (Key2, Val2)]
-            val reqParams = url.query.split("&")
-                .sorted()
+            val reqParams = url.query
+                .split("&").sorted()
                 .map { KVMap ->
                     KVMap.split("=").run { get(0) to get(1) }
                 }

@@ -5,6 +5,7 @@ import com.fiserv.mimik.mimikMockHelpers.RecordedInteractions
 import com.fiserv.mimik.tapeTypes.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.stream.JsonWriter
+import okhttp3.HttpUrl
 import okhttp3.Protocol
 import okreplay.* // ktlint-disable no-wildcard-imports
 import java.io.File
@@ -23,10 +24,14 @@ class BlankTape private constructor(
 
         var subDirectory: String? = ""
         var tapeName: String? = null
+        var routingURL: String? = null
+        var attractors: RequestAttractors? = null
 
         fun build() = BlankTape(
             tapeName ?: hashCode().toString()
         ).also {
+            it.attractors = attractors
+            it.routingUrl = routingURL
             it.file = File(
                 VCRConfig.getConfig.tapeRoot.get(),
                 (subDirectory ?: "") + "/" + it.jsonFileName
@@ -66,22 +71,14 @@ class BlankTape private constructor(
             .replace(" ", "_") + ".json"
 
     var attractors: RequestAttractors? = null
-    var RoutingUrl: String? = null
+    var routingUrl: String? = null
+
+    val HttpRoutingUrl: HttpUrl?
+        get() = HttpUrl.parse(routingUrl ?: "")
 
     override fun getName() = tapeName
 
-    /**
-     * How the API calls will be separated within this tape
-     */
-//    val chapterTitles: Array<String>
-
     val tapeChapters: MutableList<RecordedInteractions> = mutableListOf()
-
-    fun loadTapeData(data: Collection<RecordedInteractions>) {
-        tapeChapters.clear()
-        tapeChapters.addAll(0, data)
-        tapeChapters.forEach { it.updateReplayData() }
-    }
 
     override fun setMatchRule(matchRule: MatchRule?) {}
 
@@ -158,4 +155,16 @@ class BlankTape private constructor(
         }
 
     override fun isDirty() = false
+
+    /**
+     * Created a new Recorded Interaction based on this tape's config
+     */
+    fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}): RecordedInteractions {
+        return RecordedInteractions()
+            .also {
+                it.attractors = attractors
+                interaction.invoke(it)
+                tapeChapters.add(it)
+            }
+    }
 }

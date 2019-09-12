@@ -8,13 +8,18 @@ import okreplay.Response
 import java.util.Date
 
 @Suppress("unused")
-class RecordedInteractions(
-    @Transient var request: Request,
-    @Transient var response: Response
-) {
-    val recordedDate = Date()
+class RecordedInteractions {
+
+    constructor()
+    constructor(request: Request, response: Response) {
+        this.request = request
+        this.response = response
+        updateTapeData()
+    }
+
+    var recordedDate = Date()
     var chapterName = ""
-    val exportData = true
+    var exportData = true
     var attractors: RequestAttractors? = null
 
     /**
@@ -22,6 +27,10 @@ class RecordedInteractions(
      */
     var mockUses = 0
 
+    @Transient
+    lateinit var request: Request
+    @Transient
+    lateinit var response: Response
     lateinit var requestData: RequestTapedata
     lateinit var responseData: ResponseTapedata
 

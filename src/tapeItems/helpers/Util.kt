@@ -8,8 +8,7 @@ package com.fiserv.mimik.tapeTypes.helpers
  */
 val okreplay.Request.chapterName: String
     get() {
-        val callName = url().queryParameter("opId")
-            ?: url().query()
+        val callName = url().query()
             ?: url().encodedPath()
 
         return "%s_[%s]_%s".format(
@@ -19,10 +18,10 @@ val okreplay.Request.chapterName: String
         )
     }
 
+@Deprecated("Convert to using tape attractors")
 val okreplay.Request.chapterNameHead: String
     get() {
-        val callName = url().queryParameter("opId")
-            ?: url().query()
+        val callName = url().query()
             ?: url().encodedPath()
 
         return "%s_[%s]".format(
@@ -38,8 +37,7 @@ val okreplay.Request.chapterNameHead: String
  * - mock body key (provided)
  */
 fun okreplay.Request.mockChapterName(method: String, bodyKey: String): String {
-    val callName = url().queryParameter("opId")
-        ?: url().query()
+    val callName = url().query()
         ?: url().encodedPath()
 
     return "%s_[%s]_%s".format(
