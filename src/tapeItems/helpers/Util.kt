@@ -14,7 +14,8 @@ val okreplay.Request.chapterName: String
         return "%s_[%s]_%s".format(
             method(),
             callName,
-            filterBody().hashCode()
+            body().hashCode()
+//            filterBody().hashCode()
         )
     }
 

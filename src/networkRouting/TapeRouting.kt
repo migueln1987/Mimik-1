@@ -157,6 +157,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
 
         when (data["Action"]) {
+            "SaveToHardTape" -> {
+                tapeCatalog.tapes
+                    .firstOrNull { it.tapeName == data["tape"] }
+                    ?.saveFile()
+                respondRedirect(RoutePaths.ALL.path)
+            }
+
             "Edit" -> {
                 respondRedirect {
                     path(RoutePaths.EDIT.path.drop(1))
@@ -260,7 +267,21 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         th { +t.tapeName }
 
                         td {
-                            p { +"File path: ${t.file?.path}" }
+                            if (t.file?.exists() == true) {
+                                p { +"File path: ${t.file?.path}" }
+                                p { +"File size: ${t.file?.length()} bytes" }
+                            } else {
+                                postForm(
+                                    action = RoutePaths.ACTION.path,
+                                    encType = FormEncType.multipartFormData
+                                ) {
+                                    hiddenInput(name = "tape") { value = t.tapeName }
+                                    button(name = "Action") {
+                                        value = "SaveToHardTape"
+                                        text("Save tape as a hard tape")
+                                    }
+                                }
+                            }
                             p { +"Recordings: ${t.tapeChapters.size}" }
 
                             val routingUrl = t.HttpRoutingUrl

@@ -6,6 +6,7 @@ import com.fiserv.mimik.tapeTypes.helpers.filterBody
 import okreplay.Request
 import okreplay.Response
 import java.util.Date
+import java.util.UUID
 
 @Suppress("unused")
 class RecordedInteractions {
@@ -39,8 +40,7 @@ class RecordedInteractions {
 
     init {
         if (chapterName.isBlank())
-            chapterName = request.chapterName
-        updateTapeData()
+            chapterName = UUID.randomUUID().toString()
     }
 
     /**
@@ -55,7 +55,9 @@ class RecordedInteractions {
      * Updates TapeData for json saving
      */
     fun updateTapeData() {
-        requestData = RequestTapedata(request)
-        responseData = ResponseTapedata(response)
+        if (::request.isInitialized)
+            requestData = RequestTapedata(request)
+        if (::response.isInitialized)
+            responseData = ResponseTapedata(response)
     }
 }

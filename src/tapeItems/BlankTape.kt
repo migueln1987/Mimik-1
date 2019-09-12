@@ -34,9 +34,18 @@ class BlankTape private constructor(
             it.routingUrl = routingURL
             it.file = File(
                 VCRConfig.getConfig.tapeRoot.get(),
-                (subDirectory ?: "") + "/" + it.jsonFileName
+                (subDirectory ?: "") + "/" + it.tapeName.toJsonName
             )
         }
+
+        private val String.toJsonName: String
+            get() = replace(" ", "_")
+                .replace("""/(\w)""".toRegex()) {
+                    it.groups[1]?.value?.toUpperCase() ?: it.value
+                }
+                .replace("/", "")
+                .replace(".", "-")
+                .plus(".json")
     }
 
     companion object {
@@ -64,11 +73,8 @@ class BlankTape private constructor(
         }
     }
 
+    @Transient
     var file: File? = null
-
-    val jsonFileName
-        get() = tapeName
-            .replace(" ", "_") + ".json"
 
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
@@ -136,13 +142,26 @@ class BlankTape private constructor(
             RecordedInteractions(request, response)
         )
 
+        saveFile()
+    }
+
+    fun saveFile() {
         val tree = gson.toJsonTree(this)
 
-        // todo; use 'file'
-        tapeRoot.writerFor(jsonFileName).jWriter
-            .also {
-                gson.toJson(this, this::class.java, it)
-            }.close()
+        file?.also { outFile ->
+            val canSaveFile = if (outFile.exists())
+                outFile.canWrite()
+            else {
+                if (outFile.parentFile.mkdirs())
+                    outFile.createNewFile()
+                else false
+            }
+
+            if (canSaveFile)
+                outFile.bufferedWriter().jWriter
+                    .also { gson.toJson(this, this::class.java, it) }
+                    .close()
+        }
     }
 
     /**

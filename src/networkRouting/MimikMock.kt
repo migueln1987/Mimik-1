@@ -13,6 +13,7 @@ import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveText
+import io.ktor.response.respond
 import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.routing.Routing
@@ -21,6 +22,7 @@ import io.ktor.util.filter
 import kotlinx.coroutines.runBlocking
 import okhttp3.Headers
 import okhttp3.Protocol
+import java.lang.Exception
 import kotlin.math.max
 
 @Suppress("RemoveRedundantQualifierName")
@@ -53,26 +55,21 @@ class MimikMock(path: String) : RoutingContract(path) {
     private val Routing.mock: Route
         get() = apply {
             put(RoutePaths.MOCK.path) {
-                val mockInteraction = call.processPutMock()
-                call.respondText(ContentType.parse("text/plain"), HttpStatusCode.OK) {
-                    mockInteraction.bodyKey
+                try {
+                    val mockInteraction = call.processPutMock()
+                    call.respondText(ContentType.parse("text/plain"), HttpStatusCode.Created) {
+                        ""
+                    }
+                } catch (e: Exception) {
+                    System.out.println(e.toString())
+                    call.respondText(ContentType.parse("text/plain"), HttpStatusCode.Conflict) {
+                        e.toString()
+                    }
                 }
             }
         }
 
     private fun ApplicationCall.processPutMock(): RecordedInteractions {
-        /*
-           Mock input:
-           - query (as regex?)
-           - headers
-           -- url_path
-           -- mockMethod
-           -- mockResponseCode
-           -- mockUse/ mockUses
-           - body
-           -- request
-           -- response
-            */
         val headers = request.headers
         val mockParams = headers.entries()
             .filter { it.key.startsWith("mock") }
