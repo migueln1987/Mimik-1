@@ -17,7 +17,6 @@ import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.* // ktlint-disable no-wildcard-imports
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
-import okhttp3.HttpUrl
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
@@ -284,7 +283,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             }
                             p { +"Recordings: ${t.tapeChapters.size}" }
 
-                            val routingUrl = t.HttpRoutingUrl
+                            val routingUrl = t.httpRoutingUrl
                             val isInvalidRouting = !t.routingUrl.isNullOrBlank() &&
                                     routingUrl == null
                             if (isInvalidRouting) {
@@ -324,7 +323,6 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
         val folders = mutableListOf(subDirectoryDefault)
             .apply { addAll(VCRConfig.getConfig.tapeRoot.get().getFolders()) }
-
 
         body {
             setupStyle()
@@ -432,7 +430,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             }
                             br()
                             div(classes = "infoText") {
-                                +"The live URl which this tape will connect to, to get data"
+                                +R.getProperty("tapeRoutingUrlInfo")
                             }
                         }
                     }
@@ -441,7 +439,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         th { +"Request Attractors (optional)" }
                         td {
                             div(classes = "infoText") {
-                                +"Setting attractor values will allow new API calls to be added to this tape"
+                                +R.getProperty("tapeAttractorsInfo")
                             }
                             br()
                             table {

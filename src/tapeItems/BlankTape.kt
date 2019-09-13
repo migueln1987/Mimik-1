@@ -79,7 +79,7 @@ class BlankTape private constructor(
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
 
-    val HttpRoutingUrl: HttpUrl?
+    val httpRoutingUrl: HttpUrl?
         get() = HttpUrl.parse(routingUrl ?: "")
 
     override fun getName() = tapeName
@@ -178,12 +178,10 @@ class BlankTape private constructor(
     /**
      * Created a new Recorded Interaction based on this tape's config
      */
-    fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}): RecordedInteractions {
-        return RecordedInteractions()
-            .also {
-                it.attractors = attractors
-                interaction.invoke(it)
-                tapeChapters.add(it)
-            }
-    }
+    fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
+        RecordedInteractions().also {
+            it.attractors = attractors
+            interaction.invoke(it)
+            tapeChapters.add(it)
+        }
 }

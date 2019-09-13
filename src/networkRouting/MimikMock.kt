@@ -10,11 +10,9 @@ import com.fiserv.mimik.tapeItems.BlankTape
 import com.fiserv.mimik.tapeItems.RequestAttractors
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveText
 import io.ktor.response.respond
-import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.put
@@ -22,7 +20,6 @@ import io.ktor.util.filter
 import kotlinx.coroutines.runBlocking
 import okhttp3.Headers
 import okhttp3.Protocol
-import java.lang.Exception
 import kotlin.math.max
 
 @Suppress("RemoveRedundantQualifierName")
@@ -55,70 +52,86 @@ class MimikMock(path: String) : RoutingContract(path) {
     private val Routing.mock: Route
         get() = apply {
             put(RoutePaths.MOCK.path) {
-                try {
-                    val mockInteraction = call.processPutMock()
-                    call.respondText(ContentType.parse("text/plain"), HttpStatusCode.Created) {
-                        ""
-                    }
-                } catch (e: Exception) {
-                    System.out.println(e.toString())
-                    call.respondText(ContentType.parse("text/plain"), HttpStatusCode.Conflict) {
-                        e.toString()
-                    }
+                call.processPutMock().apply {
+                    call.respond(status, errorResponse ?: "")
                 }
             }
         }
 
-    private fun ApplicationCall.processPutMock(): RecordedInteractions {
+    private class MockRequestedResponse(build: MockRequestedResponse.() -> Unit) {
+        var status: HttpStatusCode = HttpStatusCode.OK
+        var interaction: RecordedInteractions? = null
+        var errorResponse: String? = null
+
+        init {
+            build.invoke(this)
+        }
+    }
+
+    private fun String.removePrefix(prefix: String, ignoreCase: Boolean): String {
+        return if (startsWith(prefix, ignoreCase))
+            substring(prefix.length, length)
+        else this
+    }
+
+    private fun ApplicationCall.processPutMock(): MockRequestedResponse {
         val headers = request.headers
         val mockParams = headers.entries()
-            .filter { it.key.startsWith("mock") }
-            .associateBy({ it.key.removePrefix("mock") }, { it.value[0] })
+            .filter { it.key.startsWith("mock", true) }
+            .associateBy({ it.key.removePrefix("mock", true) }, { it.value[0] })
 
-        // Step 1: get existing tape (using attractors) or create a new tape
-        var creatingNewTape = false
-        val tape = if (mockParams.containsKey("Url_path")) {
-            tapeCatalog.tapes
-                .firstOrNull {
-                    // attempt to use an existing tape
-                    it.attractors?.routingPath == mockParams["Url_path"]
-                }
-                ?: BlankTape.Builder() {
-                    creatingNewTape = true
-                    subDirectory = "NewTapes"
-                    tapeName = String.format(
-                        "%s_%d",
-                        mockParams["Url_path"],
-                        mockParams["Url_path"].hashCode()
-                    )
-                    attractors = RequestAttractors {
-                        routingPath = mockParams["Url_path"]
-                    }
-                }.build()
-        } else {
-            BlankTape.Builder() {
-                creatingNewTape = true
-                subDirectory = "NewTapes"
-                tapeName = mockParams.hashCode().toString()
-            }.build()
+        // Step 0: Pre-checks
+        if (mockParams.isEmpty()) return MockRequestedResponse {
+            status = HttpStatusCode.BadRequest
+            errorResponse = "Missing mock params"
         }
 
-        if (creatingNewTape) tapeCatalog.tapes.add(tape)
+        if (!mockParams.containsKey("Url_path")) return MockRequestedResponse {
+            status = HttpStatusCode.BadRequest
+            errorResponse = "Missing url routing path ('Url_path')"
+        }
 
-        // Step 2: get existing chapter (to override) or create a new one
+        val urlPath = mockParams.getValue("Url_path").removePrefix("/")
+
+        // Step 1: get existing tape (using attractors) or create a new tape
+        var createdTape = false
+        val tape = tapeCatalog.tapes
+            .firstOrNull {
+                // attempt to use an existing tape
+                it.attractors?.routingPath == urlPath
+            }
+            ?: BlankTape.Builder() {
+                createdTape = true
+                subDirectory = "NewTapes"
+                routingURL = mockParams["Route_Url"]
+                tapeName = String.format(
+                    "%s_%d",
+                    urlPath,
+                    urlPath.hashCode()
+                )
+                attractors = RequestAttractors {
+                    routingPath = urlPath
+                }
+            }.build()
+
+        if (tape.httpRoutingUrl == null) return MockRequestedResponse {
+            status = HttpStatusCode.PreconditionFailed
+            errorResponse = "Missing routing url ('Route_Url')"
+        }
+
+        if (createdTape) tapeCatalog.tapes.add(tape)
+
+        // Step 2: Get existing chapter (to override) or create a new one
         val requestMock = RequestTapedata() {
             it.method = mockParams["Method"]
 
-            if (mockParams.containsKey("Url_path")) {
-                it.url = tape.HttpRoutingUrl?.newBuilder()
-                    ?.addPathSegments(
-                        mockParams["Url_path"]?.removePrefix("/") ?: ""
-                    )
-                    ?.build()
-            }
+            it.url = tape.httpRoutingUrl!!.newBuilder()
+                .addPathSegments(
+                    urlPath
+                ).build()
 
             it.headers = request.headers
-                .filter { s, _ -> !s.startsWith("mock") }
+                .filter { s, _ -> !s.startsWith("mock", true) }
                 .toHeaders()
         }
 
@@ -130,21 +143,20 @@ class MimikMock(path: String) : RoutingContract(path) {
                 it.requestData = requestMock
             }
 
-        // Step 3: start setting the MimikMock data
-        return chapter.apply {
-            responseData = ResponseTapedata {
-                it.code = mockParams["ResponseCode"]?.toIntOrNull()
-                    ?: HttpStatusCode.OK.value
+        // Step 3: Set the MimikMock data
+        chapter.apply {
+            responseData = ResponseTapedata { rData ->
+                rData.code = mockParams["ResponseCode"]?.toIntOrNull()
 
-                it.headers = headers.entries()
-                    .filter { f -> f.key.startsWith("mockHEADER") }
+                rData.headers = headers.entries()
+                    .filter { it.key.startsWith("mockHeader", true) }
                     .associateBy(
-                        { kv -> kv.key.removePrefix("mockHEADER") },
-                        { kv -> kv.value[0] }
+                        { it.key.removePrefix("mockHeader", true) },
+                        { it.value[0] }
                     )
                     .toHeaders()
 
-                it.body = runBlocking { receiveText() }
+                rData.body = runBlocking { receiveText() }
             }
             updateReplayData()
 
@@ -152,16 +164,21 @@ class MimikMock(path: String) : RoutingContract(path) {
                 mockUses = 1 // set as "1-time use"
 
             if (mockParams.containsKey("Uses")) {
-                mockUses = when (val usesRequest = mockParams["Uses"]?.toIntOrNull()) {
-                    null, 0 -> {// reset usage count
-                        0
-                    }
-                    in Int.MIN_VALUE..0 -> {// decrement mock requests, to a limit of 0
-                        max(0, mockUses - usesRequest)
-                    }
+                mockUses = when (val usesRequest = mockParams.getValue("Uses").toIntOrNull()) {
+                    null, 0 -> 0 // reset usage count
+
+                    // decrement mock requests, to a limit of 0
+                    in Int.MIN_VALUE..0 -> max(0, mockUses - usesRequest)
+
                     else -> usesRequest
                 }
             }
+        }
+
+        // Step 4: Profit!!!
+        return MockRequestedResponse {
+            status = HttpStatusCode.Created
+            interaction = chapter
         }
     }
 
