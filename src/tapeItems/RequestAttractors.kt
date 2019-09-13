@@ -7,6 +7,7 @@ class RequestAttractors(
     var routingPath: String? = null,
     // "Key1=Val1&Key2=Val2" -> "[ (Key1, Val1), (Key2, Val2) ]
     var queryParams: Array<Pair<String, String>>? = null,
+    // regex match
     var queryBody: String? = null
 ) {
     constructor(config: RequestAttractors.() -> Unit) : this() {

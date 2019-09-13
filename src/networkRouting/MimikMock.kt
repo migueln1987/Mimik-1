@@ -2,7 +2,6 @@ package networkRouting
 
 import TapeCatalog
 import helpers.toHeaders
-import helpers.toReplayRequest
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
@@ -19,8 +18,7 @@ import io.ktor.routing.Routing
 import io.ktor.routing.put
 import io.ktor.util.filter
 import kotlinx.coroutines.runBlocking
-import okhttp3.Headers
-import okhttp3.Protocol
+import okhttp3.HttpUrl
 import kotlin.math.max
 
 @Suppress("RemoveRedundantQualifierName")
@@ -90,6 +88,11 @@ class MimikMock(path: String) : RoutingContract(path) {
                 responseMsg = "Missing routing url. Ex; mockRoute_Url: 'http://{routing url}.com'"
             }
 
+            HttpUrl.parse(mockParams.getValue("route_url")) == null -> MockRequestedResponse {
+                status = HttpStatusCode.PreconditionFailed
+                responseMsg = "Invalid routing url. Ex; mockRoute_Url: 'http://{routing url}.com'"
+            }
+
             !mockParams.containsKey("route_path") -> MockRequestedResponse {
                 status = HttpStatusCode.BadRequest
                 responseMsg = "Missing url routing path. Ex: mockRoute_Path: 'sub/path'"
@@ -121,11 +124,6 @@ class MimikMock(path: String) : RoutingContract(path) {
                     routingPath = urlPath
                 }
             }.build()
-
-        if (tape.httpRoutingUrl == null) return MockRequestedResponse {
-            status = HttpStatusCode.PreconditionFailed
-            responseMsg = "Missing routing url. Ex; mockRoute_Url: 'http://{routing url}.com'"
-        }
 
         if (createdTape) tapeCatalog.tapes.add(tape)
 
@@ -190,45 +188,4 @@ class MimikMock(path: String) : RoutingContract(path) {
             interaction = chapter
         }
     }
-
-    private val okhttp3.Request.toMockResponse: okreplay.Response
-        get() = toReplayRequest.let { request ->
-            object : okreplay.Response {
-                override fun code(): Int {
-                    return (this@toMockResponse.header("mockResponseCode")?.toIntOrNull()?.let {
-                        HttpStatusCode.fromValue(it)
-                    } ?: HttpStatusCode.OK).value
-                }
-
-                override fun getEncoding() = request.encoding
-
-                override fun body() = request.body()
-
-                override fun newBuilder() = null
-
-                override fun getContentType() = request.contentType
-
-                override fun hasBody() = request.hasBody()
-
-                override fun toYaml() = request.toYaml()
-
-                override fun protocol() = Protocol.HTTP_2
-
-                override fun bodyAsText() = request.bodyAsText()
-
-                override fun getCharset() = request.charset
-
-                override fun header(name: String) = request.header(name)
-
-                override fun headers(): Headers {
-                    return Headers.of(request.headers().toMultimap()
-                        .filter { !it.key.startsWith("mock") }
-                        .flatMap {
-                            it.value.map { mvalue -> it.key to mvalue }
-                        }
-                        .toMap()
-                    )
-                }
-            }
-        }
 }
