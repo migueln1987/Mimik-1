@@ -1,11 +1,11 @@
-package com.fiserv.mimik.networkRouting
+package networkRouting
 
-import com.fiserv.mimik.TapeCatalog
-import com.fiserv.mimik.VCRConfig
-import com.fiserv.mimik.helpers.RandomHost
-import com.fiserv.mimik.helpers.getFolders
-import com.fiserv.mimik.tapeItems.BlankTape
-import com.fiserv.mimik.tapeItems.RequestAttractors
+import TapeCatalog
+import VCRConfig
+import helpers.RandomHost
+import helpers.getFolders
+import tapeItems.BlankTape
+import tapeItems.RequestAttractors
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.html.respondHtml
@@ -491,7 +491,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
      * Page to edit individual chapters in a tape
      */
     private fun HTML.getEditChapterPage(params: Parameters) {
-        val activeTape = tapeCatalog.tapes_old
+        val activeTape = tapeCatalog.tapes
             .firstOrNull { it.tapeName == params["tape"] }
         val activeChapter = activeTape?.tapeChapters
             ?.firstOrNull { it.chapterName == params["chapter"] }

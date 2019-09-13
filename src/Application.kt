@@ -1,8 +1,6 @@
-package com.fiserv.mimik
-
-import com.fiserv.mimik.networkRouting.FiservRouting
-import com.fiserv.mimik.networkRouting.MimikMock
-import com.fiserv.mimik.networkRouting.TapeRouting
+import networkRouting.FiservRouting
+import networkRouting.MimikMock
+import networkRouting.TapeRouting
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -27,7 +25,7 @@ fun Application.module(testing: Boolean = false) {
         engine {
         }
     }
-    
+
     routing {
         arrayOf(
             MimikMock("/mock"),

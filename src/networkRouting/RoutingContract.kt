@@ -1,4 +1,4 @@
-package com.fiserv.mimik.networkRouting
+package networkRouting
 
 import io.ktor.routing.Routing
 

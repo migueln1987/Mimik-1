@@ -1,4 +1,4 @@
-package com.fiserv.mimik.helpers
+package helpers
 
 import java.io.File
 

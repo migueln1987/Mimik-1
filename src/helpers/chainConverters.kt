@@ -1,4 +1,4 @@
-package com.fiserv.mimik.helpers
+package helpers
 
 import okhttp3.Interceptor
 import okio.Buffer

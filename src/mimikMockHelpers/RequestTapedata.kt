@@ -1,6 +1,6 @@
-package com.fiserv.mimik.mimikMockHelpers
+package mimikMockHelpers
 
-import com.fiserv.mimik.toJson
+import helpers.toJson
 import okhttp3.HttpUrl
 import okreplay.Request
 import java.nio.charset.Charset

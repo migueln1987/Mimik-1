@@ -1,4 +1,4 @@
-package com.fiserv.mimik
+package helpers
 
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser

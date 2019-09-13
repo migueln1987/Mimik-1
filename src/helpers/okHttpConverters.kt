@@ -1,4 +1,4 @@
-package com.fiserv.mimik.helpers
+package helpers
 
 import io.ktor.util.StringValues
 import okhttp3.Headers

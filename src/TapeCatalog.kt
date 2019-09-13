@@ -1,12 +1,7 @@
-package com.fiserv.mimik
-
-import com.fiserv.mimik.helpers.fileListing
-import com.fiserv.mimik.helpers.toReplayRequest
-import com.fiserv.mimik.tapeItems.BlankTape
-import com.fiserv.mimik.tapeTypes.CFCTape
-import com.fiserv.mimik.tapeTypes.GeneralTape
-import com.fiserv.mimik.tapeTypes.baseTape
-import com.fiserv.mimik.tapeTypes.helpers.toChain
+import helpers.fileListing
+import helpers.toReplayRequest
+import tapeItems.BlankTape
+import tapeItems.helpers.toChain
 import com.google.gson.Gson
 import io.ktor.application.ApplicationCall
 import kotlinx.coroutines.Dispatchers
@@ -16,20 +11,6 @@ import okreplay.OkReplayInterceptor
 
 class TapeCatalog private constructor() : OkReplayInterceptor() {
     private val config = VCRConfig.getConfig
-
-    @Deprecated("use tapes instead")
-    val tapes_old by lazy {
-        arrayOf(
-            GeneralTape(),
-            CFCTape()
-        )
-    }
-
-    /**
-     * [chapter key, tape]
-     */
-    @Deprecated("use tapes instead")
-    val tapeCalls: HashMap<String, baseTape> = hashMapOf()
 
     val tapes: MutableList<BlankTape> = mutableListOf()
 

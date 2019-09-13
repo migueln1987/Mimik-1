@@ -1,6 +1,6 @@
-package com.fiserv.mimik.mimikMockHelpers
+package mimikMockHelpers
 
-import com.fiserv.mimik.toJson
+import helpers.toJson
 import io.ktor.http.HttpStatusCode
 import okhttp3.Protocol
 import okreplay.Response

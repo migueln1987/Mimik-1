@@ -1,7 +1,7 @@
-package com.fiserv.mimik.networkRouting
+package networkRouting
 
-import com.fiserv.mimik.TapeCatalog
-import com.fiserv.mimik.toJson
+import TapeCatalog
+import helpers.toJson
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode

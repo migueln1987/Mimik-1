@@ -1,8 +1,8 @@
-package com.fiserv.mimik.tapeItems
+package tapeItems
 
-import com.fiserv.mimik.VCRConfig
-import com.fiserv.mimik.mimikMockHelpers.RecordedInteractions
-import com.fiserv.mimik.tapeTypes.helpers.filteredBody
+import VCRConfig
+import mimikMockHelpers.RecordedInteractions
+import tapeItems.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.stream.JsonWriter
 import okhttp3.HttpUrl

@@ -1,8 +1,7 @@
-package com.fiserv.mimik.mimikMockHelpers
+package mimikMockHelpers
 
-import com.fiserv.mimik.tapeItems.RequestAttractors
-import com.fiserv.mimik.tapeTypes.helpers.chapterName
-import com.fiserv.mimik.tapeTypes.helpers.filterBody
+import tapeItems.RequestAttractors
+import tapeItems.helpers.filterBody
 import okreplay.Request
 import okreplay.Response
 import java.util.Date

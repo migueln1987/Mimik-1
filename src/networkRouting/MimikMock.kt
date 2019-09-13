@@ -1,13 +1,15 @@
-package com.fiserv.mimik.networkRouting
+package networkRouting
 
-import com.fiserv.mimik.TapeCatalog
-import com.fiserv.mimik.helpers.toHeaders
-import com.fiserv.mimik.helpers.toReplayRequest
-import com.fiserv.mimik.mimikMockHelpers.RecordedInteractions
-import com.fiserv.mimik.mimikMockHelpers.RequestTapedata
-import com.fiserv.mimik.mimikMockHelpers.ResponseTapedata
-import com.fiserv.mimik.tapeItems.BlankTape
-import com.fiserv.mimik.tapeItems.RequestAttractors
+import TapeCatalog
+import helpers.toHeaders
+import helpers.toReplayRequest
+import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.RequestTapedata
+import mimikMockHelpers.ResponseTapedata
+import tapeItems.BlankTape
+import tapeItems.RequestAttractors
+import helpers.removePrefix
+import helpers.uppercaseFirstLetter
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
@@ -53,7 +55,7 @@ class MimikMock(path: String) : RoutingContract(path) {
         get() = apply {
             put(RoutePaths.MOCK.path) {
                 call.processPutMock().apply {
-                    call.respond(status, errorResponse ?: "")
+                    call.respond(status, responseMsg ?: "")
                 }
             }
         }
@@ -61,34 +63,31 @@ class MimikMock(path: String) : RoutingContract(path) {
     private class MockRequestedResponse(build: MockRequestedResponse.() -> Unit) {
         var status: HttpStatusCode = HttpStatusCode.OK
         var interaction: RecordedInteractions? = null
-        var errorResponse: String? = null
+        var responseMsg: String? = null
 
         init {
             build.invoke(this)
         }
     }
 
-    private fun String.removePrefix(prefix: String, ignoreCase: Boolean): String {
-        return if (startsWith(prefix, ignoreCase))
-            substring(prefix.length, length)
-        else this
-    }
-
     private fun ApplicationCall.processPutMock(): MockRequestedResponse {
         val headers = request.headers
         val mockParams = headers.entries()
             .filter { it.key.startsWith("mock", true) }
-            .associateBy({ it.key.removePrefix("mock", true) }, { it.value[0] })
+            .associateBy(
+                { it.key.removePrefix("mock", true) },
+                { it.value[0].uppercaseFirstLetter() }
+            )
 
         // Step 0: Pre-checks
         if (mockParams.isEmpty()) return MockRequestedResponse {
             status = HttpStatusCode.BadRequest
-            errorResponse = "Missing mock params"
+            responseMsg = "Missing mock params. Ex: mock{variable}: {value}"
         }
 
         if (!mockParams.containsKey("Url_path")) return MockRequestedResponse {
             status = HttpStatusCode.BadRequest
-            errorResponse = "Missing url routing path ('Url_path')"
+            responseMsg = "Missing url routing path. Ex: mockUrl_path: 'sub/path'"
         }
 
         val urlPath = mockParams.getValue("Url_path").removePrefix("/")
@@ -104,11 +103,12 @@ class MimikMock(path: String) : RoutingContract(path) {
                 createdTape = true
                 subDirectory = "NewTapes"
                 routingURL = mockParams["Route_Url"]
-                tapeName = String.format(
-                    "%s_%d",
-                    urlPath,
-                    urlPath.hashCode()
-                )
+                tapeName = mockParams["TapeName"]
+                    ?: String.format(
+                        "%s_%d",
+                        urlPath,
+                        urlPath.hashCode()
+                    )
                 attractors = RequestAttractors {
                     routingPath = urlPath
                 }
@@ -116,10 +116,16 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         if (tape.httpRoutingUrl == null) return MockRequestedResponse {
             status = HttpStatusCode.PreconditionFailed
-            errorResponse = "Missing routing url ('Route_Url')"
+            responseMsg = "Missing routing url. Ex; mockRoute_Url: 'http://{routing url}.com'"
         }
 
         if (createdTape) tapeCatalog.tapes.add(tape)
+
+        if (mockParams.containsKey("TapeOnly")) {
+            return MockRequestedResponse {
+                status = HttpStatusCode.Created
+            }
+        }
 
         // Step 2: Get existing chapter (to override) or create a new one
         val requestMock = RequestTapedata() {

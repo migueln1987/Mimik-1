@@ -1,4 +1,4 @@
-package com.fiserv.mimik.tapeTypes.helpers
+package tapeItems.helpers
 
 /**
  * Generates a chapter name from:

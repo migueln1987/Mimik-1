@@ -1,4 +1,4 @@
-package com.fiserv.mimik.mimikMockHelpers
+package mimikMockHelpers
 
 import okhttp3.Headers
 
