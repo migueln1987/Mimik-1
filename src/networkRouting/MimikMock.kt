@@ -9,7 +9,6 @@ import mimikMockHelpers.ResponseTapedata
 import tapeItems.BlankTape
 import tapeItems.RequestAttractors
 import helpers.removePrefix
-import helpers.uppercaseFirstLetter
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
@@ -75,22 +74,31 @@ class MimikMock(path: String) : RoutingContract(path) {
         val mockParams = headers.entries()
             .filter { it.key.startsWith("mock", true) }
             .associateBy(
-                { it.key.removePrefix("mock", true) },
-                { it.value[0].uppercaseFirstLetter() }
+                { it.key.removePrefix("mock", true).toLowerCase() },
+                { it.value[0] }
             )
 
         // Step 0: Pre-checks
-        if (mockParams.isEmpty()) return MockRequestedResponse {
-            status = HttpStatusCode.BadRequest
-            responseMsg = "Missing mock params. Ex: mock{variable}: {value}"
-        }
+        when {
+            mockParams.isEmpty() -> MockRequestedResponse {
+                status = HttpStatusCode.BadRequest
+                responseMsg = "Missing mock params. Ex: mock{variable}: {value}"
+            }
 
-        if (!mockParams.containsKey("Url_path")) return MockRequestedResponse {
-            status = HttpStatusCode.BadRequest
-            responseMsg = "Missing url routing path. Ex: mockUrl_path: 'sub/path'"
-        }
+            !mockParams.containsKey("route_url") -> MockRequestedResponse {
+                status = HttpStatusCode.PreconditionFailed
+                responseMsg = "Missing routing url. Ex; mockRoute_Url: 'http://{routing url}.com'"
+            }
 
-        val urlPath = mockParams.getValue("Url_path").removePrefix("/")
+            !mockParams.containsKey("route_path") -> MockRequestedResponse {
+                status = HttpStatusCode.BadRequest
+                responseMsg = "Missing url routing path. Ex: mockRoute_Path: 'sub/path'"
+            }
+
+            else -> null
+        }?.let { return it }
+
+        val urlPath = mockParams.getValue("route_path").removePrefix("/")
 
         // Step 1: get existing tape (using attractors) or create a new tape
         var createdTape = false
@@ -102,8 +110,8 @@ class MimikMock(path: String) : RoutingContract(path) {
             ?: BlankTape.Builder() {
                 createdTape = true
                 subDirectory = "NewTapes"
-                routingURL = mockParams["Route_Url"]
-                tapeName = mockParams["TapeName"]
+                routingURL = mockParams["route_url"]
+                tapeName = mockParams["tape_name"]
                     ?: String.format(
                         "%s_%d",
                         urlPath,
@@ -121,20 +129,18 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         if (createdTape) tapeCatalog.tapes.add(tape)
 
-        if (mockParams.containsKey("TapeOnly")) {
-            return MockRequestedResponse {
-                status = HttpStatusCode.Created
-            }
+        if (mockParams.containsKey("tape_only")) return MockRequestedResponse {
+            status = HttpStatusCode.Created
         }
 
         // Step 2: Get existing chapter (to override) or create a new one
         val requestMock = RequestTapedata() {
-            it.method = mockParams["Method"]
+            it.method = mockParams["method"]
 
             it.url = tape.httpRoutingUrl!!.newBuilder()
-                .addPathSegments(
-                    urlPath
-                ).build()
+                .addPathSegments(urlPath)
+                .query(mockParams["query"])
+                .build()
 
             it.headers = request.headers
                 .filter { s, _ -> !s.startsWith("mock", true) }
@@ -152,25 +158,22 @@ class MimikMock(path: String) : RoutingContract(path) {
         // Step 3: Set the MimikMock data
         chapter.apply {
             responseData = ResponseTapedata { rData ->
-                rData.code = mockParams["ResponseCode"]?.toIntOrNull()
+                rData.code = mockParams["response_code"]?.toIntOrNull()
 
-                rData.headers = headers.entries()
-                    .filter { it.key.startsWith("mockHeader", true) }
-                    .associateBy(
-                        { it.key.removePrefix("mockHeader", true) },
-                        { it.value[0] }
-                    )
+                rData.headers = mockParams
+                    .filter { it.key.startsWith("header") }
+                    .mapKeys { it.key.removePrefix("header") }
                     .toHeaders()
 
                 rData.body = runBlocking { receiveText() }
             }
             updateReplayData()
 
-            if (mockParams.containsKey("Use"))
+            if (mockParams.containsKey("use"))
                 mockUses = 1 // set as "1-time use"
 
-            if (mockParams.containsKey("Uses")) {
-                mockUses = when (val usesRequest = mockParams.getValue("Uses").toIntOrNull()) {
+            if (mockParams.containsKey("uses")) {
+                mockUses = when (val usesRequest = mockParams.getValue("uses").toIntOrNull()) {
                     null, 0 -> 0 // reset usage count
 
                     // decrement mock requests, to a limit of 0

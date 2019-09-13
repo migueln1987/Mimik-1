@@ -15,5 +15,4 @@ fun String.removePrefix(prefix: String, ignoreCase: Boolean): String {
 /**
  * Returns the string with only the first letter in Upper case
  */
-fun String.uppercaseFirstLetter() =
-    take(1).toUpperCase().plus(drop(1))
+fun String.uppercaseFirstLetter() = take(1).toUpperCase() + drop(1)

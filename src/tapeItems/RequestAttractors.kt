@@ -14,9 +14,6 @@ class RequestAttractors(
     }
 
     fun matchesRequest(request: Request): Boolean {
-        val test_1 = request.url().url().path == routingPath
-        val test_2 = request.url().encodedPath() == routingPath
-
         val url = request.url().url()
 
         val matchPath = routingPath?.run { url.path == this } ?: true
@@ -24,9 +21,7 @@ class RequestAttractors(
         val matchQuery = queryParams?.run {
             val reqParams = url.query
                 .split("&").sorted()
-                .map { KVMap ->
-                    KVMap.split("=").run { get(0) to get(1) }
-                }
+                .map { it.split("=").run { get(0) to get(1) } }
 
             all { reqParams.contains(it) }
         } ?: true

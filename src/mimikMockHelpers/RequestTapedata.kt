@@ -7,7 +7,6 @@ import java.nio.charset.Charset
 
 class RequestTapedata : Tapedata {
 
-    constructor()
     constructor(request: Request) {
         method = request.method()
         url = request.url()

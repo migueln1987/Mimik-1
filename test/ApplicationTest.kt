@@ -3,7 +3,6 @@ package com.fiserv.mimik
 import io.ktor.http.HttpMethod
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.withTestApplication
-import module
 import org.junit.Test
 import kotlin.test.assertEquals
 
