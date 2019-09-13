@@ -304,7 +304,10 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             ) {
                                 hiddenInput(name = "tape") { value = t.tapeName }
                                 p {
-                                    submitInput(name = "Action") { value = "Edit" }
+                                    submitInput(name = "Action") {
+                                        value = "Edit"
+                                        disabled = true
+                                    }
                                 }
                                 p {
                                     submitInput(name = "Action") { value = "Delete" }
@@ -334,6 +337,38 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 var isDisabled = !RoutingUrl.value.trim();
                                 SaveAddChapters.disabled = isDisabled;
                                 SaveViewTapes.disabled = isDisabled;
+                            }
+                            
+                            var queryID = 0
+                            function addNewQuery() {
+                                var newrow = QueryTableBody.insertRow(QueryTableBody.rows.length-1);
+                                
+                                var newKey = newrow.insertCell(0);
+                                var newKeyInput = createNewInput("QueryKey", queryID);
+                                newKey.appendChild(newKeyInput);
+                                
+                                var newValue = newrow.insertCell(1);
+                                var newValueInput = createNewInput("QueryValue", queryID);
+                                newValue.appendChild(newValueInput);
+                                
+                                var deleteBtn = newrow.insertCell(2);
+                                deleteBtn.onclick
+                                deleteBtn.appendChild(createDeleteBtn());
+                            }
+                            
+                            function createNewInput(fieldType, fieldID) {
+                                var inputField = document.createElement("input");
+                                inputField.name = fieldType + fieldID;
+                                inputField.type = "text";
+                                return inputField;
+                            }
+                            
+                            function createDeleteBtn() {
+                                var deleteBtn = document.createElement("button");
+                                deleteBtn.type = "button";
+                                deleteBtn.innerText = "Delete";
+                                deleteBtn.onclick = "deleteBtn.parentNode.parentNode.remove()";
+                                return deleteBtn;
                             }
                         """.trimIndent()
                     )
@@ -444,12 +479,40 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             br()
                             table {
                                 tr {
-                                    th { +"Routing Path" }
+                                    th { +"Path" }
                                     td {
                                         textInput(name = "RoutingPath") {
                                             placeholder = "sub/path/here"
                                             onKeyUp =
                                                 "SaveViewTapes.hidden = value.trim().length == 0"
+                                        }
+                                    }
+                                }
+
+                                tr {
+                                    th { +"Query" }
+                                    td {
+                                        table {
+                                            thead {
+                                                tr {
+                                                    th { +"Key" }
+                                                    th {
+                                                        colSpan = "2"
+                                                        +"Value"
+                                                    }
+                                                }
+                                            }
+                                            tbody {
+                                                id = "QueryTableBody"
+                                                tr {
+                                                    td {
+                                                        button(type = ButtonType.button) {
+                                                            onClick = "addNewQuery()"
+                                                            +"Add new Query"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }

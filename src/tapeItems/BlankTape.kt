@@ -152,9 +152,9 @@ class BlankTape private constructor(
             val canSaveFile = if (outFile.exists())
                 outFile.canWrite()
             else {
-                if (outFile.parentFile.mkdirs())
-                    outFile.createNewFile()
-                else false
+                if (!outFile.parentFile.exists())
+                    outFile.parentFile.mkdirs()
+                outFile.createNewFile()
             }
 
             if (canSaveFile)

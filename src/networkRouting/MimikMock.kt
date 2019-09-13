@@ -127,6 +127,9 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         if (createdTape) tapeCatalog.tapes.add(tape)
 
+        if (mockParams["tape_hard"] == "true")
+            tape.saveFile()
+
         if (mockParams.containsKey("tape_only")) return MockRequestedResponse {
             status = HttpStatusCode.Created
         }
@@ -181,6 +184,9 @@ class MimikMock(path: String) : RoutingContract(path) {
                 }
             }
         }
+
+        if (tape.file?.exists() == true)
+            tape.saveFile()
 
         // Step 4: Profit!!!
         return MockRequestedResponse {
