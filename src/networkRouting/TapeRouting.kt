@@ -4,6 +4,7 @@ import TapeCatalog
 import VCRConfig
 import helpers.RandomHost
 import helpers.getFolders
+import helpers.removePrefix
 import tapeItems.BlankTape
 import tapeItems.RequestAttractors
 import io.ktor.application.ApplicationCall
@@ -26,6 +27,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private val subDirectoryDefault = "[ Default Directory ]"
     private val subDirectoryCustom = "[ Custom Directory ]"
+    private val queryKey = "QueryKey"
+    private val queryValue = "QueryValue"
 
     companion object {
         internal var selfPath = ""
@@ -145,7 +148,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 return
             }
 
-            "SaveViewTapes" -> {
+            "SaveViewAllTapes" -> {
                 val newTape = data.saveToTape()
                 tapeCatalog.tapes.add(newTape)
                 respondRedirect(RoutePaths.ALL.path)
@@ -197,6 +200,15 @@ class TapeRouting(path: String) : RoutingContract(path) {
             tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
             attractors = RequestAttractors() {
                 routingPath = get("RoutingPath")?.trim()
+
+                if (keys.any { it.startsWith(queryKey) }) {
+                    val keys = filter { it.key.startsWith(queryKey) }
+                        .mapKeys { it.key.removePrefix(queryKey) }
+                        .filter { it.value.isNotBlank() }
+                    val values = filter { it.key.startsWith(queryValue) }
+                        .mapKeys { it.key.removePrefix(queryValue) }
+                    queryParams = keys.keys.map { keys.getValue(it) to values.getValue(it) }
+                }
             }
             routingURL = get("RoutingUrl")?.trim()
         }.build()
@@ -283,17 +295,18 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             }
                             p { +"Recordings: ${t.tapeChapters.size}" }
 
-                            val routingUrl = t.httpRoutingUrl
-                            val isInvalidRouting = !t.routingUrl.isNullOrBlank() &&
-                                    routingUrl == null
-                            if (isInvalidRouting) {
-                                p { +"Routing URL: [ Invalid ]" }
+                            if (t.isUrlValid) {
+                                p { +"Routing URL: ${t.httpRoutingUrl!!}" }
                             } else {
-                                if (routingUrl != null)
-                                    p { +"Routing URL: $routingUrl" }
+                                p { +"Routing URL: [ Invalid ]" }
                             }
+
                             if (!t.attractors?.routingPath.isNullOrBlank()) {
                                 p { +"Routing Path: ${t.attractors?.routingPath}" }
+                            }
+
+                            if (t.attractors?.queryParams?.isNotEmpty() == true) {
+                                p { +"Routing Query: ${t.attractors?.queryParams?.size}" }
                             }
                         }
 
@@ -336,7 +349,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             function updateSaveBtns() {
                                 var isDisabled = !RoutingUrl.value.trim();
                                 SaveAddChapters.disabled = isDisabled;
-                                SaveViewTapes.disabled = isDisabled;
+                                SaveViewAllTapes.disabled = isDisabled;
                             }
                             
                             var queryID = 0
@@ -344,15 +357,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 var newrow = QueryTableBody.insertRow(QueryTableBody.rows.length-1);
                                 
                                 var newKey = newrow.insertCell(0);
-                                var newKeyInput = createNewInput("QueryKey", queryID);
+                                var newKeyInput = createNewInput("$queryKey", queryID);
                                 newKey.appendChild(newKeyInput);
                                 
                                 var newValue = newrow.insertCell(1);
-                                var newValueInput = createNewInput("QueryValue", queryID);
+                                var newValueInput = createNewInput("$queryValue", queryID++);
                                 newValue.appendChild(newValueInput);
                                 
                                 var deleteBtn = newrow.insertCell(2);
-                                deleteBtn.onclick
                                 deleteBtn.appendChild(createDeleteBtn());
                             }
                             
@@ -367,7 +379,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 var deleteBtn = document.createElement("button");
                                 deleteBtn.type = "button";
                                 deleteBtn.innerText = "Delete";
-                                deleteBtn.onclick = "deleteBtn.parentNode.parentNode.remove()";
+                                deleteBtn.setAttribute('onclick', 'this.parentNode.parentNode.remove()');
                                 return deleteBtn;
                             }
                         """.trimIndent()
@@ -483,8 +495,6 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     td {
                                         textInput(name = "RoutingPath") {
                                             placeholder = "sub/path/here"
-                                            onKeyUp =
-                                                "SaveViewTapes.hidden = value.trim().length == 0"
                                         }
                                     }
                                 }
@@ -524,17 +534,16 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         td()
                         td {
                             button(name = "CreateTape", classes = "btn_50wide") {
+                                value = "SaveViewAllTapes"
+                                id = "SaveViewAllTapes"
+                                disabled = true
+                                +"Save and goto View Tapes"
+                            }
+                            button(name = "CreateTape", classes = "btn_50wide") {
                                 value = "SaveAddChapters"
                                 id = "SaveAddChapters"
                                 disabled = true
-                                +"Save and add tape chapters"
-                            }
-                            button(name = "CreateTape", classes = "btn_50wide") {
-                                value = "SaveViewTapes"
-                                id = "SaveViewTapes"
-                                hidden = true
-                                disabled = true
-                                +"Save and view tapes"
+                                +"Save and add Tape Chapters"
                             }
                         }
                     }

@@ -82,6 +82,9 @@ class BlankTape private constructor(
     val httpRoutingUrl: HttpUrl?
         get() = HttpUrl.parse(routingUrl ?: "")
 
+    val isUrlValid: Boolean
+        get() = !routingUrl.isNullOrBlank() && httpRoutingUrl != null
+
     override fun getName() = tapeName
 
     val tapeChapters: MutableList<RecordedInteractions> = mutableListOf()
@@ -99,54 +102,58 @@ class BlankTape private constructor(
 
     override fun size() = tapeChapters.size
 
-    fun containsRecording(request: Request) = tapeChapters.any {
-        it.attractors?.matchesRequest(request) ?: false
+    /**
+     * Checks if the tape contains any recording matching the request values.
+     * Memory-only mocks are checked first, then hard recordings
+     */
+    fun containsActiveRecording(request: Request) = tapeChapters.any {
+        when (it.mockUses) {
+            RecordedInteractions.UseStates.ALWAYS.state,
+            in (1..Int.MAX_VALUE) -> true
+            else -> false
+        } && it.attractors?.matchesRequest(request) ?: false
     }
 
     override fun seek(request: Request): Boolean {
-        // todo; finish merging mockResponses variable with tapes
-        tapeChapters
+        val useLimitedMocks = tapeChapters
             .filter { it.mockUses > 0 }
+            .any { matchRule.isMatch(request, it.request) }
 
-//        val hasRequestMock =
-//            requestMockResponses.any {
-//                it.mockUses > 0 &&
-//                        it.chapterName.startsWith(request.chapterNameHead)
-//            }
-//
-//        if (hasRequestMock)
-//            return true
+        if (useLimitedMocks) return true
 
-        return tapeChapters.any {
-            matchRule.isMatch(request, it.request)
-        }
+        return tapeChapters
+            .filter { it.mockUses == RecordedInteractions.UseStates.ALWAYS.state }
+            .any { matchRule.isMatch(request, it.request) }
     }
 
     override fun play(request: Request): Response {
-        // try returning the first requested response
-//        requestMockResponses.firstOrNull {
-//            it.mockUses > 0 &&
-//                    it.chapterName.startsWith(request.chapterNameHead)
-//        }?.also {
-//            it.mockUses--
-//            return it.response
-//        }
+        val limitedMock = tapeChapters
+            .filter { it.mockUses > 0 }
+            .firstOrNull() { matchRule.isMatch(request, it.request) }
 
-        return tapeChapters.firstOrNull { matchRule.isMatch(request, it.request) }
+        if (limitedMock != null) {
+            limitedMock.mockUses--
+            return limitedMock.response
+        }
+
+        return tapeChapters
+            .filter { it.mockUses == RecordedInteractions.UseStates.ALWAYS.state }
+            .firstOrNull { matchRule.isMatch(request, it.request) }
             ?.response
             ?: defaultResponse
     }
 
     override fun record(request: Request, response: Response) {
-        tapeChapters.add(
-            RecordedInteractions(request, response)
-        )
+        tapeChapters.add(RecordedInteractions(request, response))
 
         saveFile()
     }
 
     fun saveFile() {
+        // todo; filter out mocks which have a "mockUses" greater than ALWAYS
         val tree = gson.toJsonTree(this)
+
+        val isNotNUll = tree != null
 
         file?.also { outFile ->
             val canSaveFile = if (outFile.exists())

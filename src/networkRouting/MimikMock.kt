@@ -19,7 +19,6 @@ import io.ktor.routing.put
 import io.ktor.util.filter
 import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl
-import kotlin.math.max
 
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock(path: String) : RoutingContract(path) {
@@ -170,18 +169,16 @@ class MimikMock(path: String) : RoutingContract(path) {
             }
             updateReplayData()
 
-            if (mockParams.containsKey("use"))
-                mockUses = 1 // set as "1-time use"
-
             if (mockParams.containsKey("uses")) {
-                mockUses = when (val usesRequest = mockParams.getValue("uses").toIntOrNull()) {
-                    null, 0 -> 0 // reset usage count
+                val usesRequest = mockParams.getValue("uses")
+                val asNumber = usesRequest.toIntOrNull()
 
-                    // decrement mock requests, to a limit of 0
-                    in Int.MIN_VALUE..0 -> max(0, mockUses - usesRequest)
-
-                    else -> usesRequest
-                }
+                mockUses = asNumber
+                    ?: when (usesRequest.toLowerCase()) {
+                        "always" -> RecordedInteractions.UseStates.ALWAYS.state
+                        "disable" -> RecordedInteractions.UseStates.DISABLE.state
+                        else -> mockUses
+                    }
             }
         }
 

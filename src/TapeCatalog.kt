@@ -55,7 +55,7 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
 
     private fun getTape(request: okreplay.Request): BlankTape {
         return tapes.firstOrNull {
-            it.containsRecording(request)
+            it.containsActiveRecording(request)
         } ?: defaultBlankTape
     }
 

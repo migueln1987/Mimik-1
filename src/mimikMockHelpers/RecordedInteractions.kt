@@ -17,13 +17,27 @@ class RecordedInteractions {
         updateTapeData()
     }
 
+    enum class UseStates(val state: Int) {
+        ALWAYS(-1),
+        DISABLE(-2),
+        DISABLEDMOCK(0)
+    }
+
     var recordedDate = Date()
     var chapterName = ""
     var exportData = true
     var attractors: RequestAttractors? = null
 
     /**
-     * Remaining uses of this mock interaction
+     * Remaining uses of this mock interaction.
+     *
+     * -1 = Always enable.
+     *
+     * -2 = disable.
+     *
+     * 0 = memory only mock, disabled due to expired uses.
+     *
+     * (1..Int.Max_Value) = memory only mock
      */
     var mockUses = 0
 
