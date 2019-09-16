@@ -26,6 +26,7 @@ class RecordedInteractions {
     var recordedDate = Date()
     var chapterName = ""
     var exportData = true
+    var readOnly = false
     var attractors: RequestAttractors? = null
 
     /**

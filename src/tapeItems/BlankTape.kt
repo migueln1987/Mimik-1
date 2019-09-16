@@ -4,6 +4,9 @@ import VCRConfig
 import mimikMockHelpers.RecordedInteractions
 import tapeItems.helpers.filteredBody
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import okhttp3.HttpUrl
 import okhttp3.Protocol
@@ -26,12 +29,14 @@ class BlankTape private constructor(
         var tapeName: String? = null
         var routingURL: String? = null
         var attractors: RequestAttractors? = null
+        var allowNewRecordings: Boolean? = true
 
         fun build() = BlankTape(
             tapeName ?: hashCode().toString()
         ).also {
             it.attractors = attractors
             it.routingUrl = routingURL
+            it.readOnly = allowNewRecordings
             it.file = File(
                 VCRConfig.getConfig.tapeRoot.get(),
                 (subDirectory ?: "") + "/" + it.tapeName.toJsonName
@@ -78,6 +83,7 @@ class BlankTape private constructor(
 
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
+    var readOnly: Boolean? = true
 
     val httpRoutingUrl: HttpUrl?
         get() = HttpUrl.parse(routingUrl ?: "")
@@ -87,7 +93,7 @@ class BlankTape private constructor(
 
     override fun getName() = tapeName
 
-    val tapeChapters: MutableList<RecordedInteractions> = mutableListOf()
+    var chapters: MutableList<RecordedInteractions> = mutableListOf()
 
     override fun setMatchRule(matchRule: MatchRule?) {}
 
@@ -100,13 +106,13 @@ class BlankTape private constructor(
     override fun isWritable() = mode.isWritable
     override fun isSequential() = mode.isSequential
 
-    override fun size() = tapeChapters.size
+    override fun size() = chapters.size
 
     /**
      * Checks if the tape contains any recording matching the request values.
      * Memory-only mocks are checked first, then hard recordings
      */
-    fun containsActiveRecording(request: Request) = tapeChapters.any {
+    fun containsActiveRecording(request: Request) = chapters.any {
         when (it.mockUses) {
             RecordedInteractions.UseStates.ALWAYS.state,
             in (1..Int.MAX_VALUE) -> true
@@ -115,19 +121,19 @@ class BlankTape private constructor(
     }
 
     override fun seek(request: Request): Boolean {
-        val useLimitedMocks = tapeChapters
+        val useLimitedMocks = chapters
             .filter { it.mockUses > 0 }
             .any { matchRule.isMatch(request, it.request) }
 
         if (useLimitedMocks) return true
 
-        return tapeChapters
+        return chapters
             .filter { it.mockUses == RecordedInteractions.UseStates.ALWAYS.state }
             .any { matchRule.isMatch(request, it.request) }
     }
 
     override fun play(request: Request): Response {
-        val limitedMock = tapeChapters
+        val limitedMock = chapters
             .filter { it.mockUses > 0 }
             .firstOrNull() { matchRule.isMatch(request, it.request) }
 
@@ -136,7 +142,7 @@ class BlankTape private constructor(
             return limitedMock.response
         }
 
-        return tapeChapters
+        return chapters
             .filter { it.mockUses == RecordedInteractions.UseStates.ALWAYS.state }
             .firstOrNull { matchRule.isMatch(request, it.request) }
             ?.response
@@ -144,29 +150,42 @@ class BlankTape private constructor(
     }
 
     override fun record(request: Request, response: Response) {
-        tapeChapters.add(RecordedInteractions(request, response))
+        chapters.add(RecordedInteractions(request, response))
 
         saveFile()
     }
 
     fun saveFile() {
-        // todo; filter out mocks which have a "mockUses" greater than ALWAYS
-        val tree = gson.toJsonTree(this)
+        val tree = gson.toJsonTree(this).asJsonObject
+        val keepChapters = tree.getAsJsonArray("chapters")
+            .filter {
+                ((it as JsonObject)["mockUses"] as? JsonPrimitive)
+                    ?.let { jsonMockUses ->
+                        when (jsonMockUses.asInt) {
+                            RecordedInteractions.UseStates.ALWAYS.state,
+                            RecordedInteractions.UseStates.DISABLE.state
+                            -> true
+                            else -> false
+                        }
+                    } ?: false
+            }
+            .let { jsonList ->
+                JsonArray().apply { jsonList.forEach { add(it) } }
+            }
 
-        val isNotNUll = tree != null
+        tree.add("chapters", keepChapters)
 
         file?.also { outFile ->
             val canSaveFile = if (outFile.exists())
                 outFile.canWrite()
             else {
-                if (!outFile.parentFile.exists())
-                    outFile.parentFile.mkdirs()
+                outFile.parentFile.mkdirs()
                 outFile.createNewFile()
             }
 
             if (canSaveFile)
                 outFile.bufferedWriter().jWriter
-                    .also { gson.toJson(this, this::class.java, it) }
+                    .also { gson.toJson(tree, it) }
                     .close()
         }
     }
@@ -189,6 +208,6 @@ class BlankTape private constructor(
         RecordedInteractions().also {
             it.attractors = attractors
             interaction.invoke(it)
-            tapeChapters.add(it)
+            chapters.add(it)
         }
 }

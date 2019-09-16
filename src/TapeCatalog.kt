@@ -30,7 +30,6 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
     /**
      * Loads all the *.json tapes within the okreplay.tapeRoot directory
      */
-    @Suppress("USELESS_ELVIS")
     private fun loadTapeData() {
         val root = config.tapeRoot.get() ?: return
         val gson = Gson()
@@ -38,11 +37,13 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
         root.fileListing().asSequence()
             .map { it to it.readText() }
             .mapNotNull {
-                // try converting into a tape
                 try {
+                    @Suppress("USELESS_ELVIS")
                     gson.fromJson(it.second, BlankTape::class.java)
                         ?.also { tape ->
                             tape.file = it.first
+                            tape.readOnly = true
+                            tape.chapters = tape.chapters ?: mutableListOf()
                             tape.tapeName = tape.tapeName ?: tape.hashCode().toString()
                         }
                 } catch (e: Exception) {

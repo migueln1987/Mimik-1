@@ -4,9 +4,7 @@ import TapeCatalog
 import VCRConfig
 import helpers.RandomHost
 import helpers.getFolders
-import helpers.removePrefix
-import tapeItems.BlankTape
-import tapeItems.RequestAttractors
+import helpers.isTrue
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.html.respondHtml
@@ -18,6 +16,9 @@ import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.* // ktlint-disable no-wildcard-imports
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import mimikMockHelpers.RecordedInteractions.UseStates.* // ktlint-disable no-wildcard-imports
+import tapeItems.BlankTape
+import tapeItems.RequestAttractors
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
@@ -113,7 +114,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     if (chapterName == null)
                         tapeCatalog.tapes.remove(tape)
                     else {
-                        tape?.tapeChapters?.removeIf {
+                        tape?.chapters?.removeIf {
                             // todo; remove tape chapter
                             false
                         }
@@ -245,6 +246,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         .btn_50wide {
                             width: 50%
                         }
+                        .tb_25wide {
+                            width: 25%
+                        }
                         .infoText {
                             font-size: 14px;
                             color: #555
@@ -278,7 +282,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         th { +t.tapeName }
 
                         td {
-                            if (t.file?.exists() == true) {
+                            if (t.file?.exists().isTrue()) {
                                 p { +"File path: ${t.file?.path}" }
                                 p { +"File size: ${t.file?.length()} bytes" }
                             } else {
@@ -293,7 +297,45 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     }
                                 }
                             }
-                            p { +"Recordings: ${t.tapeChapters.size}" }
+                            p { +"Recordings: ${t.chapters.size}" }
+
+                            if (t.chapters.isNotEmpty()) {
+                                p {
+                                    val recAlways =
+                                        t.chapters.count { it.mockUses == ALWAYS.state }
+                                    val recDisabled =
+                                        t.chapters.count { it.mockUses == DISABLE.state }
+                                    val recMemory =
+                                        t.chapters.count { it.mockUses > 0 }
+                                    val recExpired =
+                                        t.chapters.count { it.mockUses == DISABLEDMOCK.state }
+
+                                    table {
+                                        tr {
+                                            if (recAlways > 0)
+                                                th(classes = "tb_25wide") { +"Always" }
+                                            if (recDisabled > 0)
+                                                th(classes = "tb_25wide") { +"Disabled" }
+                                            if (recMemory > 0)
+                                                th(classes = "tb_25wide") { +"In-Memory" }
+                                            if (recExpired > 0)
+                                                th(classes = "tb_25wide") { +"In-Memory (Expired)" }
+                                        }
+                                        tr {
+                                            if (recAlways > 0)
+                                                td(classes = "tb_25wide") { text(recAlways) }
+                                            if (recDisabled > 0)
+                                                td(classes = "tb_25wide") { text(recDisabled) }
+                                            if (recMemory > 0)
+                                                td(classes = "tb_25wide") { text(recMemory) }
+                                            if (recExpired > 0)
+                                                td(classes = "tb_25wide") { text(recExpired) }
+                                        }
+                                    }
+                                }
+                            }
+
+                            br()
 
                             if (t.isUrlValid) {
                                 p { +"Routing URL: ${t.httpRoutingUrl!!}" }
@@ -305,7 +347,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 p { +"Routing Path: ${t.attractors?.routingPath}" }
                             }
 
-                            if (t.attractors?.queryParams?.isNotEmpty() == true) {
+                            if (t.attractors?.queryParams?.isNotEmpty().isTrue()) {
                                 p { +"Routing Query: ${t.attractors?.queryParams?.size}" }
                             }
                         }
@@ -565,7 +607,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
     private fun HTML.getEditChapterPage(params: Parameters) {
         val activeTape = tapeCatalog.tapes
             .firstOrNull { it.tapeName == params["tape"] }
-        val activeChapter = activeTape?.tapeChapters
+        val activeChapter = activeTape?.chapters
             ?.firstOrNull { it.chapterName == params["chapter"] }
 
         if (activeChapter == null) {

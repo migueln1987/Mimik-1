@@ -16,3 +16,11 @@ fun String.removePrefix(prefix: String, ignoreCase: Boolean): String {
  * Returns the string with only the first letter in Upper case
  */
 fun String.uppercaseFirstLetter() = take(1).toUpperCase() + drop(1)
+
+/**
+ * If this string does not start with the given [prefix],
+ * then the string is returned with the prefix added.
+ * Else the original string is returned.
+ */
+fun String.ensurePrefix(prefix: String) =
+    if (startsWith(prefix)) this else prefix + this
