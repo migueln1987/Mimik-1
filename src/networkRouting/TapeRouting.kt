@@ -18,7 +18,7 @@ import io.ktor.routing.* // ktlint-disable no-wildcard-imports
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
 import mimikMockHelpers.RecordedInteractions.UseStates.* // ktlint-disable no-wildcard-imports
 import tapeItems.BlankTape
-import tapeItems.RequestAttractors
+import helpers.attractors.RequestAttractors
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
@@ -39,19 +39,16 @@ class TapeRouting(path: String) : RoutingContract(path) {
         selfPath = path
     }
 
-    enum class RoutePaths(private val value: String) {
+    enum class RoutePaths(val path: String) {
         ALL("all"),
         EDIT("edit"),
         DELETE("delete"),
         ACTION("action"),
         CREATE("create");
-
-        val path: String
-            get() = "$selfPath/$value"
     }
 
     override fun init(route: Routing) {
-        route.apply {
+        route.route(path) {
             all
             action
             edit
@@ -60,17 +57,17 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
     }
 
-    private val Routing.all
-        get() = apply {
-            get(RoutePaths.ALL.path) {
+    private val Route.all
+        get() = route(RoutePaths.ALL.path) {
+            get {
                 call.respondHtml { getViewAllPage() }
             }
-            post(RoutePaths.ALL.path) {
+            post {
                 call.respondRedirect(RoutePaths.ALL.path)
             }
         }
 
-    private val Routing.action
+    private val Route.action
         get() = post(RoutePaths.ACTION.path) {
             if (call.request.isMultipart()) {
                 val values = call.receiveMultipart()
@@ -85,10 +82,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 call.respondRedirect(RoutePaths.ALL.path)
         }
 
-    private val Routing.edit
-        get() = apply {
-            val path = RoutePaths.EDIT.path
-            get(path) {
+    private val Route.edit
+        get() = route(RoutePaths.EDIT.path) {
+            get {
                 call.respondHtml {
                     if (call.parameters.contains("tape")) {
                         if (call.parameters.contains("chapter")) {
@@ -99,12 +95,12 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 }
             }
 
-            post(path) { call.respondRedirect(path) }
+            post { call.respondRedirect(path) }
         }
 
-    private val Routing.delete
-        get() = apply {
-            get(RoutePaths.DELETE.path) {
+    private val Route.delete
+        get() = route(RoutePaths.DELETE.path) {
+            get {
 
                 val tapeName = call.parameters["tape"]
                 if (tapeName != null) {
@@ -122,14 +118,15 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 }
                 call.respondRedirect(RoutePaths.ALL.path)
             }
-            post(RoutePaths.DELETE.path) {
+
+            post {
                 call.respondText("delete page")
             }
         }
 
-    private val Routing.create
-        get() = apply {
-            get(RoutePaths.CREATE.path) {
+    private val Route.create
+        get() = route(RoutePaths.CREATE.path) {
+            get {
                 call.respondHtml { getCreateTape() }
             }
         }
@@ -197,9 +194,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private fun Map<String, String>.saveToTape(): BlankTape {
         return BlankTape.Builder() {
-            subDirectory = get("SubDirectory")?.trim()
+            // subDirectory = get("SubDirectory")?.trim()
             tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
-            attractors = RequestAttractors() {
+            attractors = RequestAttractors {
                 routingPath = get("RoutingPath")?.trim()
 
                 if (keys.any { it.startsWith(queryKey) }) {
@@ -208,7 +205,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         .filter { it.value.isNotBlank() }
                     val values = filter { it.key.startsWith(queryValue) }
                         .mapKeys { it.key.removePrefix(queryValue) }
-                    queryParams = keys.keys.map { keys.getValue(it) to values.getValue(it) }
+                    // todo; create param items
+//                    queryParams = keys.keys.map { keys.getValue(it) to values.getValue(it) }
                 }
             }
             routingURL = get("RoutingUrl")?.trim()
@@ -347,8 +345,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 p { +"Routing Path: ${t.attractors?.routingPath}" }
                             }
 
-                            if (t.attractors?.queryParams?.isNotEmpty().isTrue()) {
-                                p { +"Routing Query: ${t.attractors?.queryParams?.size}" }
+                            if (t.attractors?.queryParamMatchers?.isNotEmpty().isTrue()) {
+                                p { +"Routing Query: ${t.attractors?.queryParamMatchers?.size}" }
                             }
                         }
 

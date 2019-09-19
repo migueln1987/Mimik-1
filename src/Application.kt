@@ -1,19 +1,17 @@
 @file:Suppress("PackageDirectoryMismatch")
+
 package com.fiserv.mimik
 
-import networkRouting.FiservRouting
 import networkRouting.MimikMock
 import networkRouting.TapeRouting
 import io.ktor.application.Application
-import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
-import io.ktor.response.respondRedirect
-import io.ktor.routing.get
 import io.ktor.routing.routing
+import networkRouting.CallProcessor
 import org.slf4j.event.Level
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -31,13 +29,14 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
         arrayOf(
+            CallProcessor("/*"),
             MimikMock("/mock"),
-            TapeRouting("/tapes"),
-            FiservRouting("/fiserver/cbes/perform.do")
+            TapeRouting("/tapes")
+
         ).forEach { it.init(this) }
 
-        get("/") {
-            call.respondRedirect(TapeRouting.RoutePaths.ALL.path)
+        trace {
+            val traceViewer = it
         }
     }
 }

@@ -3,13 +3,12 @@ package mimikMockHelpers
 import helpers.toJson
 import io.ktor.http.HttpStatusCode
 import okhttp3.Protocol
-import okreplay.Response
 import java.nio.charset.Charset
 
 class ResponseTapedata : Tapedata {
 
     constructor()
-    constructor(response: Response) {
+    constructor(response: okreplay.Response) {
         code = response.code()
         protocol = response.protocol()
         headers = response.headers()
@@ -23,9 +22,9 @@ class ResponseTapedata : Tapedata {
     var code: Int? = null
     var protocol: Protocol? = null
 
-    val replayResponse: Response
+    val replayResponse: okreplay.Response
         get() {
-            return object : Response {
+            return object : okreplay.Response {
                 override fun code() = code ?: HttpStatusCode.OK.value
                 override fun protocol() = protocol ?: Protocol.HTTP_1_1
 

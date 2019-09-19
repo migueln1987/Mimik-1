@@ -24,3 +24,10 @@ fun String.uppercaseFirstLetter() = take(1).toUpperCase() + drop(1)
  */
 fun String.ensurePrefix(prefix: String) =
     if (startsWith(prefix)) this else prefix + this
+
+/**
+ * Returns `true` if the contents of this string is equal to the word "true", ignoring case, and `false` otherwise.
+ *
+ * If the value is null, [default] is returned instead, which is initially 'false'
+ */
+fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default

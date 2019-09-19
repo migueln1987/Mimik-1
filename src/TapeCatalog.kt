@@ -1,13 +1,18 @@
 import helpers.fileListing
-import helpers.toReplayRequest
 import tapeItems.BlankTape
-import tapeItems.helpers.toChain
 import com.google.gson.Gson
 import io.ktor.application.ApplicationCall
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.Response
+import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.QueryResponse
+import okhttp3.Protocol
 import okreplay.OkReplayInterceptor
+import okreplay.TapeMode
+import helpers.attractors.RequestAttractors
+import tapeItems.helpers.content
+import tapeItems.helpers.toOkRequest
 
 class TapeCatalog private constructor() : OkReplayInterceptor() {
     private val config = VCRConfig.getConfig
@@ -42,9 +47,10 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
                     gson.fromJson(it.second, BlankTape::class.java)
                         ?.also { tape ->
                             tape.file = it.first
-                            tape.readOnly = true
+                            tape.mode = TapeMode.READ_WRITE
                             tape.chapters = tape.chapters ?: mutableListOf()
                             tape.tapeName = tape.tapeName ?: tape.hashCode().toString()
+                            tape.chapters.forEach { it.updateReplayData() }
                         }
                 } catch (e: Exception) {
                     println(e.toString())
@@ -54,19 +60,118 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
             .forEach { tapes.add(it) }
     }
 
-    private fun getTape(request: okreplay.Request): BlankTape {
-        return tapes.firstOrNull {
-            it.containsActiveRecording(request)
-        } ?: defaultBlankTape
+    /**
+     * Finds the tape which contains this request (by query match)
+     */
+    fun findResponseByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
+        if (tapes.isEmpty()) return QueryResponse()
+
+        val path = request.url().encodedPath()
+        val params = request.url().query()
+        val body = request.body()?.content ?: ""
+
+        val validChapters = tapes.asSequence()
+            .flatMap { it.chapters.asSequence() }
+            .filter {
+                when (it.mockUses) {
+                    RecordedInteractions.UseStates.ALWAYS.state,
+                    in (1..Int.MAX_VALUE) -> true
+                    else -> false
+                }
+            }
+            .associateBy({ it }, { it.attractors })
+
+        val foundChapter = RequestAttractors.findBest(
+            validChapters,
+            path, params, body
+        ) {
+            val headersQuery = it.matchingHeaders(request)
+
+            var first = 0
+            if (headersQuery > 0) first += headersQuery
+            (first to -1)
+        }
+
+        val foundTape = tapes.firstOrNull {
+            it.chapters.contains(foundChapter.item)
+        }
+
+        return QueryResponse { item = foundTape }
     }
 
-    suspend fun processCall(call: ApplicationCall): Response {
-        val callChain = call.toChain()
-        val loadTape = getTape(callChain.toReplayRequest)
-        start(config, loadTape)
+    /**
+     * Returns the most likely tape which can accept the [request]
+     *
+     * @return
+     * - tape
+     * - HttpStatusCode.Conflict
+     * - no tape (http.OK)
+     */
+    fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
+        val path = request.url().encodedPath()
+        val params = request.url().query()
 
-        return withContext(Dispatchers.IO) {
-            intercept(callChain)
+        val validTapes = tapes
+            .filter { it.isUrlValid && it.mode.isWritable }
+            .associateBy({ it }, { it.attractors })
+
+        return RequestAttractors.findBest(
+            validTapes,
+            path, params
+        )
+    }
+
+    suspend fun processCall(call: ApplicationCall): okhttp3.Response {
+        val callRequest = call.toOkRequest()
+
+        findResponseByQuery(callRequest).item?.also {
+            it.requestToChain(callRequest)?.also { chain ->
+                start(config, it)
+                return withContext(Dispatchers.IO) {
+                    intercept(chain)
+                }
+            }
+
+            return call.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+                R.getProperty("processCall_InvalidUrl")
+            }
         }
+
+        val hostTape = findTapeByQuery(callRequest)
+        return when (hostTape.status) {
+            HttpStatusCode.OK -> {
+                hostTape.item?.let {
+                    it.requestToChain(callRequest)?.let { chain ->
+                        start(config, it)
+                        withContext(Dispatchers.IO) { intercept(chain) }
+                    }
+                        ?: call.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+                            R.getProperty("processCall_InvalidUrl")
+                        }
+                }
+                    ?: let {
+                        call.makeCatchResponse(HttpStatusCode.Conflict) {
+                            R.getProperty("processCall_ConflictingTapes")
+                        }
+                    }
+            }
+
+            else -> call.makeCatchResponse(hostTape.status) { hostTape.responseMsg ?: "" }
+        }
+    }
+
+    /**
+     * Returns a brief okHttp response to respond with a defined response [status] and [message]
+     */
+    suspend fun ApplicationCall.makeCatchResponse(
+        status: HttpStatusCode,
+        message: () -> String = { "" }
+    ): okhttp3.Response {
+        return okhttp3.Response.Builder().also {
+            it.request(toOkRequest(""))
+            it.protocol(Protocol.HTTP_1_1)
+            it.code(status.value)
+            it.message(message.invoke())
+        }.build()
     }
 }

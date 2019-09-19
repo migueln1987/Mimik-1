@@ -8,12 +8,20 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
+import helpers.anyTrue
+import helpers.attractors.RequestAttractors
+import io.ktor.http.HttpStatusCode
+import mimikMockHelpers.QueryResponse
 import okhttp3.HttpUrl
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okreplay.* // ktlint-disable no-wildcard-imports
+import tapeItems.helpers.reHost
 import java.io.File
 import java.io.Writer
 import java.nio.charset.Charset
+import java.util.concurrent.TimeUnit
 
 class BlankTape private constructor(
     var tapeName: String = hashCode().toString()
@@ -25,21 +33,27 @@ class BlankTape private constructor(
             config.invoke(this)
         }
 
-        var subDirectory: String? = ""
         var tapeName: String? = null
         var routingURL: String? = null
         var attractors: RequestAttractors? = null
-        var allowNewRecordings: Boolean? = true
+        /**
+         * Allows this tape to accept new recordings
+         *
+         * Default: true
+         */
+        var allowLiveRecordings: Boolean? = true
 
         fun build() = BlankTape(
             tapeName ?: hashCode().toString()
         ).also {
+            it.usingCustomName = tapeName != null
             it.attractors = attractors
             it.routingUrl = routingURL
-            it.readOnly = allowNewRecordings
+            it.mode = if (allowLiveRecordings == true)
+                TapeMode.READ_WRITE else TapeMode.READ_ONLY
             it.file = File(
                 VCRConfig.getConfig.tapeRoot.get(),
-                (subDirectory ?: "") + "/" + it.tapeName.toJsonName
+                "NewTapes/" + it.tapeName.toJsonName
             )
         }
 
@@ -83,15 +97,33 @@ class BlankTape private constructor(
 
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
-    var readOnly: Boolean? = true
+    private var tapeMode: TapeMode? = TapeMode.READ_WRITE
 
     val httpRoutingUrl: HttpUrl?
         get() = HttpUrl.parse(routingUrl ?: "")
 
+    /**
+     * routingUrl has data, but HttpUrl is unable to parse it
+     */
     val isUrlValid: Boolean
         get() = !routingUrl.isNullOrBlank() && httpRoutingUrl != null
 
     override fun getName() = tapeName
+
+    @Transient
+    var usingCustomName = false
+
+    private enum class searchPreferences {
+        ALL, MockOnly, LiveOnly
+    }
+
+    fun updateNameByURL(url: String) {
+        tapeName = String.format(
+            "%s_%d",
+            url.removePrefix("/"),
+            url.hashCode()
+        )
+    }
 
     var chapters: MutableList<RecordedInteractions> = mutableListOf()
 
@@ -100,8 +132,11 @@ class BlankTape private constructor(
     override fun getMatchRule(): MatchRule =
         ComposedMatchRule.of(MatchRules.method, MatchRules.queryParams, filteredBody)
 
-    override fun setMode(mode: TapeMode?) {}
-    override fun getMode() = TapeMode.READ_WRITE
+    override fun setMode(mode: TapeMode?) {
+        tapeMode = mode
+    }
+
+    override fun getMode() = tapeMode ?: TapeMode.READ_WRITE
     override fun isReadable() = mode.isReadable
     override fun isWritable() = mode.isWritable
     override fun isSequential() = mode.isSequential
@@ -109,44 +144,82 @@ class BlankTape private constructor(
     override fun size() = chapters.size
 
     /**
-     * Checks if the tape contains any recording matching the request values.
-     * Memory-only mocks are checked first, then hard recordings
+     * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
-    fun containsActiveRecording(request: Request) = chapters.any {
-        when (it.mockUses) {
-            RecordedInteractions.UseStates.ALWAYS.state,
-            in (1..Int.MAX_VALUE) -> true
-            else -> false
-        } && it.attractors?.matchesRequest(request) ?: false
+    fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
+        val tapeURL = httpRoutingUrl ?: return null
+
+        fun getData(request: okhttp3.Request) =
+            OkHttpClient().newCall(request).execute()
+
+        return object : Interceptor.Chain {
+            override fun request() = request.reHost(tapeURL)
+                .newBuilder()
+                .header("HOST", tapeURL.host())
+                .build()
+
+            override fun proceed(request: okhttp3.Request) = getData(request)
+
+            override fun writeTimeoutMillis() = TODO()
+            override fun call() = TODO()
+            override fun withWriteTimeout(timeout: Int, unit: TimeUnit) = TODO()
+            override fun connectTimeoutMillis() = TODO()
+            override fun connection() = TODO()
+            override fun withConnectTimeout(timeout: Int, unit: TimeUnit) = TODO()
+            override fun withReadTimeout(timeout: Int, unit: TimeUnit) = TODO()
+            override fun readTimeoutMillis() = TODO()
+        }
     }
 
-    override fun seek(request: Request): Boolean {
-        val useLimitedMocks = chapters
-            .filter { it.mockUses > 0 }
-            .any { matchRule.isMatch(request, it.request) }
-
-        if (useLimitedMocks) return true
-
-        return chapters
-            .filter { it.mockUses == RecordedInteractions.UseStates.ALWAYS.state }
-            .any { matchRule.isMatch(request, it.request) }
+    override fun seek(request: okreplay.Request): Boolean {
+        return findBestMatch(request).status == HttpStatusCode.Found
     }
 
-    override fun play(request: Request): Response {
-        val limitedMock = chapters
-            .filter { it.mockUses > 0 }
-            .firstOrNull() { matchRule.isMatch(request, it.request) }
-
-        if (limitedMock != null) {
-            limitedMock.mockUses--
-            return limitedMock.response
+    override fun play(request: okreplay.Request): Response {
+        val limitedMock = findBestMatch(request, searchPreferences.MockOnly)
+        if (limitedMock.status == HttpStatusCode.Found) {
+            limitedMock.item?.also {
+                it.mockUses--
+                return it.response
+            }
         }
 
-        return chapters
-            .filter { it.mockUses == RecordedInteractions.UseStates.ALWAYS.state }
-            .firstOrNull { matchRule.isMatch(request, it.request) }
-            ?.response
-            ?: defaultResponse
+        val liveMock = findBestMatch(request, searchPreferences.LiveOnly)
+        if (liveMock.status == HttpStatusCode.Found) {
+            liveMock.item?.also {
+                return it.response
+            }
+        }
+
+        return defaultResponse
+    }
+
+    private fun findBestMatch(
+        request: okreplay.Request,
+        preference: searchPreferences = searchPreferences.ALL
+    ): QueryResponse<RecordedInteractions> {
+        val filteredChapters = chapters
+            .filter {
+                when (it.mockUses) {
+                    RecordedInteractions.UseStates.ALWAYS.state -> anyTrue(
+                        preference == searchPreferences.ALL,
+                        preference == searchPreferences.LiveOnly
+                    )
+                    in (1..Int.MAX_VALUE) -> anyTrue(
+                        preference == searchPreferences.ALL,
+                        preference == searchPreferences.MockOnly
+                    )
+                    else -> false
+                }
+            }
+            .associateBy({ it }, { it.attractors })
+
+        return RequestAttractors.findBest(
+            filteredChapters,
+            request.url().encodedPath(),
+            request.url().query(),
+            if (request.hasBody()) request.bodyAsText() else null
+        )
     }
 
     override fun record(request: Request, response: Response) {
@@ -164,7 +237,7 @@ class BlankTape private constructor(
                         when (jsonMockUses.asInt) {
                             RecordedInteractions.UseStates.ALWAYS.state,
                             RecordedInteractions.UseStates.DISABLE.state
-                            -> true
+                            -> true // export non memory-only chapters
                             else -> false
                         }
                     } ?: false
@@ -202,12 +275,11 @@ class BlankTape private constructor(
     override fun isDirty() = false
 
     /**
-     * Created a new Recorded Interaction based on this tape's config
+     * Creates a new Recorded Interaction and adds it to this tape
      */
     fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
         RecordedInteractions().also {
-            it.attractors = attractors
-            interaction.invoke(it)
+            interaction.invoke(it) // in case we want to change anything
             chapters.add(it)
         }
 }

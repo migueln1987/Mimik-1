@@ -1,9 +1,8 @@
 package mimikMockHelpers
 
-import tapeItems.RequestAttractors
+import helpers.attractors.RequestAttractors
+import helpers.isTrue
 import tapeItems.helpers.filterBody
-import okreplay.Request
-import okreplay.Response
 import java.util.Date
 import java.util.UUID
 
@@ -11,7 +10,7 @@ import java.util.UUID
 class RecordedInteractions {
 
     constructor()
-    constructor(request: Request, response: Response) {
+    constructor(request: okreplay.Request, response: okreplay.Response) {
         this.request = request
         this.response = response
         updateTapeData()
@@ -25,7 +24,6 @@ class RecordedInteractions {
 
     var recordedDate = Date()
     var chapterName = ""
-    var exportData = true
     var readOnly = false
     var attractors: RequestAttractors? = null
 
@@ -40,12 +38,12 @@ class RecordedInteractions {
      *
      * (1..Int.Max_Value) = memory only mock
      */
-    var mockUses = 0
+    var mockUses = UseStates.ALWAYS.state
 
     @Transient
-    lateinit var request: Request
+    lateinit var request: okreplay.Request
     @Transient
-    lateinit var response: Response
+    lateinit var response: okreplay.Response
     lateinit var requestData: RequestTapedata
     lateinit var responseData: ResponseTapedata
 
@@ -73,5 +71,47 @@ class RecordedInteractions {
             requestData = RequestTapedata(request)
         if (::response.isInitialized)
             responseData = ResponseTapedata(response)
+    }
+
+    /**
+     * Returns true if there is loaded replay data
+     */
+    private fun ensureReplayData(): Boolean {
+        if (::request.isInitialized.not()) updateReplayData() // try updating the data
+        if (::request.isInitialized.not()) return false // just give up
+        return true
+    }
+
+    /**
+     * @return
+     * - (-1): there is no replay data
+     * - (1): matches the path
+     * - (0): does not match the path
+     */
+    fun matchesPath(inputRequest: okhttp3.Request): Int {
+        if (!ensureReplayData()) return -1
+        return if (request.url().encodedPath() == inputRequest.url().encodedPath())
+            1 else 0
+    }
+
+    /**
+     * Returns how many headers from [request] match this source's request
+     */
+    fun matchingHeaders(inputRequest: okhttp3.Request): Int {
+        if (!ensureReplayData()) return 0
+
+        val source = request.headers().toMultimap()
+        val input = inputRequest.headers().toMultimap()
+
+        var matches = 0
+        source.forEach { (t, u) ->
+            if (input.containsKey(t)) {
+                u.forEach {
+                    matches += if (input[t]?.contains(it).isTrue()) 1 else 0
+                }
+            }
+        }
+
+        return matches
     }
 }

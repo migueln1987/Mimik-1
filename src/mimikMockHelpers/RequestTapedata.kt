@@ -2,12 +2,11 @@ package mimikMockHelpers
 
 import helpers.toJson
 import okhttp3.HttpUrl
-import okreplay.Request
 import java.nio.charset.Charset
 
 class RequestTapedata : Tapedata {
 
-    constructor(request: Request) {
+    constructor(request: okreplay.Request) {
         method = request.method()
         url = request.url()
         headers = request.headers()
@@ -21,9 +20,9 @@ class RequestTapedata : Tapedata {
     var method: String? = null
     var url: HttpUrl? = null
 
-    val replayRequest: Request
+    val replayRequest: okreplay.Request
         get() {
-            return object : Request {
+            return object : okreplay.Request {
                 override fun url() = url ?: HttpUrl.parse("http://invalid.com")
                 override fun method() = method ?: "GET"
 
