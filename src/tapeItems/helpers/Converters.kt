@@ -9,10 +9,11 @@ import okhttp3.HttpUrl
 import okhttp3.MediaType
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import okio.Buffer
 import java.nio.charset.Charset
 
-suspend fun ApplicationCall.toOkRequest(outboundHost: String = "blank.com"): Request {
+suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): Request {
     val requestBody = try {
         receiveText()
     } catch (e: Exception) {
@@ -61,9 +62,20 @@ fun Request.reHost(outboundHost: HttpUrl): Request {
 /**
  * Returns the string contents of a RequestBody
  */
-val RequestBody.content: String
-    get() = Buffer().run {
-        writeTo(this)
-        val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
-        readString(charset)
+val RequestBody?.content: String
+    get() = this?.let { body ->
+        Buffer().run {
+            writeTo(this)
+            val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
+            readString(charset)
+        }
+    } ?: ""
+
+val ResponseBody?.content: String
+    get() {
+        return try {
+            this?.let { string() } ?: ""
+        } catch (e: Exception) {
+            ""
+        }
     }

@@ -1,5 +1,6 @@
 package mimikMockHelpers
 
+import helpers.isJSONValid
 import helpers.toJson
 import io.ktor.http.HttpStatusCode
 import okhttp3.Protocol
@@ -24,6 +25,14 @@ class ResponseTapedata : Tapedata {
 
     val replayResponse: okreplay.Response
         get() {
+            val isJson = body.isJSONValid
+            if (headers.values("Content-Type").isEmpty()) {
+                headers = headers.newBuilder().add(
+                    "Content-Type",
+                    if (isJson) "application/json" else "text/plain"
+                ).build()
+            }
+
             return object : okreplay.Response {
                 override fun code() = code ?: HttpStatusCode.OK.value
                 override fun protocol() = protocol ?: Protocol.HTTP_1_1

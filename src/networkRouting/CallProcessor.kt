@@ -1,6 +1,5 @@
 package networkRouting
 
-import helpers.toJson
 import io.ktor.application.ApplicationCall
 import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
@@ -11,6 +10,7 @@ import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
+import tapeItems.helpers.content
 
 class CallProcessor(path: String) : RoutingContract(path) {
 
@@ -32,7 +32,7 @@ class CallProcessor(path: String) : RoutingContract(path) {
         val code = HttpStatusCode.fromValue(response.code())
 
         respondText(ContentType.parse(contentType), code) {
-            response.toJson()
+            response.body().content
         }
     }
 }

@@ -1,6 +1,7 @@
 package networkRouting
 
 import TapeCatalog
+import helpers.anyTrue
 import helpers.toHeaders
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.RequestTapedata
@@ -20,6 +21,7 @@ import io.ktor.routing.put
 import mimikMockHelpers.QueryResponse
 import helpers.attractors.RequestAttractorBit
 import helpers.ensurePrefix
+import helpers.isJSONValid
 import helpers.isTrue
 import io.ktor.routing.route
 import java.lang.Exception
@@ -103,9 +105,13 @@ class MimikMock(path: String) : RoutingContract(path) {
         // Step 2: Get existing chapter (to override) or create a new one
         val interactionName = mockParams["name"]
 
+        var creatingNewChapter = false
         val chapter =
             tape.chapters.firstOrNull { it.chapterName == interactionName }
-                ?: tape.createNewInteraction()
+                ?: let {
+                    creatingNewChapter = true
+                    tape.createNewInteraction()
+                }
 
         // Step 3: Set the MimikMock data
         val requestMock = RequestTapedata() { builder ->
@@ -130,17 +136,18 @@ class MimikMock(path: String) : RoutingContract(path) {
                 .toHeaders()
         }
 
+        val bodyText = try {
+            receiveText()
+        } catch (e: Exception) {
+            null
+        }
+
         chapter.also {
             it.attractors = attractors
             it.requestData = requestMock
 
             // In case we want to update an existing chapter's name
             it.chapterName = interactionName ?: it.chapterName
-            val bodyText = try {
-                receiveText()
-            } catch (e: Exception) {
-                null
-            }
 
             it.responseData = ResponseTapedata { rData ->
                 rData.code = mockParams["response_code"]?.toIntOrNull()
@@ -174,9 +181,20 @@ class MimikMock(path: String) : RoutingContract(path) {
         if (tape.file?.exists().isTrue())
             tape.saveFile()
 
+        val isJson = bodyText.isJSONValid
+
         // Step 4: Profit!!!
         return QueryResponse {
-            status = HttpStatusCode.Created
+            val created = anyTrue(
+                query.status == HttpStatusCode.Created,
+                creatingNewChapter
+            )
+            status = if (created)
+                HttpStatusCode.Created else
+                HttpStatusCode.Found
+            if (!isJson && bodyText.isNullOrBlank()) {
+                responseMsg = "Note; input body is not recognized as a valid json."
+            }
         }
     }
 

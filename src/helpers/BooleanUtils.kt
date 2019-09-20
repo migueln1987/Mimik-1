@@ -9,6 +9,6 @@ fun Boolean?.isFalse() = this == false
 fun allTrue(vararg states: Boolean) = states.all { it }
 
 /**
- * Returns true if any of the inputs are true
+ * Returns true if any of the input [states] are true.
  */
 fun anyTrue(vararg states: Boolean) = states.any { it }

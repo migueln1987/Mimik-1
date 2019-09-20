@@ -50,7 +50,9 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
                             tape.mode = TapeMode.READ_WRITE
                             tape.chapters = tape.chapters ?: mutableListOf()
                             tape.tapeName = tape.tapeName ?: tape.hashCode().toString()
-                            tape.chapters.forEach { it.updateReplayData() }
+                            tape.chapters.forEach { chapter ->
+                                chapter.updateReplayData()
+                            }
                         }
                 } catch (e: Exception) {
                     println(e.toString())

@@ -147,16 +147,17 @@ class BlankTape private constructor(
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
     fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
-        val tapeURL = httpRoutingUrl ?: return null
-
         fun getData(request: okhttp3.Request) =
             OkHttpClient().newCall(request).execute()
 
         return object : Interceptor.Chain {
-            override fun request() = request.reHost(tapeURL)
-                .newBuilder()
-                .header("HOST", tapeURL.host())
-                .build()
+            override fun request(): okhttp3.Request {
+                val tapeURL = httpRoutingUrl ?: return request
+                return request.reHost(tapeURL)
+                    .newBuilder()
+                    .header("HOST", tapeURL.host())
+                    .build()
+            }
 
             override fun proceed(request: okhttp3.Request) = getData(request)
 

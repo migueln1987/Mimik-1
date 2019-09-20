@@ -1,5 +1,7 @@
 package helpers
 
+import com.google.gson.Gson
+
 /**
  * If this string starts with the given [prefix], returns a copy of this string
  * with the prefix removed. Otherwise, returns this string.
@@ -31,3 +33,11 @@ fun String.ensurePrefix(prefix: String) =
  * If the value is null, [default] is returned instead, which is initially 'false'
  */
 fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default
+
+val String?.isJSONValid: Boolean
+    get() = try {
+        Gson().fromJson(this, Any::class.java)
+        true
+    } catch (ex: Exception) {
+        false
+    }
