@@ -98,9 +98,9 @@ Body data is used based on the included HTTP Method
 ## HTTP Methods
 ### PUT
 When creating a mock, the entire body is used as the response body
-- [Creating a tape](examples.md/#create-a-new-tape)
-- [Creating a tape and mock in the same call]()
-- [Creating a mock, being applied to a tape]()
+- [Creating a tape](examples.md#basic_createtape)
+- [Creating a tape and mock in the same call](examples.md#basic_apply)
+- [Creating a mock, being applied to a tape](examples.md#basic_retrieve)
 
 ### PATCH
 - Work in progress

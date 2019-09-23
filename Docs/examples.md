@@ -1,5 +1,6 @@
 # PUT
-## Create a new tape
+## Basic
+### Create a new tape<a name="basic_createtape" />
 ```shell script
   curl --request PUT \
   --url http://0.0.0.0:4321/mock \
@@ -9,7 +10,8 @@
   --header 'mockTape_Url: http://google.com'
 ```
 
-## Applying a mock to an existing tape (named google)
+### Applying a mock<a name="basic_apply" />
+To an existing tape (named google)
 ```shell script
 curl --request PUT \
   --url http://0.0.0.0:4321/mock \
@@ -21,4 +23,10 @@ curl --request PUT \
   --header 'mockTape_Name: google' \
   --header 'mockUse: always' \
   --data '{\n    "Data": false\n}'
+```
+
+### Retrieving data<a name="basic_retrieve" />
+```shell script
+  curl --request POST \
+  --url http://0.0.0.0:4321/mail
 ```
