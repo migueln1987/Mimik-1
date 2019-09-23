@@ -86,21 +86,13 @@ class TapeCatalogTests {
 
     @Test
     fun makeCatchResponseTest() {
-        val requestConnectionPoint = mockk<RequestConnectionPoint>() {
-            every { scheme } returns "http"
-            every { uri } returns "/none"
-        }
-
-        val applicationRequest = mockk<ApplicationRequest>() {
-            every { local } returns requestConnectionPoint
-            every { headers } returns io.ktor.http.headersOf("key", "value")
-            every { httpMethod } returns mockk {
-                every { value } returns "POST"
-            }
-        }
-
         val applicationCall = mockk<ApplicationCall>() {
-            every { request } returns applicationRequest
+            every { request } returns mockk {
+                every { local.scheme } returns "http"
+                every { local.uri } returns "/none"
+                every { headers } returns io.ktor.http.headersOf("key", "value")
+                every { httpMethod.value } returns "POST"
+            }
         }
 
         val testCode = HttpStatusCode.Continue

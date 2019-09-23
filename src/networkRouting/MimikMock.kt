@@ -21,6 +21,7 @@ import mimikMockHelpers.QueryResponse
 import helpers.attractors.RequestAttractorBit
 import helpers.ensurePrefix
 import helpers.isJSONValid
+import helpers.isJSONValidMsg
 import helpers.isTrue
 import io.ktor.routing.route
 import mimikMockHelpers.InteractionUseStates
@@ -187,7 +188,9 @@ class MimikMock(path: String) : RoutingContract(path) {
                 HttpStatusCode.Created else
                 HttpStatusCode.Found
             if (!isJson && bodyText.isNullOrBlank()) {
-                responseMsg = "Note; input body is not recognized as a valid json."
+                responseMsg = "Note; input body is not recognized as a valid json.\n" +
+                        bodyText.isJSONValidMsg
+
             }
         }
     }

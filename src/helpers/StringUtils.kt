@@ -43,3 +43,12 @@ val String?.isJSONValid: Boolean
         System.out.println(ex)
         false
     }
+
+val String?.isJSONValidMsg: String
+    get() = try {
+        val adjustedString = this?.replace("\\n", "")
+        Gson().fromJson(adjustedString, Any::class.java)
+        ""
+    } catch (ex: Exception) {
+        ex.toString()
+    }

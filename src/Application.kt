@@ -14,7 +14,7 @@ import io.ktor.routing.routing
 import networkRouting.CallProcessor
 import org.slf4j.event.Level
 
-fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
+fun main(args: Array<String> = arrayOf()) = io.ktor.server.netty.EngineMain.main(args)
 
 @Suppress("unused", "UNUSED_PARAMETER") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
