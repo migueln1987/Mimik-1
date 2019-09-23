@@ -2,7 +2,6 @@ package tapeItems
 
 import VCRConfig
 import mimikMockHelpers.RecordedInteractions
-import tapeItems.helpers.filteredBody
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -10,14 +9,15 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import helpers.anyTrue
 import helpers.attractors.RequestAttractors
+import helpers.reHost
 import io.ktor.http.HttpStatusCode
+import mimikMockHelpers.InteractionUseStates
 import mimikMockHelpers.QueryResponse
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okreplay.* // ktlint-disable no-wildcard-imports
-import tapeItems.helpers.reHost
 import java.io.File
 import java.io.Writer
 import java.nio.charset.Charset
@@ -26,13 +26,7 @@ import java.util.concurrent.TimeUnit
 class BlankTape private constructor(
     var tapeName: String = hashCode().toString()
 ) : Tape {
-    @Suppress("unused", "UNUSED_PARAMETER")
-    class Builder {
-        constructor()
-        constructor(config: Builder.() -> Unit) {
-            config.invoke(this)
-        }
-
+    class Builder(config: (Builder) -> Unit = {}) {
         var tapeName: String? = null
         var routingURL: String? = null
         var attractors: RequestAttractors? = null
@@ -42,6 +36,10 @@ class BlankTape private constructor(
          * Default: true
          */
         var allowLiveRecordings: Boolean? = true
+
+        init {
+            config.invoke(this)
+        }
 
         fun build() = BlankTape(
             tapeName ?: hashCode().toString()
@@ -73,7 +71,7 @@ class BlankTape private constructor(
 
         @Transient
         private val defaultResponse = object : Response {
-            override fun code() = 0
+            override fun code() = HttpStatusCode.Gone.value
             override fun protocol() = Protocol.HTTP_1_1
 
             override fun getEncoding() = ""
@@ -118,6 +116,7 @@ class BlankTape private constructor(
     }
 
     fun updateNameByURL(url: String) {
+        usingCustomName = true
         tapeName = String.format(
             "%s_%d",
             url.removePrefix("/"),
@@ -130,7 +129,7 @@ class BlankTape private constructor(
     override fun setMatchRule(matchRule: MatchRule?) {}
 
     override fun getMatchRule(): MatchRule =
-        ComposedMatchRule.of(MatchRules.method, MatchRules.queryParams, filteredBody)
+        ComposedMatchRule.of(MatchRules.method, MatchRules.queryParams, FilteredBodyRule)
 
     override fun setMode(mode: TapeMode?) {
         tapeMode = mode
@@ -202,7 +201,7 @@ class BlankTape private constructor(
         val filteredChapters = chapters
             .filter {
                 when (it.mockUses) {
-                    RecordedInteractions.UseStates.ALWAYS.state -> anyTrue(
+                    InteractionUseStates.ALWAYS.state -> anyTrue(
                         preference == searchPreferences.ALL,
                         preference == searchPreferences.LiveOnly
                     )
@@ -236,8 +235,8 @@ class BlankTape private constructor(
                 ((it as JsonObject)["mockUses"] as? JsonPrimitive)
                     ?.let { jsonMockUses ->
                         when (jsonMockUses.asInt) {
-                            RecordedInteractions.UseStates.ALWAYS.state,
-                            RecordedInteractions.UseStates.DISABLE.state
+                            InteractionUseStates.ALWAYS.state,
+                            InteractionUseStates.DISABLE.state
                             -> true // export non memory-only chapters
                             else -> false
                         }
@@ -279,7 +278,7 @@ class BlankTape private constructor(
      * Creates a new Recorded Interaction and adds it to this tape
      */
     fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
-        RecordedInteractions().also {
+        RecordedInteractions {
             interaction.invoke(it) // in case we want to change anything
             chapters.add(it)
         }

@@ -7,8 +7,6 @@ import okhttp3.Protocol
 import java.nio.charset.Charset
 
 class ResponseTapedata : Tapedata {
-
-    constructor()
     constructor(response: okreplay.Response) {
         code = response.code()
         protocol = response.protocol()
@@ -16,7 +14,7 @@ class ResponseTapedata : Tapedata {
         body = response.toJson()
     }
 
-    constructor(builder: (ResponseTapedata) -> Unit) {
+    constructor(builder: (ResponseTapedata) -> Unit = {}) {
         builder.invoke(this)
     }
 

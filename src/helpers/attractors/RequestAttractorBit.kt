@@ -5,7 +5,7 @@ import helpers.isFalse
 /**
  * A request attractor which could be optional
  */
-class RequestAttractorBit(builder: RequestAttractorBit.() -> Unit) {
+class RequestAttractorBit(builder: (RequestAttractorBit) -> Unit = {}) {
     var optional: Boolean? = false
     var value: String = ""
 

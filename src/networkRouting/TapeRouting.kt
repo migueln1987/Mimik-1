@@ -16,14 +16,14 @@ import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.* // ktlint-disable no-wildcard-imports
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
-import mimikMockHelpers.RecordedInteractions.UseStates.* // ktlint-disable no-wildcard-imports
 import tapeItems.BlankTape
 import helpers.attractors.RequestAttractors
+import mimikMockHelpers.InteractionUseStates
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
 
-    private val tapeCatalog = TapeCatalog.Instance
+    private val tapeCatalog by lazy { TapeCatalog.Instance }
     private val randomHost = RandomHost()
 
     private val subDirectoryDefault = "[ Default Directory ]"
@@ -193,11 +193,11 @@ class TapeRouting(path: String) : RoutingContract(path) {
     }
 
     private fun Map<String, String>.saveToTape(): BlankTape {
-        return BlankTape.Builder() {
+        return BlankTape.Builder { tape ->
             // subDirectory = get("SubDirectory")?.trim()
-            tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
-            attractors = RequestAttractors {
-                routingPath = get("RoutingPath")?.trim()
+            tape.tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
+            tape.attractors = RequestAttractors { attr ->
+                attr.routingPath = get("RoutingPath")?.trim()
 
                 if (keys.any { it.startsWith(queryKey) }) {
                     val keys = filter { it.key.startsWith(queryKey) }
@@ -209,7 +209,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
 //                    queryParams = keys.keys.map { keys.getValue(it) to values.getValue(it) }
                 }
             }
-            routingURL = get("RoutingUrl")?.trim()
+            tape.routingURL = get("RoutingUrl")?.trim()
         }.build()
     }
 
@@ -300,13 +300,19 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             if (t.chapters.isNotEmpty()) {
                                 p {
                                     val recAlways =
-                                        t.chapters.count { it.mockUses == ALWAYS.state }
+                                        t.chapters.count {
+                                            it.mockUses == InteractionUseStates.ALWAYS.state
+                                        }
                                     val recDisabled =
-                                        t.chapters.count { it.mockUses == DISABLE.state }
+                                        t.chapters.count {
+                                            it.mockUses == InteractionUseStates.DISABLE.state
+                                        }
                                     val recMemory =
                                         t.chapters.count { it.mockUses > 0 }
                                     val recExpired =
-                                        t.chapters.count { it.mockUses == DISABLEDMOCK.state }
+                                        t.chapters.count {
+                                            it.mockUses == InteractionUseStates.DISABLEDMOCK.state
+                                        }
 
                                     table {
                                         tr {

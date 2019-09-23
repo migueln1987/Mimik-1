@@ -2,24 +2,20 @@ package mimikMockHelpers
 
 import helpers.attractors.RequestAttractors
 import helpers.isTrue
-import tapeItems.helpers.filterBody
+import tapeItems.FilteredBodyRule
 import java.util.Date
 import java.util.UUID
 
 @Suppress("unused")
 class RecordedInteractions {
+    constructor(builder: (RecordedInteractions) -> Unit = {}) {
+        builder.invoke(this)
+    }
 
-    constructor()
     constructor(request: okreplay.Request, response: okreplay.Response) {
         this.request = request
         this.response = response
         updateTapeData()
-    }
-
-    enum class UseStates(val state: Int) {
-        ALWAYS(-1),
-        DISABLE(-2),
-        DISABLEDMOCK(0)
     }
 
     var recordedDate = Date()
@@ -38,7 +34,7 @@ class RecordedInteractions {
      *
      * (1..Int.Max_Value) = memory only mock
      */
-    var mockUses = UseStates.ALWAYS.state
+    var mockUses = InteractionUseStates.ALWAYS.state
 
     @Transient
     lateinit var request: okreplay.Request
@@ -48,7 +44,7 @@ class RecordedInteractions {
     lateinit var responseData: ResponseTapedata
 
     val bodyKey: String
-        get() = request.filterBody().hashCode().toString()
+        get() = FilteredBodyRule.filter(request).hashCode().toString()
 
     init {
         if (chapterName.isBlank())
@@ -59,8 +55,10 @@ class RecordedInteractions {
      * Updates Replay data using json request/ response data from the tapeData
      */
     fun updateReplayData() {
-        request = requestData.replayRequest
-        response = responseData.replayResponse
+        if (::requestData.isInitialized)
+            request = requestData.replayRequest
+        if (::responseData.isInitialized)
+            response = responseData.replayResponse
     }
 
     /**
@@ -98,7 +96,8 @@ class RecordedInteractions {
      * Returns how many headers from [request] match this source's request
      */
     fun matchingHeaders(inputRequest: okhttp3.Request): Int {
-        if (!ensureReplayData()) return 0
+        if (!ensureReplayData() || request.headers().size() < 2)
+            return 0
 
         val source = request.headers().toMultimap()
         val input = inputRequest.headers().toMultimap()

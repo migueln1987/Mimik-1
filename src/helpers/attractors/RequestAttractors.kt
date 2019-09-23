@@ -6,7 +6,7 @@ import helpers.isTrue
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
 
-class RequestAttractors() {
+class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
     // "url/sub/path"
     var routingPath: String? = null
 
@@ -14,7 +14,7 @@ class RequestAttractors() {
     // regex match of body items
     var queryBodyMatchers: List<RequestAttractorBit>? = null
 
-    constructor(config: RequestAttractors.() -> Unit) : this() {
+    init {
         config.invoke(this)
     }
 

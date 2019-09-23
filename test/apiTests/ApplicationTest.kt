@@ -1,5 +1,6 @@
-package com.fiserv.mimik
+package com.fiserv.mimik.apiTests
 
+import com.fiserv.mimik.module
 import io.ktor.http.HttpMethod
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.withTestApplication

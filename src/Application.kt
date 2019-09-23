@@ -36,6 +36,7 @@ fun Application.module(testing: Boolean = false) {
         ).forEach { it.init(this) }
 
         trace {
+            @Suppress("UNUSED_VARIABLE")
             val traceViewer = it
         }
     }

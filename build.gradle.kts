@@ -41,6 +41,7 @@ dependencies {
     implementation("com.airbnb.okreplay:okreplay:1.4.0")
     implementation("com.beust:klaxon:5.0.1")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
+    testImplementation("io.mockk:mockk:1.9.3")
 
     ktlint("com.github.shyiko:ktlint:0.29.0")
 }

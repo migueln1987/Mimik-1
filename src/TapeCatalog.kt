@@ -5,40 +5,36 @@ import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.QueryResponse
 import okhttp3.Protocol
 import okreplay.OkReplayInterceptor
 import okreplay.TapeMode
 import helpers.attractors.RequestAttractors
-import tapeItems.helpers.content
-import tapeItems.helpers.toOkRequest
+import helpers.content
+import helpers.toOkRequest
+import mimikMockHelpers.InteractionUseStates
 
-class TapeCatalog private constructor() : OkReplayInterceptor() {
+class TapeCatalog : OkReplayInterceptor() {
     private val config = VCRConfig.getConfig
 
     val tapes: MutableList<BlankTape> = mutableListOf()
 
     companion object {
-        var Instance = TapeCatalog()
-
-        private val defaultBlankTape = BlankTape
-            .Builder() { tapeName = "Default Tape" }
-            .build()
+        val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
     }
 
     init {
         BlankTape.tapeRoot = config.tapeRoot
-        loadTapeData()
     }
 
     /**
      * Loads all the *.json tapes within the okreplay.tapeRoot directory
      */
-    private fun loadTapeData() {
+    fun loadTapeData() {
         val root = config.tapeRoot.get() ?: return
         val gson = Gson()
 
+        tapes.clear()
         root.fileListing().asSequence()
             .map { it to it.readText() }
             .mapNotNull {
@@ -64,6 +60,11 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
 
     /**
      * Finds the tape which contains this request (by query match)
+     *
+     * @return
+     * - HttpStatusCode.Found
+     * - HttpStatusCode.NotFound
+     * - HttpStatusCode.NoContent
      */
     fun findResponseByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         if (tapes.isEmpty()) return QueryResponse()
@@ -74,13 +75,7 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
 
         val validChapters = tapes.asSequence()
             .flatMap { it.chapters.asSequence() }
-            .filter {
-                when (it.mockUses) {
-                    RecordedInteractions.UseStates.ALWAYS.state,
-                    in (1..Int.MAX_VALUE) -> true
-                    else -> false
-                }
-            }
+            .filter { InteractionUseStates.asState(it.mockUses).isEnabled }
             .associateBy({ it }, { it.attractors })
 
         val foundChapter = RequestAttractors.findBest(
@@ -98,16 +93,18 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
             it.chapters.contains(foundChapter.item)
         }
 
-        return QueryResponse { item = foundTape }
+        return QueryResponse {
+            item = foundTape
+            status = foundTape?.let { HttpStatusCode.Found } ?: HttpStatusCode.NotFound
+        }
     }
 
     /**
      * Returns the most likely tape which can accept the [request]
      *
      * @return
-     * - tape
-     * - HttpStatusCode.Conflict
-     * - no tape (http.OK)
+     * - HttpStatusCode.Conflict (no tape)
+     * - HttpStatusCode.OK (valid tape)
      */
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         val path = request.url().encodedPath()
@@ -170,7 +167,7 @@ class TapeCatalog private constructor() : OkReplayInterceptor() {
         message: () -> String = { "" }
     ): okhttp3.Response {
         return okhttp3.Response.Builder().also {
-            it.request(toOkRequest(""))
+            it.request(toOkRequest("local.host"))
             it.protocol(Protocol.HTTP_1_1)
             it.code(status.value)
             it.message(message.invoke())

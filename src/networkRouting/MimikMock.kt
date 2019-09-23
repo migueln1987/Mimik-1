@@ -3,7 +3,6 @@ package networkRouting
 import TapeCatalog
 import helpers.anyTrue
 import helpers.toHeaders
-import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
 import tapeItems.BlankTape
@@ -24,12 +23,13 @@ import helpers.ensurePrefix
 import helpers.isJSONValid
 import helpers.isTrue
 import io.ktor.routing.route
+import mimikMockHelpers.InteractionUseStates
 import java.lang.Exception
 
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock(path: String) : RoutingContract(path) {
 
-    private val tapeCatalog = TapeCatalog.Instance
+    private val tapeCatalog by lazy { TapeCatalog.Instance }
 
     companion object {
         internal var selfPath = ""
@@ -165,16 +165,16 @@ class MimikMock(path: String) : RoutingContract(path) {
             val usesRequest = mockParams["use"]
             it.mockUses = if (mockParams["readonly"].isTrue()) {
                 when (usesRequest?.toLowerCase()) {
-                    "disable" -> RecordedInteractions.UseStates.DISABLE.state
-                    else -> RecordedInteractions.UseStates.ALWAYS.state
-                }
+                    "disable" -> InteractionUseStates.DISABLE
+                    else -> InteractionUseStates.ALWAYS
+                }.state
             } else {
                 usesRequest?.toIntOrNull()
                     ?: when (usesRequest?.toLowerCase()) {
-                        "always" -> RecordedInteractions.UseStates.ALWAYS.state
-                        "disable" -> RecordedInteractions.UseStates.DISABLE.state
-                        else -> it.mockUses
-                    }
+                        "disable" -> InteractionUseStates.DISABLE
+                        "always" -> InteractionUseStates.ALWAYS
+                        else -> InteractionUseStates.asState(it.mockUses)
+                    }.state
             }
         }
 
@@ -218,9 +218,9 @@ class MimikMock(path: String) : RoutingContract(path) {
         val bodyAttractors = filters.filterAttractorKeys("body")
 
         return RequestAttractors {
-            routingPath = urlPath
-            queryParamMatchers = paramAttractors
-            queryBodyMatchers = bodyAttractors
+            it.routingPath = urlPath
+            it.queryParamMatchers = paramAttractors
+            it.queryBodyMatchers = bodyAttractors
         }
     }
 
@@ -241,9 +241,9 @@ class MimikMock(path: String) : RoutingContract(path) {
                         (valueSplitter.invoke(it) ?: listOf(it)).asSequence()
                     }
                     .map {
-                        RequestAttractorBit {
-                            optional = kvvm.key.contains("~")
-                            value = it
+                        RequestAttractorBit { bit ->
+                            bit.optional = kvvm.key.contains("~")
+                            bit.value = it
                         }
                     }
             }
@@ -282,10 +282,10 @@ class MimikMock(path: String) : RoutingContract(path) {
             if (result.status != HttpStatusCode.Found) {
                 // no viable tape found, so return a new tape
                 result.status = HttpStatusCode.Created
-                result.item = BlankTape.Builder() {
-                    routingURL = mockParams["tape_url"]
-                    allowLiveRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
-                    tapeName = paramTapeName
+                result.item = BlankTape.Builder {
+                    it.routingURL = mockParams["tape_url"]
+                    it.allowLiveRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
+                    it.tapeName = paramTapeName
                 }.build()
                     .also { tapeCatalog.tapes.add(it) }
             }

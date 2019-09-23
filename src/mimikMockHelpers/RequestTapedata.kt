@@ -13,7 +13,7 @@ class RequestTapedata : Tapedata {
         body = request.toJson()
     }
 
-    constructor(builder: (RequestTapedata) -> Unit) {
+    constructor(builder: (RequestTapedata) -> Unit = {}) {
         builder.invoke(this)
     }
 

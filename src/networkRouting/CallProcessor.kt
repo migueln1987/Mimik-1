@@ -1,5 +1,6 @@
 package networkRouting
 
+import helpers.content
 import io.ktor.application.ApplicationCall
 import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
@@ -10,18 +11,18 @@ import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
-import tapeItems.helpers.content
 
 class CallProcessor(path: String) : RoutingContract(path) {
 
-    private val tapeCatalog = TapeCatalog.Instance
+    private val tapeCatalog by lazy { TapeCatalog.Instance }
 
     override fun init(route: Routing) {
         route.route(path) {
             get { call.action() }
             post { call.action() }
             intercept(ApplicationCallPipeline.Call) {
-                val ee = this
+                @Suppress("UNUSED_VARIABLE")
+                val interceptViewer = this
             }
         }
     }
