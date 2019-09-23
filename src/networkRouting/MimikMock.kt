@@ -31,14 +31,6 @@ class MimikMock(path: String) : RoutingContract(path) {
 
     private val tapeCatalog by lazy { TapeCatalog.Instance }
 
-    companion object {
-        internal var selfPath = ""
-    }
-
-    init {
-        selfPath = path
-    }
-
     private enum class RoutePaths(val path: String) {
         MOCK("");
     }
@@ -157,6 +149,8 @@ class MimikMock(path: String) : RoutingContract(path) {
                     .mapKeys { it.key.removePrefix("headerout_") }
                     .toHeaders()
 
+                // todo 1; Beautify the input if it's a valid json?
+                // todo 2; skip body if the method doesn't allow bodies
                 rData.body = bodyText
             }
 

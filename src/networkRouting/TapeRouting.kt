@@ -31,14 +31,6 @@ class TapeRouting(path: String) : RoutingContract(path) {
     private val queryKey = "QueryKey"
     private val queryValue = "QueryValue"
 
-    companion object {
-        internal var selfPath = ""
-    }
-
-    init {
-        selfPath = path
-    }
-
     enum class RoutePaths(val path: String) {
         ALL("all"),
         EDIT("edit"),

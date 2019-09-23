@@ -36,8 +36,10 @@ fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default
 
 val String?.isJSONValid: Boolean
     get() = try {
-        Gson().fromJson(this, Any::class.java)
+        val adjustedString = this?.replace("\\n", "")
+        Gson().fromJson(adjustedString, Any::class.java)
         true
     } catch (ex: Exception) {
+        System.out.println(ex)
         false
     }

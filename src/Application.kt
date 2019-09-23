@@ -21,6 +21,9 @@ fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 fun Application.module(testing: Boolean = false) {
     installFeatures()
 
+    // load the tape data
+    TapeCatalog.Instance
+
 //    val client =
     HttpClient(OkHttp) {
         engine {
