@@ -1,0 +1,143 @@
+package com.fiserv.mimik.tapeTests
+
+import helpers.attractors.RequestAttractors
+import mimikMockHelpers.RecordedInteractions
+import okreplay.TapeMode
+import org.junit.Assert
+import org.junit.Before
+import org.junit.Test
+import tapeItems.BlankTape
+
+class BlankTapeTest {
+
+    lateinit var testObject: BlankTape
+
+    @Before
+    fun setup() {
+        testObject = BlankTape.Builder().build()
+    }
+
+    @Test
+    fun testBuilder() {
+        Assert.assertTrue(testObject.name.isNotEmpty())
+        Assert.assertFalse(testObject.usingCustomName)
+
+        Assert.assertNull(testObject.attractors)
+        Assert.assertFalse(testObject.isUrlValid)
+
+        Assert.assertEquals(testObject.mode, TapeMode.READ_WRITE)
+        Assert.assertTrue(testObject.isReadable)
+        Assert.assertTrue(testObject.isWritable)
+
+        Assert.assertEquals(testObject.file?.nameWithoutExtension, testObject.name)
+        Assert.assertEquals(testObject.file?.extension, "json")
+    }
+
+    @Test
+    fun testBuilderValues() {
+        val name = "name123"
+        val url = "http://none.com"
+        val path = "path123"
+        val attractorData = RequestAttractors {
+            it.routingPath = path
+        }
+
+        testObject = BlankTape.Builder {
+            it.tapeName = name
+            it.routingURL = url
+            it.attractors = attractorData
+            it.allowLiveRecordings = false
+        }.build()
+
+        Assert.assertEquals(testObject.tapeName, name)
+        Assert.assertEquals(testObject.name, name)
+        Assert.assertTrue(testObject.usingCustomName)
+
+        Assert.assertNotNull(testObject.attractors)
+        Assert.assertEquals(testObject.attractors?.routingPath, path)
+
+        Assert.assertEquals(testObject.routingUrl, url)
+        Assert.assertTrue(testObject.isUrlValid)
+
+        Assert.assertEquals(testObject.mode, TapeMode.READ_ONLY)
+        Assert.assertTrue(testObject.isReadable)
+        Assert.assertFalse(testObject.isWritable)
+
+        Assert.assertEquals(testObject.file?.nameWithoutExtension, name)
+        Assert.assertEquals(testObject.file?.extension, "json")
+    }
+
+    @Test
+    fun uppercaseJsonName() {
+        val name = "/name"
+        testObject = BlankTape.Builder {
+            it.tapeName = name
+        }.build()
+
+        Assert.assertEquals(testObject.file?.nameWithoutExtension, "Name")
+    }
+
+    @Test
+    fun updateNameByURL() {
+        val url = "/testing"
+        testObject.updateNameByURL(url)
+
+        Assert.assertTrue(testObject.name.contains(url.removePrefix("/")))
+        Assert.assertTrue(testObject.usingCustomName)
+    }
+
+    @Test
+    fun appendChapters() {
+        val chapter = RecordedInteractions()
+
+        Assert.assertTrue(testObject.chapters.isEmpty())
+        testObject.chapters.add(chapter)
+        Assert.assertTrue(testObject.chapters.isNotEmpty())
+        Assert.assertTrue(testObject.size() > 0)
+    }
+
+    @Test
+    fun rehostRequestToChain() {
+        val oldUrl = "http://replace.me"
+        val validUrl = "http://Host.url"
+        val request = okhttp3.Request.Builder()
+            .also {
+                it.url(oldUrl)
+                it.method("GET", null)
+                it.header("key", "value")
+            }.build()
+
+        testObject.routingUrl = validUrl
+        Assert.assertTrue(testObject.isUrlValid)
+
+        val testChain = testObject.requestToChain(request)
+
+        Assert.assertNotNull(testChain)
+        requireNotNull(testChain)
+
+        val testRequest = testChain.request()
+
+        val routeUrl = testObject.httpRoutingUrl
+        Assert.assertNotNull(routeUrl)
+        requireNotNull(routeUrl)
+
+        Assert.assertEquals(routeUrl.host(), "host.url")
+
+        val testHost = testRequest.header("HOST")
+        Assert.assertEquals(testHost, routeUrl.host())
+
+        Assert.assertEquals(testRequest.url().host(), routeUrl.host())
+
+    }
+
+    @Test
+    fun createInteractionTest() {
+        Assert.assertEquals(testObject.size(), 0)
+        val data = testObject.createNewInteraction {
+            it.mockUses = 3
+        }
+        Assert.assertEquals(testObject.size(), 1)
+
+        Assert.assertEquals(testObject.chapters.first().mockUses, data.mockUses)
+    }
+}

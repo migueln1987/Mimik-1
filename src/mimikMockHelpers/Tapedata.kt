@@ -1,8 +1,8 @@
-package com.fiserv.mimik.tapeTypes.helpers
+package mimikMockHelpers
 
 import okhttp3.Headers
 
 abstract class Tapedata {
     lateinit var headers: Headers
-    lateinit var body: String
+    var body: String? = null
 }
