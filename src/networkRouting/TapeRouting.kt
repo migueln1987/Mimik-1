@@ -3,6 +3,7 @@ package networkRouting
 import TapeCatalog
 import VCRConfig
 import helpers.RandomHost
+import helpers.attractors.RequestAttractorBit
 import helpers.getFolders
 import helpers.isTrue
 import io.ktor.application.ApplicationCall
@@ -28,8 +29,10 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private val subDirectoryDefault = "[ Default Directory ]"
     private val subDirectoryCustom = "[ Custom Directory ]"
-    private val queryKey = "QueryKey"
-    private val queryValue = "QueryValue"
+
+    private val queryParamKey = "QueryParamKey"
+    private val queryParamValue = "QueryParamValue"
+    private val queryParamOpt = "QueryParamOpt"
 
     enum class RoutePaths(val path: String) {
         ALL("all"),
@@ -46,17 +49,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
             edit
             delete
             create
+            get { call.respondRedirect(path + "/" + RoutePaths.ALL.path) }
         }
     }
 
     private val Route.all
         get() = route(RoutePaths.ALL.path) {
-            get {
-                call.respondHtml { getViewAllPage() }
-            }
-            post {
-                call.respondRedirect(RoutePaths.ALL.path)
-            }
+            get { call.respondHtml { getViewAllPage() } }
+            post { call.respondRedirect(RoutePaths.ALL.path) }
         }
 
     private val Route.action
@@ -93,21 +93,18 @@ class TapeRouting(path: String) : RoutingContract(path) {
     private val Route.delete
         get() = route(RoutePaths.DELETE.path) {
             get {
-
-                val tapeName = call.parameters["tape"]
-                if (tapeName != null) {
-                    val tape = tapeCatalog.tapes
-                        .firstOrNull { it.tapeName == tapeName }
-                    val chapterName = call.parameters["chapter"]
-                    if (chapterName == null)
-                        tapeCatalog.tapes.remove(tape)
-                    else {
-                        tape?.chapters?.removeIf {
-                            // todo; remove tape chapter
-                            false
+                tapeCatalog.tapes.firstOrNull { it.tapeName == call.parameters["tape"] }
+                    ?.also { tape ->
+                        val chapterName = call.parameters["chapter"]
+                        if (chapterName == null) {
+                            tapeCatalog.tapes.remove(tape)
+                        } else {
+                            tape.chapters.removeIf { it.chapterName == chapterName }
+                            call.respondRedirect(RoutePaths.EDIT.path)
+                            return@get
                         }
                     }
-                }
+
                 call.respondRedirect(RoutePaths.ALL.path)
             }
 
@@ -168,15 +165,11 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
             "Delete" -> {
                 respondRedirect {
-                    encodedPath = RoutePaths.DELETE.path
-                    data.filter {
-                        listOf(
-                            "tape",
-                            "chapter"
-                        ).contains(it.key)
-                    }.forEach { (t, u) ->
-                        parameters.append(t, u)
-                    }
+                    encodedPath = path + "/" + RoutePaths.DELETE.path
+                    val filterKeys = listOf("tape", "chapter")
+                    data.asSequence()
+                        .filter { filterKeys.contains(it.key) }
+                        .forEach { (t, u) -> parameters.append(t, u) }
                 }
             }
 
@@ -188,20 +181,35 @@ class TapeRouting(path: String) : RoutingContract(path) {
         return BlankTape.Builder { tape ->
             // subDirectory = get("SubDirectory")?.trim()
             tape.tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
+            tape.routingURL = get("RoutingUrl")?.trim()
+            tape.allowLiveRecordings = get("SaveRecordings")?.trim().isTrue(true)
+
             tape.attractors = RequestAttractors { attr ->
                 attr.routingPath = get("RoutingPath")?.trim()
 
-                if (keys.any { it.startsWith(queryKey) }) {
-                    val keys = filter { it.key.startsWith(queryKey) }
-                        .mapKeys { it.key.removePrefix(queryKey) }
+                if (keys.any { it.startsWith(queryParamKey) }) {
+                    val keys = asSequence()
                         .filter { it.value.isNotBlank() }
-                    val values = filter { it.key.startsWith(queryValue) }
-                        .mapKeys { it.key.removePrefix(queryValue) }
-                    // todo; create param items
-//                    queryParams = keys.keys.map { keys.getValue(it) to values.getValue(it) }
+                        .filter { it.key.startsWith(queryParamKey) }
+                        .associate { it.key.removePrefix(queryParamKey) to it.value }
+
+                    val values = asSequence()
+                        .filter { it.key.startsWith(queryParamValue) }
+                        .associate { it.key.removePrefix(queryParamValue) to it.value }
+
+                    val optionals = asSequence()
+                        .filter { it.key.startsWith(queryParamOpt) }
+                        .associate { it.key.removePrefix(queryParamOpt) to it.value }
+
+                    attr.queryParamMatchers = keys.keys.map { key ->
+                        RequestAttractorBit {
+                            it.value = values.getValue(key)
+                            it.optional = optionals.getOrDefault(key, "").isTrue()
+                        }
+                    }
                 }
             }
-            tape.routingURL = get("RoutingUrl")?.trim()
+
         }.build()
     }
 
@@ -373,6 +381,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private fun HTML.getCreateTape() {
         val randomVal = randomHost.nextRandom()
+        val randomValStr = randomHost.valueAsChars
         val currentPath = VCRConfig.getConfig.tapeRoot.get().path
 
         val folders = mutableListOf(subDirectoryDefault)
@@ -390,19 +399,24 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 SaveViewAllTapes.disabled = isDisabled;
                             }
                             
-                            var queryID = 0
-                            function addNewQuery() {
-                                var newrow = QueryTableBody.insertRow(QueryTableBody.rows.length-1);
+                            var queryParamID = 0
+                            function addNewParamFilter() {
+                                var newrow = FilterParamTable.insertRow(FilterParamTable.rows.length-1);
                                 
                                 var newKey = newrow.insertCell(0);
-                                var newKeyInput = createNewInput("$queryKey", queryID);
+                                var newKeyInput = createNewInput("$queryParamKey", queryParamID);
                                 newKey.appendChild(newKeyInput);
                                 
                                 var newValue = newrow.insertCell(1);
-                                var newValueInput = createNewInput("$queryValue", queryID++);
+                                var newValueInput = createNewInput("$queryParamValue", queryParamID);
                                 newValue.appendChild(newValueInput);
                                 
-                                var deleteBtn = newrow.insertCell(2);
+                                var newIsOptional = newrow.insertCell(2)
+                                var newIsOptionalInput = createOptionalCheckbox("$queryParamOpt", queryParamID)
+                                newIsOptional.appendChild(newIsOptionalInput);
+                                queryParamID++
+                                
+                                var deleteBtn = newrow.insertCell(3);
                                 deleteBtn.appendChild(createDeleteBtn());
                             }
                             
@@ -410,6 +424,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 var inputField = document.createElement("input");
                                 inputField.name = fieldType + fieldID;
                                 inputField.type = "text";
+                                return inputField;
+                            }
+                            
+                             function createOptionalCheckbox(fieldType, fieldID) {
+                                var inputField = document.createElement("input");
+                                inputField.name = fieldType + fieldID;
+                                inputField.type = "checkbox";
+                                inputField.text = "Optional";
                                 return inputField;
                             }
                             
@@ -439,7 +461,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
                 table {
                     tr {
-                        th { +"Sub directory (optional)" }
+                        th { +"Sub directory" }
                         td {
                             div {
                                 textInput(name = "SubDirectory") {
@@ -491,9 +513,21 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     id = "TapeName"
                                     placeholder = randomVal.toString()
                                     value = randomVal.toString()
-                                    onKeyUp = "updateSaveBtns();"
+                                }
+
+                                text(" ")
+
+                                button(type = ButtonType.button) {
+                                    onClick = "TapeName.value = \"$randomVal\""
+                                    +"Use generated number"
+                                }
+
+                                button(type = ButtonType.button) {
+                                    onClick = "TapeName.value = \"$randomValStr\""
+                                    +"Use generated char string"
                                 }
                             }
+
                             br()
                             div(classes = "infoText") {
                                 +"Tape name. Example: 'General' becomes '/General.json'"
@@ -510,7 +544,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     placeholder = "Example: http://google.com"
                                     size = "${placeholder.length + 20}"
                                     value = ""
-                                    onKeyUp = "updateSaveBtns();"
+                                    onKeyUp = "SaveRecordings.disabled = value.length == 0"
                                 }
                             }
                             br()
@@ -521,7 +555,37 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
 
                     tr {
-                        th { +"Request Attractors (optional)" }
+                        th { +"Save options" }
+                        td {
+                            div {
+                                text("Allow new recordings by filters -")
+                                checkBoxInput(name = "SaveRecordings") {
+                                    id = "SaveRecordings"
+                                    disabled = true
+                                    value = "true"
+                                }
+                                div(classes = "infoText") {
+                                    text("Checked: New (live request) recordings, which apply to the request filters, are allowed to be saved to this tape.")
+                                }
+                                div(classes = "infoText") {
+                                    text("Adding mocks are unaffected.")
+                                }
+
+                            }
+                            br()
+                            div {
+                                text("Save tape to file -")
+                                checkBoxInput(name = "hardtape") {}
+                                div(classes = "infoText") {
+                                    +"Checked: Creating this tape will also save the tape to file."
+//                                +R.getProperty("tapeRoutingUrlInfo")
+                                }
+                            }
+                        }
+                    }
+
+                    tr {
+                        th { +"Request Filters" }
                         td {
                             div(classes = "infoText") {
                                 +R.getProperty("tapeAttractorsInfo")
@@ -538,25 +602,25 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 }
 
                                 tr {
-                                    th { +"Query" }
+                                    th { +"Parameter" }
                                     td {
                                         table {
                                             thead {
                                                 tr {
                                                     th { +"Key" }
-                                                    th {
-                                                        colSpan = "2"
-                                                        +"Value"
-                                                    }
+                                                    th { +"Value" }
+                                                    th { +"Optional" }
+                                                    th { +"" }
                                                 }
                                             }
                                             tbody {
-                                                id = "QueryTableBody"
+                                                // QueryTableBody
+                                                id = "FilterParamTable"
                                                 tr {
                                                     td {
                                                         button(type = ButtonType.button) {
-                                                            onClick = "addNewQuery()"
-                                                            +"Add new Query"
+                                                            onClick = "addNewParamFilter()"
+                                                            +"Add new Filter"
                                                         }
                                                     }
                                                 }
@@ -574,13 +638,11 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             button(name = "CreateTape", classes = "btn_50wide") {
                                 value = "SaveViewAllTapes"
                                 id = "SaveViewAllTapes"
-                                disabled = true
                                 +"Save and goto View Tapes"
                             }
                             button(name = "CreateTape", classes = "btn_50wide") {
                                 value = "SaveAddChapters"
                                 id = "SaveAddChapters"
-                                disabled = true
                                 +"Save and add Tape Chapters"
                             }
                         }

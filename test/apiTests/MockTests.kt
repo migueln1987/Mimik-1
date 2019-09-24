@@ -8,7 +8,7 @@ import io.ktor.server.testing.setBody
 import org.junit.Assert
 import org.junit.Test
 
-class BasicCalls {
+class MockTests {
 
     @Test
     fun testCreateTape_NoParams() {

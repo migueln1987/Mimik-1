@@ -11,6 +11,7 @@ import okhttp3.HttpUrl
 import okhttp3.MediaType
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import okhttp3.internal.http.HttpMethod
 import okio.Buffer
 import okreplay.Request
 import org.w3c.dom.NodeList
@@ -46,11 +47,16 @@ fun okhttp3.Response.toJson(): String {
 fun NodeList.asList() = (0..length).mapNotNull(this::item)
 
 suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
-    val requestBody = try {
-        receiveText()
-    } catch (e: Exception) {
-        System.out.println(e)
-        ""
+    val requestBody = when {
+        HttpMethod.requiresRequestBody(request.httpMethod.value) -> {
+            try {
+                receiveText()
+            } catch (e: Exception) {
+                System.out.println(e)
+                ""
+            }
+        }
+        else -> null
     }
 
     return okhttp3.Request.Builder().also { build ->
@@ -71,10 +77,12 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
 
         build.method(
             request.httpMethod.value,
-            RequestBody.create(
-                MediaType.parse(request.contentType().toString()),
-                requestBody
-            )
+            if (HttpMethod.requiresRequestBody(request.httpMethod.value))
+                RequestBody.create(
+                    MediaType.parse(request.contentType().toString()),
+                    requestBody ?: ""
+                )
+            else null
         )
     }.build()
 }
