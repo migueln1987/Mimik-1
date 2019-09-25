@@ -366,7 +366,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 p {
                                     submitInput(name = "Action") {
                                         value = "Edit"
-//                                        disabled = true
+                                        disabled = true
                                     }
                                 }
                                 p {
