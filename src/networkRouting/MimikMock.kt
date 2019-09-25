@@ -2,12 +2,14 @@ package networkRouting
 
 import TapeCatalog
 import helpers.anyTrue
-import helpers.toHeaders
-import mimikMockHelpers.RequestTapedata
-import mimikMockHelpers.ResponseTapedata
-import tapeItems.BlankTape
+import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.ensurePrefix
+import helpers.isJSONValid
+import helpers.isJSONValidMsg
+import helpers.isTrue
 import helpers.removePrefix
+import helpers.toHeaders
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers
@@ -17,15 +19,13 @@ import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.put
-import mimikMockHelpers.QueryResponse
-import helpers.attractors.RequestAttractorBit
-import helpers.ensurePrefix
-import helpers.isJSONValid
-import helpers.isJSONValidMsg
-import helpers.isTrue
 import io.ktor.routing.route
-import mimikMockHelpers.InteractionUseStates
 import java.lang.Exception
+import mimikMockHelpers.InteractionUseStates
+import mimikMockHelpers.QueryResponse
+import mimikMockHelpers.RequestTapedata
+import mimikMockHelpers.ResponseTapedata
+import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock(path: String) : RoutingContract(path) {
@@ -107,6 +107,9 @@ class MimikMock(path: String) : RoutingContract(path) {
                 }
 
         // Step 3: Set the MimikMock data
+        if (!chapter.hasRequestData)
+            chapter.requestData = RequestTapedata()
+
         val requestMock = RequestTapedata() { builder ->
             builder.method = mockParams["method"]
 
@@ -190,7 +193,6 @@ class MimikMock(path: String) : RoutingContract(path) {
             if (!isJson && bodyText.isNullOrBlank()) {
                 responseMsg = "Note; input body is not recognized as a valid json.\n" +
                         bodyText.isJSONValidMsg
-
             }
         }
     }

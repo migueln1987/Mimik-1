@@ -2,6 +2,7 @@ package mimikMockHelpers
 
 import helpers.isJSONValid
 import helpers.toJson
+import helpers.tryGetBody
 import io.ktor.http.HttpStatusCode
 import okhttp3.Protocol
 import java.nio.charset.Charset
@@ -11,7 +12,7 @@ class ResponseTapedata : Tapedata {
         code = response.code()
         protocol = response.protocol()
         headers = response.headers()
-        body = response.toJson()
+        body = response.tryGetBody()
     }
 
     constructor(builder: (ResponseTapedata) -> Unit = {}) {

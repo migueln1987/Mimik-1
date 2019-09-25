@@ -13,6 +13,7 @@ import io.ktor.features.ContentNegotiation
 import io.ktor.routing.routing
 import networkRouting.CallProcessor
 import org.slf4j.event.Level
+import tapeItems.BlankTape
 
 fun main(args: Array<String> = arrayOf()) = io.ktor.server.netty.EngineMain.main(args)
 
@@ -21,6 +22,7 @@ fun main(args: Array<String> = arrayOf()) = io.ktor.server.netty.EngineMain.main
 fun Application.module(testing: Boolean = false) {
     installFeatures()
 
+    BlankTape.isTestRunning = testing
     // load the tape data
     TapeCatalog.Instance
 
@@ -32,9 +34,9 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
         arrayOf(
-            CallProcessor("/*"),
-            MimikMock("/mock"),
-            TapeRouting("/tapes")
+            CallProcessor("{...}"),
+            MimikMock("mock"),
+            TapeRouting("tapes")
 
         ).forEach { it.init(this) }
 

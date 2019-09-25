@@ -1,6 +1,7 @@
 package unitTests
 
 import TapeCatalog
+import helpers.attractors.AttractorMatches
 import helpers.attractors.RequestAttractors
 import io.ktor.application.ApplicationCall
 import io.ktor.http.Headers
@@ -39,7 +40,7 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_Found() {
         val mockChapter = mockk<RecordedInteractions>() {
-            every { matchingHeaders(any()) } returns 0
+            every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
                 it.routingPath = "/path"
@@ -63,7 +64,7 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_NotFound() {
         val mockChapter = mockk<RecordedInteractions>() {
-            every { matchingHeaders(any()) } returns 0
+            every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
                 it.routingPath = "/other"

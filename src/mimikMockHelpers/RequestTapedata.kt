@@ -1,6 +1,7 @@
 package mimikMockHelpers
 
 import helpers.toJson
+import helpers.tryGetBody
 import okhttp3.HttpUrl
 import java.nio.charset.Charset
 
@@ -10,12 +11,19 @@ class RequestTapedata : Tapedata {
         method = request.method()
         url = request.url()
         headers = request.headers()
-        body = request.toJson()
+        body = request.tryGetBody()
     }
 
     constructor(builder: (RequestTapedata) -> Unit = {}) {
         builder.invoke(this)
     }
+
+    fun clone(postClone: (RequestTapedata) -> Unit) = RequestTapedata {
+        it.method = method
+        it.url = HttpUrl.get(url.toString())
+        it.headers = headers.newBuilder().build()
+        it.body = body
+    }.also { postClone.invoke(it) }
 
     var method: String? = null
     var url: HttpUrl? = null

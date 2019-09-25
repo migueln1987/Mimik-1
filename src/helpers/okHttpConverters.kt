@@ -20,3 +20,5 @@ fun Map<String, String>.toHeaders(): Headers {
         }
     }.build()
 }
+
+fun Headers.contains(key: String, value: String) = values(key).contains(value)

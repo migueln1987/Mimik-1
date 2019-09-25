@@ -49,7 +49,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             edit
             delete
             create
-            get { call.respondRedirect(path + "/" + RoutePaths.ALL.path) }
+            get { call.respondRedirect(RoutePaths.ALL.path) }
         }
     }
 
@@ -155,7 +155,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
             "Edit" -> {
                 respondRedirect {
-                    path(RoutePaths.EDIT.path.drop(1))
+                    path(path, RoutePaths.EDIT.path)
                     parameters.apply {
                         data.filterNot { it.key == "Action" }
                             .forEach { (t, u) -> append(t, u) }
@@ -165,11 +165,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
             "Delete" -> {
                 respondRedirect {
-                    encodedPath = path + "/" + RoutePaths.DELETE.path
+                    path(path, RoutePaths.DELETE.path)
                     val filterKeys = listOf("tape", "chapter")
-                    data.asSequence()
-                        .filter { filterKeys.contains(it.key) }
-                        .forEach { (t, u) -> parameters.append(t, u) }
+                    parameters.apply {
+                        data.asSequence()
+                            .filter { filterKeys.contains(it.key) }
+                            .forEach { (t, u) -> append(t, u) }
+                    }
                 }
             }
 
@@ -209,7 +211,6 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
                 }
             }
-
         }.build()
     }
 
@@ -365,7 +366,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 p {
                                     submitInput(name = "Action") {
                                         value = "Edit"
-                                        disabled = true
+//                                        disabled = true
                                     }
                                 }
                                 p {
@@ -393,12 +394,6 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 unsafe {
                     raw(
                         """
-                            function updateSaveBtns() {
-                                var isDisabled = !RoutingUrl.value.trim();
-                                SaveAddChapters.disabled = isDisabled;
-                                SaveViewAllTapes.disabled = isDisabled;
-                            }
-                            
                             var queryParamID = 0
                             function addNewParamFilter() {
                                 var newrow = FilterParamTable.insertRow(FilterParamTable.rows.length-1);
@@ -565,12 +560,11 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     value = "true"
                                 }
                                 div(classes = "infoText") {
-                                    text("Checked: New (live request) recordings, which apply to the request filters, are allowed to be saved to this tape.")
+                                    text(R.getProperty("tapeSaveNewCallsInfo"))
                                 }
                                 div(classes = "infoText") {
                                     text("Adding mocks are unaffected.")
                                 }
-
                             }
                             br()
                             div {
@@ -585,7 +579,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
 
                     tr {
-                        th { +"Request Filters" }
+                        th { +"Request Attractors" }
                         td {
                             div(classes = "infoText") {
                                 +R.getProperty("tapeAttractorsInfo")

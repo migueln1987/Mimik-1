@@ -1,5 +1,6 @@
 package mimikMockHelpers
 
+import helpers.attractors.AttractorMatches
 import helpers.attractors.RequestAttractors
 import helpers.isTrue
 import tapeItems.FilteredBodyRule
@@ -43,6 +44,9 @@ class RecordedInteractions {
     lateinit var requestData: RequestTapedata
     lateinit var responseData: ResponseTapedata
 
+    val hasRequestData: Boolean
+        get() = ::requestData.isInitialized
+
     val bodyKey: String
         get() = FilteredBodyRule.filter(request).hashCode().toString()
 
@@ -67,6 +71,9 @@ class RecordedInteractions {
     fun updateTapeData() {
         if (::request.isInitialized)
             requestData = RequestTapedata(request)
+        if (::requestData.isInitialized)
+            attractors = RequestAttractors(requestData)
+
         if (::response.isInitialized)
             responseData = ResponseTapedata(response)
     }
@@ -95,22 +102,23 @@ class RecordedInteractions {
     /**
      * Returns how many headers from [request] match this source's request
      */
-    fun matchingHeaders(inputRequest: okhttp3.Request): Int {
+    fun matchingHeaders(inputRequest: okhttp3.Request): AttractorMatches {
         if (!ensureReplayData() || request.headers().size() < 2)
-            return 0
+            return AttractorMatches()
 
+        val response = AttractorMatches(0, 0, 0)
         val source = request.headers().toMultimap()
         val input = inputRequest.headers().toMultimap()
 
-        var matches = 0
         source.forEach { (t, u) ->
+            response.Required += u.size
             if (input.containsKey(t)) {
                 u.forEach {
-                    matches += if (input[t]?.contains(it).isTrue()) 1 else 0
+                    response.Required += if (input[t]?.contains(it).isTrue()) 1 else 0
                 }
             }
         }
 
-        return matches
+        return response
     }
 }

@@ -5,8 +5,9 @@ import helpers.isFalse
 import helpers.isTrue
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
+import mimikMockHelpers.RequestTapedata
 
-class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
+class RequestAttractors {
     // "url/sub/path"
     var routingPath: String? = null
 
@@ -14,8 +15,20 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
     // regex match of body items
     var queryBodyMatchers: List<RequestAttractorBit>? = null
 
-    init {
+    constructor(config: (RequestAttractors) -> Unit = {}) {
         config.invoke(this)
+    }
+
+    constructor(request: RequestTapedata) {
+        request.url?.also { url ->
+            routingPath = url.encodedPath()
+
+            queryParamMatchers = url.queryParameterNames().flatMap { key ->
+                url.queryParameterValues(key).map { value ->
+                    RequestAttractorBit { it.value = "$key=$value" }
+                }
+            }
+        }
     }
 
     companion object {
@@ -23,8 +36,8 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
          * Returns the best match based on the given criteria from the [source] map
          *
          * @return
+         * - HttpStatusCode.Found (302) = item
          * - HttpStatusCode.NotFound (404) = item
-         * - HttpStatusCode.Found (302) = null item
          * - HttpStatusCode.Conflict (409) = null item
          */
         fun <T> findBest(
@@ -32,16 +45,17 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
             path: String?,
             params: String?,
             body: String? = null,
-            custom: (T) -> Pair<Int, Int> = { (-1 to -1) }
+            custom: (T) -> AttractorMatches = { AttractorMatches() }
         ): QueryResponse<T> {
             if (source.isEmpty()) return QueryResponse {
                 status = HttpStatusCode.NotFound
             }
 
             val options = source.mapValues {
-                var matchPath = 0
-                var matchesParam = (-1 to -1)
-                var matchesBody = (-1 to -1)
+                val response = AttractorMatches(0, 0, 0)
+                var matchPath = AttractorMatches()
+                var matchesParam = AttractorMatches()
+                var matchesBody = AttractorMatches()
                 val matchesCustom = custom.invoke(it.key)
 
                 it.value?.also { attr ->
@@ -50,27 +64,22 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
                     matchesBody = attr.getBodyMatches(body)
                 }
 
-                var first = 0
-                if (matchPath > 0) first += matchPath
-                if (matchesParam.first > 0) first += matchesParam.first
-                if (matchesBody.first > 0) first += matchesBody.first
-                if (matchesCustom.first > 0) first += matchesCustom.first
-
-                var second = 0
-                if (matchesParam.second > 0) second += matchesParam.second
-                if (matchesBody.second > 0) second += matchesBody.second
-                if (matchesCustom.second > 0) second += matchesCustom.second
-
-                if (first == 0 && second == 0)
-                    (-1 to -1) else (first to second)
+                response.appendValues(matchPath)
+                    .appendValues(matchesParam)
+                    .appendValues(matchesBody)
+                    .appendValues(matchesCustom)
+            }.filter {
+                it.value.satisfiesRequirement
             }
 
             val response = QueryResponse<T>() {
                 status = HttpStatusCode.NotFound
             }
 
+            if (options.isEmpty()) return response
+
             val groupByReq = options.values
-                .groupBy({ it.first }, { it })
+                .groupBy({ it.MatchesReq }, { it })
 
             // highestReq; group containing the highest "Required" matchers
             val highestReq = groupByReq.keys.max() ?: -1
@@ -87,7 +96,7 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
                         val reqOptionals = groupByReq[highestReq] ?: listOf()
                         val groupByOpt = options.values
                             .filter { reqOptionals.contains(it) }
-                            .groupBy({ it.second }, { it })
+                            .groupBy({ it.MatchesOpt }, { it })
 
                         // highestOpt; group containing the highest "Optional" matchers
                         val highestOpt = groupByOpt.keys.max() ?: -1
@@ -140,10 +149,14 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
         }
     }
 
-    fun matchesPath(path: String?): Int {
+    fun matchesPath(path: String?): AttractorMatches {
         return routingPath?.run {
-            if (path == this) 1 else 0
-        } ?: -1
+            AttractorMatches(
+                1,
+                if (path == this) 1 else 0,
+                0
+            )
+        } ?: AttractorMatches()
     }
 
     /**
@@ -152,10 +165,13 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
     private fun getMatchCount(
         matchScanner: List<RequestAttractorBit>?,
         source: String?
-    ): Pair<Int, Int> {
+    ): AttractorMatches {
         return matchScanner?.let { matchers ->
+            if (matchers.isEmpty() && source != null)
+                return AttractorMatches(1, 0, 0)
+            val reqCount = matchers.count { it.required }
             if (source.isNullOrBlank())
-                return (0 to 0)
+                return AttractorMatches(reqCount, 0, 0)
 
             val required = matchers.asSequence()
                 .filter { it.required }
@@ -166,8 +182,12 @@ class RequestAttractors(config: (RequestAttractors) -> Unit = {}) {
                 .filter { it.optional.isTrue() }
                 .map { it.value.toRegex() }
                 .count { it.containsMatchIn(source) }
-            (required to optional)
-        } ?: (-1 to -1)
+
+            AttractorMatches(reqCount, required, optional)
+        } ?: AttractorMatches().also {
+            if (source != null)
+                it.Required = 1
+        }
     }
 
     /**

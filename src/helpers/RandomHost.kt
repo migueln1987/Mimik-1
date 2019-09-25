@@ -35,11 +35,11 @@ class RandomHost {
             val byteData = ByteArray(length)
             useRandom.nextBytes(byteData)
 
-            return byteData.map {
-                val qb = (((it and Byte.MAX_VALUE) // abs value
-                        / Byte.MAX_VALUE.toFloat()) // to 0-127 -> 0-100%
-                        * (charPool.size - 1)).toInt() // to % -> 0-charPool
-                charPool[qb]
-            }.joinToString("")
+            return byteData.asSequence()
+                .map { it and Byte.MAX_VALUE } // abs value
+                .map { it / Byte.MAX_VALUE.toFloat() } // 0-127 -> 0-100%
+                .map { (it * (charPool.size - 1)).toInt() } // % -> 0-charPool
+                .map { charPool[it] } // get char value
+                .joinToString("")
         }
 }

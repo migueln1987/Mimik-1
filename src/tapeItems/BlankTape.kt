@@ -15,8 +15,11 @@ import mimikMockHelpers.InteractionUseStates
 import mimikMockHelpers.QueryResponse
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
+import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
+import okhttp3.ResponseBody
+import okhttp3.internal.http.HttpMethod
 import okreplay.* // ktlint-disable no-wildcard-imports
 import java.io.File
 import java.io.Writer
@@ -66,6 +69,9 @@ class BlankTape private constructor(
     }
 
     companion object {
+        @Transient
+        var isTestRunning = false
+
         var tapeRoot: TapeRoot = VCRConfig.getConfig.tapeRoot
         internal val gson = Gson()
 
@@ -142,13 +148,33 @@ class BlankTape private constructor(
 
     override fun size() = chapters.size
 
+    private fun testingResponse(request: okhttp3.Request): okhttp3.Response {
+        val status = HttpStatusCode.OK
+        return okhttp3.Response.Builder().also {
+            it.request(request)
+            it.protocol(Protocol.HTTP_1_1)
+            it.code(status.value)
+            if (HttpMethod.requiresRequestBody(request.method()))
+                it.body(
+                    ResponseBody.create(
+                        MediaType.parse("text/plain"),
+                        ""
+                    )
+                )
+            it.message(status.description)
+        }.build()
+    }
+
     /**
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
     fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
-        fun getData(request: okhttp3.Request) =
-            OkHttpClient().newCall(request).execute()
-
+        fun getData(request: okhttp3.Request): okhttp3.Response? {
+            return if (isTestRunning) {
+                testingResponse(request)
+            } else
+                OkHttpClient().newCall(request).execute()
+        }
         return object : Interceptor.Chain {
             override fun request(): okhttp3.Request {
                 val tapeURL = httpRoutingUrl ?: return request

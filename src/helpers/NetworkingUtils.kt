@@ -13,24 +13,26 @@ import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
-import okreplay.Request
 import org.w3c.dom.NodeList
 import java.nio.charset.Charset
 
-fun Request.toJson(): String {
-    val bodyString = StringBuilder()
-    if (hasBody()) bodyString.append(String(body()))
+/**
+ * Returns the body, if any, or [default] when null
+ */
+fun okreplay.Request.tryGetBody(default: String = "") =
+    if (hasBody()) bodyAsText() else default
 
-    val jsonData = Parser.default().parse(bodyString) as JsonObject
-    return jsonData.toJsonString(true, true)
-}
+/**
+ * Returns the body, if any, or [default] when null
+ */
+fun okreplay.Response.tryGetBody(default: String = "") =
+    if (hasBody()) bodyAsText() else default
 
-fun okreplay.Response.toJson(): String {
-    val bodyString = StringBuilder()
-    if (hasBody()) bodyString.append(String(body()))
-
-    val jsonData = Parser.default().parse(bodyString) as JsonObject
-    return jsonData.toJsonString(true, true)
+fun StringBuilder.toJson(): String {
+    return if (toString().isJSONValid) {
+        (Parser.default().parse(this) as JsonObject)
+            .toJsonString(true, true)
+    } else ""
 }
 
 fun okhttp3.Response.toJson(): String {
@@ -90,10 +92,13 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
 fun okhttp3.Request.reHost(outboundHost: HttpUrl): okhttp3.Request {
     return newBuilder().also { build ->
         build.url(
-            "%s://%s%s".format(
+            "%s://%s%s%s".format(
                 outboundHost.scheme(),
                 outboundHost.host(),
-                url().encodedPath()
+                url().encodedPath(),
+                if (url().querySize() > 0) {
+                    "?" + url().query()
+                } else ""
             )
         )
     }.build()

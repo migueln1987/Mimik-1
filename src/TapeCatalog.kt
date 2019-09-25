@@ -62,9 +62,9 @@ class TapeCatalog : OkReplayInterceptor() {
      * Finds the tape which contains this request (by query match)
      *
      * @return
-     * - HttpStatusCode.Found
-     * - HttpStatusCode.NotFound
-     * - HttpStatusCode.NoContent
+     * - HttpStatusCode.Found (302) = item
+     * - HttpStatusCode.NotFound (404) = item
+     * - HttpStatusCode.Conflict (409) = null item
      */
     fun findResponseByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         if (tapes.isEmpty()) return QueryResponse()
@@ -82,11 +82,7 @@ class TapeCatalog : OkReplayInterceptor() {
             validChapters,
             path, params, body
         ) {
-            val headersQuery = it.matchingHeaders(request)
-
-            var first = 0
-            if (headersQuery > 0) first += headersQuery
-            (first to -1)
+            it.matchingHeaders(request)
         }
 
         val foundTape = tapes.firstOrNull {
@@ -103,8 +99,9 @@ class TapeCatalog : OkReplayInterceptor() {
      * Returns the most likely tape which can accept the [request]
      *
      * @return
-     * - HttpStatusCode.Conflict (no tape)
-     * - HttpStatusCode.OK (valid tape)
+     * - HttpStatusCode.Found (302) = item
+     * - HttpStatusCode.NotFound (404) = item
+     * - HttpStatusCode.Conflict (409) = null item
      */
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         val path = request.url().encodedPath()
@@ -138,7 +135,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val hostTape = findTapeByQuery(callRequest)
         return when (hostTape.status) {
-            HttpStatusCode.OK -> {
+            HttpStatusCode.Found -> {
                 hostTape.item?.let {
                     it.requestToChain(callRequest)?.let { chain ->
                         start(config, it)

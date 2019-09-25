@@ -52,19 +52,19 @@ will apply the filter only to the mock.
 #### General
 | Param        | Use | Type        | Action |
 |--------------|-----|-------------|--------|
-| Use          | O  | String/ Int<sup>1</sup> | Sets the request's expiration usage |
+| Name<sup>1</sup> | C  | String | Assigning a name allows re-using/ writing to the same mock. | 
+| Use          | O  | String/ Int<sup>2</sup> | Sets the request's expiration usage |
 | ReadOnly     | O  | Boolean | True: "Use" wil be set to "always" (unless `use=disabled`) |
-| Name<sup>2</sup> | C  | String | Assigning a name allows re-using/ writing to the same mock. | 
 
-1:
+1: Not assigning a name will create a new mock each time, regardless if the data is the same.
+
+2:
 - String values (no expiration):
   - "always" = This request will always be used when possible
   - "disable" = The request exists, but suspended
 - Int (memory-only mock):
   - 0: Interaction has exhausted it's uses and acts as "disabled"
   - ( > 0): Uses until the interaction is disabled
-
-2: Not assigning a name will create a new mock each time, regardless if the data is the same.
 
 #### HTTP Request
 ##### == Route (prefix: "Route_") ==
