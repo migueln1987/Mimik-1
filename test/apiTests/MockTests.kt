@@ -136,7 +136,7 @@ class MockTests {
         removeTapeByName("useMock")
     }
 
-    @Test // This test filters each call (Test1 and Test2) into the respected tapes
+    @Test // This test filters each call (noParam, newParam, matchParam) into the respected tapes
     fun requiredFilterPriority() {
         val testingTapes = arrayOf("TestingTape1", "TestingTape2")
         removeTapeByName(*testingTapes)
