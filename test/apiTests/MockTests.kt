@@ -12,6 +12,16 @@ import org.junit.Test
 import java.io.File
 
 class MockTests {
+    /**
+     * Cleanup tapes created during testing
+     */
+    private fun removeTapeByName(vararg name: String) {
+        TapeCatalog.Instance.tapes.filter { it.tapeName in name.toList() }
+            .forEach {
+                it.file?.delete()
+                TapeCatalog.Instance.tapes.remove(it)
+            }
+    }
 
     @Test
     fun testCreateTape_NoParams() {
@@ -29,7 +39,7 @@ class MockTests {
     fun testCreateTape() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
-                addHeader("mockTape_Name", "Google")
+                addHeader("mockTape_Name", "testCreateTape")
                 addHeader("mockTape_Only", "true")
             }.apply {
                 response {
@@ -37,18 +47,20 @@ class MockTests {
                 }
             }
         }
+
+        removeTapeByName("testCreateTape")
     }
 
     @Test
     fun testUseTape() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
-                addHeader("mockTape_Name", "Google")
+                addHeader("mockTape_Name", "testUseTape")
                 addHeader("mockTape_Only", "true")
             }
 
             handleRequest(HttpMethod.Put, "/mock") {
-                addHeader("mockTape_Name", "Google")
+                addHeader("mockTape_Name", "testUseTape")
                 addHeader("mockTape_Only", "true")
             }.apply {
                 response {
@@ -56,13 +68,15 @@ class MockTests {
                 }
             }
         }
+
+        removeTapeByName("testUseTape")
     }
 
     @Test
     fun testCreateTape_CreateMock() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
-                addHeader("mockTape_Name", "Google")
+                addHeader("mockTape_Name", "testCreateTape_CreateMock")
                 addHeader("mockName", "GetMail")
             }.apply {
                 response {
@@ -70,18 +84,20 @@ class MockTests {
                 }
             }
         }
+
+        removeTapeByName("testCreateTape_CreateMock")
     }
 
     @Test
-    fun testCreateMock_FindMock() {
+    fun testCreateMock_FindTape() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
-                addHeader("mockTape_Name", "Google")
+                addHeader("mockTape_Name", "FindTape")
                 addHeader("mockName", "GetMail")
             }
 
             handleRequest(HttpMethod.Put, "/mock") {
-                addHeader("mockTape_Name", "Google")
+                addHeader("mockTape_Name", "FindTape")
                 addHeader("mockName", "GetMail")
             }.apply {
                 response {
@@ -89,6 +105,8 @@ class MockTests {
                 }
             }
         }
+
+        removeTapeByName("FindTape")
     }
 
     @Test
@@ -98,13 +116,15 @@ class MockTests {
 
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockTape_Name", "useMock")
                 addHeader("mockMethod", "POST")
                 addHeader("mockResponseCode", "200")
                 addHeader("mockRoute_path", "/mail")
+                addHeader("mockFilter_body~", ".*") // post ALWAYS has a body
                 setBody(testBody)
             }
 
-            handleRequest(HttpMethod.Post, "/mail", {})
+            handleRequest(HttpMethod.Post, "/mail") {}
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.OK, it.status())
@@ -112,16 +132,14 @@ class MockTests {
                     }
                 }
         }
+
+        removeTapeByName("useMock")
     }
 
-    @Test
+    @Test // This test filters each call (Test1 and Test2) into the respected tapes
     fun requiredFilterPriority() {
         val testingTapes = arrayOf("TestingTape1", "TestingTape2")
-        TapeCatalog.Instance.tapes.filter { it.tapeName in testingTapes }
-            .forEach {
-                it.file?.delete()
-                TapeCatalog.Instance.tapes.remove(it)
-            }
+        removeTapeByName(*testingTapes)
 
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
@@ -129,6 +147,8 @@ class MockTests {
                 addHeader("mockTape_Only", "true")
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
+                addHeader("mockFilter_Param~", "Param")
+                addHeader("mockFilter_Body~", ".*")
             }
 
             handleRequest(HttpMethod.Put, "/mock") {
@@ -137,37 +157,36 @@ class MockTests {
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
                 addHeader("mockFilter_Param", "Param=Value")
+                addHeader("mockFilter_Body~", ".*")
             }
 
-            var recievedResponse = false
             handleRequest(HttpMethod.Post, "/long/path/name") {
-                setBody("Test1")
-            }.also {
-                it.response {
-                    handleRequest(HttpMethod.Post, "/long/path/name?Param=Value") {
-                        setBody("Test2")
-                    }.also { it.response { recievedResponse = true } }
-                }
+                setBody("noParam")
+            }
+
+            handleRequest(HttpMethod.Post, "/long/path/name?Param=New") {
+                setBody("newParam")
+            }
+
+            handleRequest(HttpMethod.Post, "/long/path/name?Param=Value") {
+                setBody("matchParam")
             }
 
             val tapes = TapeCatalog.Instance.tapes
-            Assert.assertEquals(2, tapes.size)
+            Assert.assertTrue(tapes.isNotEmpty())
 
             val tape1 = tapes.firstOrNull { it.tapeName == testingTapes[0] }
             Assert.assertNotNull(tape1)
             requireNotNull(tape1)
-            Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "Test1" })
+            Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "noParam" })
+            Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "newParam" })
 
             val tape2 = tapes.firstOrNull { it.tapeName == testingTapes[1] }
             Assert.assertNotNull(tape2)
             requireNotNull(tape2)
-            Assert.assertTrue(tape2.chapters.any { it.request.bodyAsText() == "Test2" })
+            Assert.assertTrue(tape2.chapters.any { it.request.bodyAsText() == "matchParam" })
         }
 
-        TapeCatalog.Instance.tapes.filter { it.tapeName in testingTapes }
-            .forEach {
-                it.file?.delete()
-                TapeCatalog.Instance.tapes.remove(it)
-            }
+        removeTapeByName(*testingTapes)
     }
 }
