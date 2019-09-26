@@ -139,8 +139,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             }
 
             "SaveViewAllTapes" -> {
-                val newTape = data.saveToTape()
-                tapeCatalog.tapes.add(newTape)
+                data.saveToTape()
                 respondRedirect(RoutePaths.ALL.path)
                 return
             }
@@ -217,6 +216,10 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 }
             }
         }.build()
+            .also {
+                tapeCatalog.tapes.add(it)
+                if (get("hardtape").isTrue()) it.saveFile()
+            }
     }
 
     private val CommonAttributeGroupFacade.disableEnterKey: Unit
