@@ -15,7 +15,6 @@ import helpers.toReplayResponse
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.InteractionUseStates
 import mimikMockHelpers.QueryResponse
-import mimikMockHelpers.ResponseTapedata
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType
@@ -57,7 +56,7 @@ class BlankTape private constructor(
                 TapeMode.READ_WRITE else TapeMode.READ_ONLY
             it.file = File(
                 VCRConfig.getConfig.tapeRoot.get(),
-                "NewTapes/" + it.tapeName.toJsonName
+                it.tapeName.toJsonName
             )
         }
 

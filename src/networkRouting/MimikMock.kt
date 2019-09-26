@@ -4,7 +4,6 @@ import TapeCatalog
 import helpers.anyTrue
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
-import helpers.ensurePrefix
 import helpers.isJSONValid
 import helpers.isJSONValidMsg
 import helpers.isTrue
@@ -211,7 +210,7 @@ class MimikMock(path: String) : RoutingContract(path) {
                 { it.key.toLowerCase().removePrefix(filterKey) },
                 { it.value })
 
-        val urlPath = filters["path"]?.firstOrNull()//?.ensurePrefix("/")
+        val urlPath = filters["path"]?.firstOrNull()
 
         val paramAttractors = filters.filterAttractorKeys("param") {
             it.split("&")

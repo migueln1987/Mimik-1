@@ -101,6 +101,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         val chapterName = call.parameters["chapter"]
                         if (chapterName == null) {
                             tapeCatalog.tapes.remove(tape)
+                            if (tape.file?.exists().isTrue())
+                                tape.file?.delete()
                         } else {
                             tape.chapters.removeIf { it.chapterName == chapterName }
                             call.respondRedirect(RoutePaths.EDIT.path)
@@ -186,7 +188,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             // subDirectory = get("SubDirectory")?.trim()
             tape.tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
             tape.routingURL = get("RoutingUrl")?.trim()
-            tape.allowLiveRecordings = get("SaveRecordings")?.trim().isTrue(true)
+            tape.allowLiveRecordings = get("SaveRecordings") == "on"
 
             tape.attractors = RequestAttractors { attr ->
                 get("RoutingPath")?.trim()?.also { path ->
@@ -210,7 +212,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     attr.queryParamMatchers = keys.keys.map { key ->
                         RequestAttractorBit {
                             it.value = values.getValue(key)
-                            it.optional = optionals.getOrDefault(key, "").isTrue()
+                            it.optional = optionals.getOrDefault(key, "") == "on"
                         }
                     }
                 }
@@ -218,7 +220,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }.build()
             .also {
                 tapeCatalog.tapes.add(it)
-                if (get("hardtape").isTrue()) it.saveFile()
+                if (get("hardtape") == "on") it.saveFile()
             }
     }
 

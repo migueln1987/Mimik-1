@@ -1,7 +1,6 @@
 package mimikMockHelpers
 
 import helpers.isJSONValid
-import helpers.toJson
 import helpers.tryGetBody
 import io.ktor.http.HttpStatusCode
 import okhttp3.Headers
