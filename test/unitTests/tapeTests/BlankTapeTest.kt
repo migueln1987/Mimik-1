@@ -1,5 +1,6 @@
 package com.fiserv.mimik.tapeTests
 
+import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import mimikMockHelpers.RecordedInteractions
 import okreplay.TapeMode
@@ -39,7 +40,7 @@ class BlankTapeTest {
         val url = "http://none.com"
         val path = "path123"
         val attractorData = RequestAttractors {
-            it.routingPath = path
+            it.routingPath = RequestAttractorBit(path)
         }
 
         testObject = BlankTape.Builder {

@@ -1,22 +1,20 @@
 package apiTests
 
 import helpers.isJSONValid
+import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.parseQueryString
-import io.ktor.http.plus
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import org.junit.Assert
 import org.junit.Test
-import java.io.File
 
 class MockTests {
     /**
      * Cleanup tapes created during testing
      */
     private fun removeTapeByName(vararg name: String) {
-        TapeCatalog.Instance.tapes.filter { it.tapeName in name.toList() }
+        TapeCatalog.Instance.tapes.filter { it.name in name.toList() }
             .forEach {
                 it.file?.delete()
                 TapeCatalog.Instance.tapes.remove(it)
@@ -175,18 +173,54 @@ class MockTests {
             val tapes = TapeCatalog.Instance.tapes
             Assert.assertTrue(tapes.isNotEmpty())
 
-            val tape1 = tapes.firstOrNull { it.tapeName == testingTapes[0] }
+            val tape1 = tapes.firstOrNull { it.name == testingTapes[0] }
             Assert.assertNotNull(tape1)
             requireNotNull(tape1)
             Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "noParam" })
             Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "newParam" })
 
-            val tape2 = tapes.firstOrNull { it.tapeName == testingTapes[1] }
+            val tape2 = tapes.firstOrNull { it.name == testingTapes[1] }
             Assert.assertNotNull(tape2)
             requireNotNull(tape2)
             Assert.assertTrue(tape2.chapters.any { it.request.bodyAsText() == "matchParam" })
         }
 
         removeTapeByName(*testingTapes)
+    }
+
+    @Test
+    fun awaitTape() {
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockTape_Name", "awaitTape")
+                addHeader("mockTape_Url", "http://valid.url")
+
+                addHeader("mockAwait", "true")
+                addHeader("mockFilter_Path", ".*")
+                addHeader("mockFilter_Body~", ".*")
+            }
+
+            handleRequest(HttpMethod.Post, "/test") {
+                request {
+                    setBody("testBody")
+                }
+            }
+                .apply {
+                    response {
+                        val tape = TapeCatalog.Instance.tapes
+                            .firstOrNull { it.name == "awaitTape" }
+                        val interaction = tape?.chapters
+                            ?.firstOrNull { it.responseData.body == "testBody" }
+
+                        Assert.assertNotNull(interaction)
+                        requireNotNull(interaction)
+
+                        Assert.assertFalse(interaction.awaitResponse)
+                        Assert.assertTrue(interaction.hasResponseData)
+                    }
+                }
+        }
+
+        removeTapeByName("awaitTape")
     }
 }

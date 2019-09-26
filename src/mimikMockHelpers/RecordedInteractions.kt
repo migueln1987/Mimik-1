@@ -16,7 +16,6 @@ class RecordedInteractions {
     constructor(request: okreplay.Request, response: okreplay.Response) {
         this.request = request
         this.response = response
-        updateTapeData()
     }
 
     var recordedDate = Date()
@@ -37,15 +36,29 @@ class RecordedInteractions {
      */
     var mockUses = InteractionUseStates.ALWAYS.state
 
-    @Transient
-    lateinit var request: okreplay.Request
-    @Transient
-    lateinit var response: okreplay.Response
+    val awaitResponse: Boolean
+        get() = !hasResponseData
+
+    var request: okreplay.Request
+        get() = requestData.replayRequest
+        set(value) {
+            requestData = RequestTapedata(value)
+        }
+
+    var response: okreplay.Response
+        get() = responseData.replayResponse
+        set(value) {
+            responseData = ResponseTapedata(value)
+        }
+
     lateinit var requestData: RequestTapedata
     lateinit var responseData: ResponseTapedata
 
     val hasRequestData: Boolean
         get() = ::requestData.isInitialized
+
+    val hasResponseData: Boolean
+        get() = ::responseData.isInitialized
 
     val bodyKey: String
         get() = FilteredBodyRule.filter(request).hashCode().toString()
@@ -56,45 +69,13 @@ class RecordedInteractions {
     }
 
     /**
-     * Updates Replay data using json request/ response data from the tapeData
-     */
-    fun updateReplayData() {
-        if (::requestData.isInitialized)
-            request = requestData.replayRequest
-        if (::responseData.isInitialized)
-            response = responseData.replayResponse
-    }
-
-    /**
-     * Updates TapeData for json saving
-     */
-    fun updateTapeData() {
-        if (::request.isInitialized)
-            requestData = RequestTapedata(request)
-        if (::requestData.isInitialized)
-            attractors = RequestAttractors(requestData)
-
-        if (::response.isInitialized)
-            responseData = ResponseTapedata(response)
-    }
-
-    /**
-     * Returns true if there is loaded replay data
-     */
-    private fun ensureReplayData(): Boolean {
-        if (::request.isInitialized.not()) updateReplayData() // try updating the data
-        if (::request.isInitialized.not()) return false // just give up
-        return true
-    }
-
-    /**
      * @return
      * - (-1): there is no replay data
      * - (1): matches the path
      * - (0): does not match the path
      */
     fun matchesPath(inputRequest: okhttp3.Request): Int {
-        if (!ensureReplayData()) return -1
+        if (!hasRequestData) return -1
         return if (request.url().encodedPath() == inputRequest.url().encodedPath())
             1 else 0
     }
@@ -103,7 +84,7 @@ class RecordedInteractions {
      * Returns how many headers from [request] match this source's request
      */
     fun matchingHeaders(inputRequest: okhttp3.Request): AttractorMatches {
-        if (!ensureReplayData() || request.headers().size() < 2)
+        if (!hasRequestData || request.headers().size() < 2)
             return AttractorMatches()
 
         val response = AttractorMatches(0, 0, 0)

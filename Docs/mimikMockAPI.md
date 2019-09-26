@@ -13,6 +13,11 @@ Each sub-category will prepend it's prefix unless no prefix is mentioned.
 
 Parameters are not case sensitive, but formatted as such for readability.
 
+Examples:
+> Tape's 'AllowRecordings' equals 'true' -> `mockTape_AllowRecordings : true`
+>
+> Http request 'HeaderIn_{Key}' of 'Session' equals '123' -> `mockHeaderIn_Session : 123`
+
 ### General (Tapes and Recordings)
 #### Filtering (prefix: "Filter_")
 Filtering is used for both Tape and Mock interactions.
@@ -23,11 +28,11 @@ Note: Including filtering data in a mock request, which is going to an existing 
 will apply the filter only to the mock.
 <br>
 
-| Param | Type   | Action |
-|-------|--------|--------|
-| Path  | String | Sub-path of the url<br> Example: `/route/sub/path/` |
-| Param<sup>1</sup> | Regex<sup>2</sup> | Parameter(s) in the url<br> Example: `Key1=Value1&Key2=Value2` |
-| Body<sup>1</sup> | Regex | Text to search for within the message body<br> Example: `countryCode.{0,8}US` |
+| Param | Type   | Default| Action |
+|-------|--------|--------|--------|
+| Path  | Regex | `null`| Sub-path of the url<br> Example: `/route/sub/path/` |
+| Param<sup>1</sup> | Regex<sup>2</sup> | `null`| Parameter(s) in the url<br> Example: `Key1=Value1&Key2=Value2` |
+| Body<sup>1</sup> | Regex | `null`| Text to search for within the message body<br> Example: `countryCode.{0,8}US` |
 
 1: Appending a postfix of `~` will mark the filter as optional<br>
 2: Values in the form of `Key1=Value1&Key2=Value2` will be split into `Key1=Value1` and `Key2=Value2`
@@ -50,11 +55,12 @@ will apply the filter only to the mock.
 
 ### Recordings
 #### General
-| Param        | Use | Type        | Action |
-|--------------|-----|-------------|--------|
-| Name<sup>1</sup> | C  | String | Assigning a name allows re-using/ writing to the same mock. | 
-| Use          | O  | String/ Int<sup>2</sup> | Sets the request's expiration usage |
-| ReadOnly     | O  | Boolean | True: "Use" wil be set to "always" (unless `use=disabled`) |
+| Param            | Type        | Default | Action |
+|------------------|-------------|--------|--------|
+| Name<sup>1</sup> | String | Empty string |Assigning a name allows re-using/ writing to the same mock. | 
+| Use          | String/ Int<sup>2</sup> | `always`| Sets the request's expiration usage |
+| ReadOnly     | Boolean | - |True: "Use" wil be set to "always" (unless `use=disabled`) |
+| Await | Boolean | - | Mock will not include any response data, but will instead be populated on first use (through a live call) |
 
 1: Not assigning a name will create a new mock each time, regardless if the data is the same.
 
@@ -76,19 +82,19 @@ The following items are direct filters for calls to be matched against
 | Params | String | Parameters in the url<br> Example: `Key1=Value1&Key2=Value2` |
 
 ##### == HTTP data ==
-| Param        | Type        | Action |
-|--------------|-------------|--------|
-| Method       | String | The type of call to listen for.<br>Default: `GET`<br> Example: GET, POST, DELETE, etc. |
-| HeaderIn_{Key}<sup>1</sup> | Any | Attractor headers |
+| Param        | Type        | Default | Action |
+|--------------|-------------|---------|--------|
+| Method       | String | `GET` | The type of call to listen for.<br> Example: GET, POST, DELETE, etc. |
+| HeaderIn_{Key}<sup>1</sup> | Any | `Content-Type : text/plain` | Attractor headers |
 
 1: Replace {Key} to be the expected header to look for.
 
 #### HTTP Response
 ##### == Status items ==
-| Param                       | Type   | Action |
-|-----------------------------|--------|--------|
-| ResponseCode                | Int    | Code to return as the HTTP Response status <br>Default:`200` |
-| HeaderOut_{Key}<sup>1</sup> | String | Response headers |
+| Param                       | Type   | Default | Action |
+|-----------------------------|--------|---------|--------|
+| ResponseCode                | Int    | `200` | Code to return as the HTTP Response status |
+| HeaderOut_{Key}<sup>1</sup> | String | `Content-Type : text/plain` |Response headers |
 
 1: Replace {Key} with the returning header key.
 

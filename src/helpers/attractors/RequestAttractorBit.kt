@@ -5,12 +5,18 @@ import helpers.isFalse
 /**
  * A request attractor which could be optional
  */
-class RequestAttractorBit(builder: (RequestAttractorBit) -> Unit = {}) {
+class RequestAttractorBit {
     var optional: Boolean? = false
     var value: String = ""
 
-    init {
+    val regex by lazy { value.toRegex() }
+
+    constructor(builder: (RequestAttractorBit) -> Unit = {}) {
         builder.invoke(this)
+    }
+
+    constructor(input: String) {
+        value = input.removePrefix("/")
     }
 
     val required: Boolean

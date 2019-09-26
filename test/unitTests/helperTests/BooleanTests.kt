@@ -23,7 +23,7 @@ class BooleanTests {
     @Test
     fun nullableIsFalse() {
         val testFalse: Boolean? = true
-        Assert.assertTrue(testFalse.isFalse())
+        Assert.assertFalse(testFalse.isFalse())
     }
 
     @Test
@@ -43,7 +43,7 @@ class BooleanTests {
     fun anyTrueTest_None() {
         val testValues = booleanArrayOf(false, false)
         val result = anyTrue(*testValues)
-        Assert.assertTrue(result)
+        Assert.assertFalse(result)
     }
 
     @Test
@@ -57,6 +57,6 @@ class BooleanTests {
     fun allTrueTest_None() {
         val testValues = booleanArrayOf(false, false)
         val result = allTrue(*testValues)
-        Assert.assertTrue(result)
+        Assert.assertFalse(result)
     }
 }

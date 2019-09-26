@@ -4,6 +4,7 @@ import helpers.isJSONValid
 import helpers.toJson
 import helpers.tryGetBody
 import io.ktor.http.HttpStatusCode
+import okhttp3.Headers
 import okhttp3.Protocol
 import java.nio.charset.Charset
 
@@ -17,6 +18,10 @@ class ResponseTapedata : Tapedata {
 
     constructor(builder: (ResponseTapedata) -> Unit = {}) {
         builder.invoke(this)
+        // todo; fact check to make sure the header is a multiple of 2
+
+        if (!hasHeaders)
+            headers = Headers.of("Content-Type", "text/plain")
     }
 
     var code: Int? = null

@@ -9,7 +9,7 @@ import mimikMockHelpers.RequestTapedata
 
 class RequestAttractors {
     // "url/sub/path"
-    var routingPath: String? = null
+    var routingPath: RequestAttractorBit? = null
 
     var queryParamMatchers: List<RequestAttractorBit>? = null
     // regex match of body items
@@ -21,11 +21,11 @@ class RequestAttractors {
 
     constructor(request: RequestTapedata) {
         request.url?.also { url ->
-            routingPath = url.encodedPath()
+            routingPath = RequestAttractorBit(url.encodedPath())
 
             queryParamMatchers = url.queryParameterNames().flatMap { key ->
                 url.queryParameterValues(key).map { value ->
-                    RequestAttractorBit { it.value = "$key=$value" }
+                    RequestAttractorBit("$key=$value")
                 }
             }
         }
@@ -123,7 +123,7 @@ class RequestAttractors {
     val hasData: Boolean
         get() {
             return anyTrue(
-                routingPath?.isBlank().isFalse(),
+                routingPath?.value.isNullOrBlank().isFalse(),
                 queryParamMatchers?.isNotEmpty().isTrue(),
                 queryBodyMatchers?.isNotEmpty().isTrue()
             )
@@ -150,10 +150,10 @@ class RequestAttractors {
     }
 
     fun matchesPath(path: String?): AttractorMatches {
-        return routingPath?.run {
+        return routingPath?.regex?.let { regex ->
             AttractorMatches(
                 1,
-                if (path == this) 1 else 0,
+                if (regex.containsMatchIn(path ?: "")) 1 else 0,
                 0
             )
         } ?: AttractorMatches()
@@ -167,21 +167,19 @@ class RequestAttractors {
         source: String?
     ): AttractorMatches {
         return matchScanner?.let { matchers ->
-            if (matchers.isEmpty() && source != null)
-                return AttractorMatches(1, 0, 0)
+            //if (matchers.isEmpty() && source != null)
+            //    return AttractorMatches(1, 0, 0)
             val reqCount = matchers.count { it.required }
             if (source.isNullOrBlank())
                 return AttractorMatches(reqCount, 0, 0)
 
             val required = matchers.asSequence()
                 .filter { it.required }
-                .map { it.value.toRegex() }
-                .count { it.containsMatchIn(source) }
+                .count { it.regex.containsMatchIn(source) }
 
             val optional = matchers.asSequence()
                 .filter { it.optional.isTrue() }
-                .map { it.value.toRegex() }
-                .count { it.containsMatchIn(source) }
+                .count { it.regex.containsMatchIn(source) }
 
             AttractorMatches(reqCount, required, optional)
         } ?: AttractorMatches().also {

@@ -80,8 +80,6 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         when (query.status) {
             HttpStatusCode.Created -> { // set ONLY if this is a new tape
-                if (!tape.usingCustomName)
-                    attractors.routingPath?.also { tape.updateNameByURL(it) }
                 if (attractors.hasData)
                     tape.attractors = attractors
             }
@@ -110,21 +108,26 @@ class MimikMock(path: String) : RoutingContract(path) {
         if (!chapter.hasRequestData)
             chapter.requestData = RequestTapedata()
 
+        val hasAwait = mockParams.containsKey("await")
+        val awaitResponse = mockParams["await"].isTrue()
+
         val requestMock = RequestTapedata() { builder ->
             builder.method = mockParams["method"]
 
-            val urlPath = (mockParams["route_path"] // try using the input data
-                ?: attractors.routingPath ?: "") // or the tape data, or just nothing
-                .removePrefix("/")
+            val urlPath = mockParams["route_path"] // try using the input data
+                ?: attractors.routingPath?.value // or the tape data
 
-            if (attractors.routingPath == null && urlPath.isNotBlank())
-                attractors.routingPath = urlPath.ensurePrefix("/")
-            builder.url = tape.httpRoutingUrl?.run {
-                newBuilder()
-                    .addPathSegments(urlPath)
-                    .query(mockParams["route_params"])
-                    .build()
-            }
+            if (urlPath != null && attractors.routingPath?.value == null)
+                attractors.routingPath = RequestAttractorBit(urlPath)
+
+            if (tape.isUrlValid)
+                builder.url = tape.httpRoutingUrl?.run {
+                    newBuilder().apply {
+                        if (urlPath != null)
+                            addPathSegments(urlPath.removePrefix("/"))
+                        query(mockParams["route_params"])
+                    }.build()
+                }
 
             builder.headers = mockParams
                 .filter { it.key.startsWith("headerin_") }
@@ -138,40 +141,40 @@ class MimikMock(path: String) : RoutingContract(path) {
             null
         }
 
-        chapter.also {
-            it.attractors = attractors
-            it.requestData = requestMock
+        chapter.also { updateChapter ->
+            updateChapter.attractors = attractors
+            updateChapter.requestData = requestMock
 
             // In case we want to update an existing chapter's name
-            it.chapterName = interactionName ?: it.chapterName
+            updateChapter.chapterName = interactionName ?: updateChapter.chapterName
 
-            it.responseData = ResponseTapedata { rData ->
-                rData.code = mockParams["response_code"]?.toIntOrNull()
+            if (!(hasAwait && awaitResponse)) {
+                updateChapter.responseData = ResponseTapedata { rData ->
+                    rData.code = mockParams["response_code"]?.toIntOrNull()
 
-                rData.headers = mockParams
-                    .filter { it.key.startsWith("headerout_") }
-                    .mapKeys { it.key.removePrefix("headerout_") }
-                    .toHeaders()
+                    rData.headers = mockParams
+                        .filter { it.key.startsWith("headerout_") }
+                        .mapKeys { it.key.removePrefix("headerout_") }
+                        .toHeaders()
 
-                // todo 1; Beautify the input if it's a valid json?
-                // todo 2; skip body if the method doesn't allow bodies
-                rData.body = bodyText
+                    // todo 1; Beautify the input if it's a valid json?
+                    // todo 2; skip body if the method doesn't allow bodies
+                    rData.body = bodyText
+                }
             }
 
-            it.updateReplayData()
-
-            val usesRequest = mockParams["use"]
-            it.mockUses = if (mockParams["readonly"].isTrue()) {
-                when (usesRequest?.toLowerCase()) {
+            val useRequest = mockParams["use"]
+            updateChapter.mockUses = if (mockParams["readonly"].isTrue()) {
+                when (useRequest?.toLowerCase()) {
                     "disable" -> InteractionUseStates.DISABLE
                     else -> InteractionUseStates.ALWAYS
                 }.state
             } else {
-                usesRequest?.toIntOrNull()
-                    ?: when (usesRequest?.toLowerCase()) {
+                useRequest?.toIntOrNull()
+                    ?: when (useRequest?.toLowerCase()) {
                         "disable" -> InteractionUseStates.DISABLE
                         "always" -> InteractionUseStates.ALWAYS
-                        else -> InteractionUseStates.asState(it.mockUses)
+                        else -> InteractionUseStates.asState(updateChapter.mockUses)
                     }.state
             }
         }
@@ -208,7 +211,7 @@ class MimikMock(path: String) : RoutingContract(path) {
                 { it.key.toLowerCase().removePrefix(filterKey) },
                 { it.value })
 
-        val urlPath = filters["path"]?.firstOrNull()?.ensurePrefix("/")
+        val urlPath = filters["path"]?.firstOrNull()//?.ensurePrefix("/")
 
         val paramAttractors = filters.filterAttractorKeys("param") {
             it.split("&")
@@ -216,10 +219,15 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         val bodyAttractors = filters.filterAttractorKeys("body")
 
-        return RequestAttractors {
-            it.routingPath = urlPath
-            it.queryParamMatchers = paramAttractors
-            it.queryBodyMatchers = bodyAttractors
+        return RequestAttractors { attr ->
+            urlPath?.also { path ->
+                attr.routingPath = RequestAttractorBit(path)
+            }
+
+            if (paramAttractors.isNotEmpty())
+                attr.queryParamMatchers = paramAttractors
+            if (bodyAttractors.isNotEmpty())
+                attr.queryBodyMatchers = bodyAttractors
         }
     }
 

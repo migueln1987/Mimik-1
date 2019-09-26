@@ -7,12 +7,15 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
-import helpers.anyTrue
 import helpers.attractors.RequestAttractors
+import helpers.content
 import helpers.reHost
+import helpers.toOkRequest
+import helpers.toReplayResponse
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.InteractionUseStates
 import mimikMockHelpers.QueryResponse
+import mimikMockHelpers.ResponseTapedata
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType
@@ -118,7 +121,7 @@ class BlankTape private constructor(
     var usingCustomName = false
 
     private enum class searchPreferences {
-        ALL, MockOnly, LiveOnly
+        ALL, MockOnly, LiveOnly, AwaitOnly
     }
 
     fun updateNameByURL(url: String) {
@@ -148,17 +151,20 @@ class BlankTape private constructor(
 
     override fun size() = chapters.size
 
-    private fun testingResponse(request: okhttp3.Request): okhttp3.Response {
-        val status = HttpStatusCode.OK
+    private fun miniResponse(
+        request: okhttp3.Request,
+        status: HttpStatusCode = HttpStatusCode.OK
+    ): okhttp3.Response {
         return okhttp3.Response.Builder().also {
             it.request(request)
             it.protocol(Protocol.HTTP_1_1)
             it.code(status.value)
+            it.header("Content-Type", "text/plain")
             if (HttpMethod.requiresRequestBody(request.method()))
                 it.body(
                     ResponseBody.create(
                         MediaType.parse("text/plain"),
-                        ""
+                        if (isTestRunning) request.body().content else ""
                     )
                 )
             it.message(status.description)
@@ -169,12 +175,6 @@ class BlankTape private constructor(
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
     fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
-        fun getData(request: okhttp3.Request): okhttp3.Response? {
-            return if (isTestRunning) {
-                testingResponse(request)
-            } else
-                OkHttpClient().newCall(request).execute()
-        }
         return object : Interceptor.Chain {
             override fun request(): okhttp3.Request {
                 val tapeURL = httpRoutingUrl ?: return request
@@ -197,12 +197,35 @@ class BlankTape private constructor(
         }
     }
 
-    override fun seek(request: okreplay.Request): Boolean {
-        return findBestMatch(request).status == HttpStatusCode.Found
+    fun getData(request: okhttp3.Request): okhttp3.Response {
+        return if (isTestRunning)
+            miniResponse(request)
+        else
+            try {
+                OkHttpClient().newCall(request).execute()
+            } catch (e: Exception) {
+                miniResponse(request, HttpStatusCode.ServiceUnavailable)
+            }
     }
 
+    override fun seek(request: okreplay.Request) =
+        findBestMatch(request).status == HttpStatusCode.Found
+
     override fun play(request: okreplay.Request): Response {
-        val limitedMock = findBestMatch(request, searchPreferences.MockOnly)
+        val okRequest = request.toOkRequest
+
+        val awaitMock = findBestMatch(okRequest, searchPreferences.AwaitOnly)
+        if (awaitMock.status == HttpStatusCode.Found) {
+            awaitMock.item?.also {
+                val responseData = getData(okRequest)
+                it.response = toReplayResponse(responseData)
+                if (it.mockUses > 0)
+                    it.mockUses--
+                return it.response
+            }
+        }
+
+        val limitedMock = findBestMatch(okRequest, searchPreferences.MockOnly)
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
                 it.mockUses--
@@ -210,7 +233,7 @@ class BlankTape private constructor(
             }
         }
 
-        val liveMock = findBestMatch(request, searchPreferences.LiveOnly)
+        val liveMock = findBestMatch(okRequest, searchPreferences.LiveOnly)
         if (liveMock.status == HttpStatusCode.Found) {
             liveMock.item?.also {
                 return it.response
@@ -221,21 +244,31 @@ class BlankTape private constructor(
     }
 
     private fun findBestMatch(
-        request: okreplay.Request,
+        request: okhttp3.Request,
         preference: searchPreferences = searchPreferences.ALL
     ): QueryResponse<RecordedInteractions> {
-        val filteredChapters = chapters
+        val filteredChapters = chapters.asSequence()
             .filter {
                 when (it.mockUses) {
-                    InteractionUseStates.ALWAYS.state -> anyTrue(
-                        preference == searchPreferences.ALL,
-                        preference == searchPreferences.LiveOnly
-                    )
-                    in (1..Int.MAX_VALUE) -> anyTrue(
-                        preference == searchPreferences.ALL,
-                        preference == searchPreferences.MockOnly
-                    )
-                    else -> false
+                    InteractionUseStates.DISABLE.state,
+                    InteractionUseStates.DISABLEDMOCK.state ->
+                        false
+                    else -> true
+                }
+            }
+            .filter {
+                when (preference) {
+                    searchPreferences.ALL ->
+                        true
+
+                    searchPreferences.AwaitOnly ->
+                        it.awaitResponse
+
+                    searchPreferences.LiveOnly ->
+                        it.mockUses == InteractionUseStates.ALWAYS.state
+
+                    searchPreferences.MockOnly ->
+                        it.mockUses in (1..Int.MAX_VALUE)
                 }
             }
             .associateBy({ it }, { it.attractors })
@@ -244,9 +277,14 @@ class BlankTape private constructor(
             filteredChapters,
             request.url().encodedPath(),
             request.url().query(),
-            if (request.hasBody()) request.bodyAsText() else null
+            request.body().content
         )
     }
+
+    private fun findBestMatch(
+        request: okreplay.Request,
+        preference: searchPreferences = searchPreferences.ALL
+    ) = findBestMatch(request.toOkRequest, preference)
 
     override fun record(request: Request, response: Response) {
         chapters.add(RecordedInteractions(request, response))

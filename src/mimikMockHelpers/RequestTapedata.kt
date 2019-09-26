@@ -2,6 +2,7 @@ package mimikMockHelpers
 
 import helpers.toJson
 import helpers.tryGetBody
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import java.nio.charset.Charset
 
@@ -16,6 +17,10 @@ class RequestTapedata : Tapedata {
 
     constructor(builder: (RequestTapedata) -> Unit = {}) {
         builder.invoke(this)
+        // todo; fact check to make sure the header is a multiple of 2
+
+        if (!hasHeaders)
+            headers = Headers.of("Content-Type", "text/plain")
     }
 
     fun clone(postClone: (RequestTapedata) -> Unit) = RequestTapedata {

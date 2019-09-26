@@ -2,6 +2,7 @@ package unitTests
 
 import TapeCatalog
 import helpers.attractors.AttractorMatches
+import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import io.ktor.application.ApplicationCall
 import io.ktor.http.Headers
@@ -43,7 +44,7 @@ class TapeCatalogTests {
             every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
-                it.routingPath = "/path"
+                it.routingPath = RequestAttractorBit("/path")
             }
         }
 
@@ -67,7 +68,7 @@ class TapeCatalogTests {
             every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
-                it.routingPath = "/other"
+                it.routingPath = RequestAttractorBit("/other")
             }
         }
 

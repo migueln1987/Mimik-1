@@ -1,5 +1,6 @@
 package com.fiserv.mimik.tapeTests
 
+import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import io.mockk.every
 import io.mockk.mockk
@@ -36,7 +37,7 @@ class ReplayTapeTests {
         val chapter = RecordedInteractions {
             it.mockUses = 1
             it.attractors = RequestAttractors { attr ->
-                attr.routingPath = "/path"
+                attr.routingPath = RequestAttractorBit("/path")
             }
         }
         testObject.chapters.add(chapter)
@@ -59,7 +60,7 @@ class ReplayTapeTests {
         val chapterMock = RecordedInteractions {
             it.mockUses = mockUseCount
             it.attractors = RequestAttractors { attr ->
-                attr.routingPath = "/path"
+                attr.routingPath = RequestAttractorBit("/path")
             }
             it.response = mockResponseForMock
         }
@@ -88,7 +89,7 @@ class ReplayTapeTests {
         val chapterMock = RecordedInteractions {
             it.mockUses = mockUseCount.state
             it.attractors = RequestAttractors { attr ->
-                attr.routingPath = "/path"
+                attr.routingPath = RequestAttractorBit("/path")
             }
             it.response = mockResponseForMock
         }
@@ -100,7 +101,7 @@ class ReplayTapeTests {
         val chapterLive = RecordedInteractions {
             it.mockUses = InteractionUseStates.ALWAYS.state
             it.attractors = RequestAttractors { attr ->
-                attr.routingPath = "/path"
+                attr.routingPath = RequestAttractorBit("/path")
             }
             it.response = mockResponseForLive
         }

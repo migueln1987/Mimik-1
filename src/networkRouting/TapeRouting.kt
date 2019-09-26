@@ -187,7 +187,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
             tape.allowLiveRecordings = get("SaveRecordings")?.trim().isTrue(true)
 
             tape.attractors = RequestAttractors { attr ->
-                attr.routingPath = get("RoutingPath")?.trim()
+                get("RoutingPath")?.trim()?.also { path ->
+                    attr.routingPath?.value = path
+                }
 
                 if (keys.any { it.startsWith(queryParamKey) }) {
                     val keys = asSequence()
@@ -348,7 +350,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 p { +"Routing URL: [ Invalid ]" }
                             }
 
-                            if (!t.attractors?.routingPath.isNullOrBlank()) {
+                            if (!t.attractors?.routingPath?.value.isNullOrBlank()) {
                                 p { +"Routing Path: ${t.attractors?.routingPath}" }
                             }
 

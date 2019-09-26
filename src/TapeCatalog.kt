@@ -20,7 +20,9 @@ class TapeCatalog : OkReplayInterceptor() {
     val tapes: MutableList<BlankTape> = mutableListOf()
 
     companion object {
-        val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
+        val Instance by lazy {
+            TapeCatalog().also { it.loadTapeData() }
+        }
     }
 
     init {
@@ -46,9 +48,6 @@ class TapeCatalog : OkReplayInterceptor() {
                             tape.mode = TapeMode.READ_WRITE
                             tape.chapters = tape.chapters ?: mutableListOf()
                             tape.tapeName = tape.tapeName ?: tape.hashCode().toString()
-                            tape.chapters.forEach { chapter ->
-                                chapter.updateReplayData()
-                            }
                         }
                 } catch (e: Exception) {
                     println(e.toString())
@@ -69,9 +68,9 @@ class TapeCatalog : OkReplayInterceptor() {
     fun findResponseByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         if (tapes.isEmpty()) return QueryResponse()
 
-        val path = request.url().encodedPath()
+        val path = request.url().encodedPath().removePrefix("/")
         val params = request.url().query()
-        val body = request.body()?.content ?: ""
+        val body = request.body()?.content
 
         val validChapters = tapes.asSequence()
             .flatMap { it.chapters.asSequence() }
@@ -104,7 +103,7 @@ class TapeCatalog : OkReplayInterceptor() {
      * - HttpStatusCode.Conflict (409) = null item
      */
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
-        val path = request.url().encodedPath()
+        val path = request.url().encodedPath().removePrefix("/")
         val params = request.url().query()
 
         val validTapes = tapes
