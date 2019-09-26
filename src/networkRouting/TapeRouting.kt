@@ -42,6 +42,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
         CREATE("create");
     }
 
+    val RoutePaths.asSubPath
+        get() = this@TapeRouting.path + "/" + this.path
+
     override fun init(route: Routing) {
         route.route(path) {
             all
@@ -49,7 +52,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             edit
             delete
             create
-            get { call.respondRedirect(RoutePaths.ALL.path) }
+            get { call.respondRedirect(RoutePaths.ALL.asSubPath) }
         }
     }
 

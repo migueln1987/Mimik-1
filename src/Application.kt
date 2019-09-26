@@ -5,11 +5,14 @@ package com.fiserv.mimik
 import networkRouting.MimikMock
 import networkRouting.TapeRouting
 import io.ktor.application.Application
+import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
+import io.ktor.response.respondRedirect
+import io.ktor.routing.get
 import io.ktor.routing.routing
 import networkRouting.CallProcessor
 import org.slf4j.event.Level
@@ -37,8 +40,11 @@ fun Application.module(testing: Boolean = false) {
             CallProcessor("{...}"),
             MimikMock("mock"),
             TapeRouting("tapes")
-
         ).forEach { it.init(this) }
+
+        get {
+            call.respondRedirect("tapes")
+        }
 
         trace {
             @Suppress("UNUSED_VARIABLE")
