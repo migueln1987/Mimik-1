@@ -174,25 +174,56 @@ fun ResponseBody?.clone(): ResponseBody? {
     }
 }
 
-fun toReplayResponse(response: okhttp3.Response): okreplay.Response {
-    val input = response.newBuilder().build()
-    val bodyData = input.body()?.bytes()
-    return object : okreplay.Response {
-        override fun code() = input.code()
-        override fun protocol() = input.protocol()
+val okhttp3.Request.toReplayRequest: okreplay.Request
+    get() {
+        val newRequest = newBuilder().build()
+        val contentCharset = newRequest.body()?.contentType()?.charset()
+            ?: Charset.forName("UTF-8")
+        val bodyData = newRequest.body()?.content
 
-        override fun getEncoding() = charset.name()
-        override fun getCharset() = Charset.forName("UTF-8")
+        return object : okreplay.Request {
+            override fun method() = newRequest.method()
+            override fun url() = newRequest.url()
 
-        override fun headers() = input.headers()
-        override fun header(name: String) = headers().get(name)
-        override fun getContentType() = headers().get("Content-Type")
+            override fun headers() = newRequest.headers()
+            override fun header(name: String) = headers().get(name)
+            override fun getContentType() = headers().get("Content-Type")
 
-        override fun hasBody() = bodyData != null
-        override fun body() = bodyData ?: byteArrayOf()
-        override fun bodyAsText() = bodyData?.toString(charset) ?: "missing Data"
+            override fun getCharset() = contentCharset
+            override fun getEncoding() = charset.name()
 
-        override fun newBuilder() = TODO()
-        override fun toYaml() = TODO()
+            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
+            override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
+            override fun bodyAsText() = bodyData ?: ""
+
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
+        }
     }
-}
+
+val okhttp3.Response.toReplayResponse: okreplay.Response
+    get() {
+        val newResponse = newBuilder().build()
+        val contentCharset = newResponse.body()?.contentType()?.charset()
+            ?: Charset.forName("UTF-8")
+        val bodyData = newResponse.body()?.content
+
+        return object : okreplay.Response {
+            override fun code() = newResponse.code()
+            override fun protocol() = newResponse.protocol()
+
+            override fun headers() = newResponse.headers()
+            override fun header(name: String) = headers().get(name)
+            override fun getContentType() = headers().get("Content-Type")
+
+            override fun getCharset() = contentCharset
+            override fun getEncoding() = charset.name()
+
+            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
+            override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
+            override fun bodyAsText() = bodyData ?: ""
+
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
+        }
+    }

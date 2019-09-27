@@ -1,6 +1,9 @@
 package apiTests
 
+import com.beust.klaxon.internal.firstNotNullResult
+import helpers.containsPath
 import helpers.isJSONValid
+import helpers.isTrue
 import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -200,17 +203,20 @@ class MockTests {
                 addHeader("mockFilter_Body~", ".*")
             }
 
-            handleRequest(HttpMethod.Post, "/test") {
+            handleRequest(HttpMethod.Post, "/awaittape_test") {
                 request {
-                    setBody("testBody")
+                    setBody("awaittape")
                 }
             }
                 .apply {
                     response {
-                        val tape = TapeCatalog.Instance.tapes
-                            .firstOrNull { it.name == "awaitTape" }
-                        val interaction = tape?.chapters
-                            ?.firstOrNull { it.responseData.body == "testBody" }
+                        val interaction = TapeCatalog.Instance.tapes
+                            .firstNotNullResult { tape ->
+                                tape.chapters.firstNotNullResult {
+                                    if (it.hasResponseData && it.responseData.body == "awaittape")
+                                        it else null
+                                }
+                            }
 
                         Assert.assertNotNull(interaction)
                         requireNotNull(interaction)
@@ -222,5 +228,44 @@ class MockTests {
         }
 
         removeTapeByName("awaitTape")
+    }
+
+    @Test
+    fun newCallCreatedAwaitTape() {
+        var tapeName = ""
+
+        TestApp {
+            handleRequest(HttpMethod.Post, "/await_test") {
+                request {
+                    setBody("testBody")
+                }
+            }
+                .apply {
+                    response {
+                        Assert.assertEquals(HttpStatusCode.NotFound, it.status())
+
+                        val interaction = TapeCatalog.Instance.tapes
+                            .firstNotNullResult { tape ->
+                                tape.chapters.firstNotNullResult { chapter ->
+                                    if (chapter.hasRequestData &&
+                                        chapter.requestData.url?.containsPath("await_test").isTrue()
+                                    ) {
+                                        tapeName = tape.name
+                                        chapter
+                                    } else null
+                                }
+                            }
+
+                        Assert.assertNotNull(interaction)
+                        requireNotNull(interaction)
+
+                        Assert.assertTrue(interaction.awaitResponse)
+                        Assert.assertFalse(interaction.hasResponseData)
+                    }
+                }
+        }
+
+        if (tapeName.isNotEmpty())
+            removeTapeByName(tapeName)
     }
 }

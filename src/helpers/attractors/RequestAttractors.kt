@@ -21,13 +21,17 @@ class RequestAttractors {
 
     constructor(request: RequestTapedata) {
         request.url?.also { url ->
-            routingPath = RequestAttractorBit(url.encodedPath())
+            routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
+            if (routingPath?.value?.isEmpty().isTrue())
+                routingPath = null
 
             queryParamMatchers = url.queryParameterNames().flatMap { key ->
                 url.queryParameterValues(key).map { value ->
                     RequestAttractorBit("$key=$value")
                 }
             }
+            if (queryParamMatchers?.isEmpty().isTrue())
+                queryParamMatchers = null
         }
     }
 

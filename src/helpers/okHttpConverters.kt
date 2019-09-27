@@ -2,6 +2,7 @@ package helpers
 
 import io.ktor.util.StringValues
 import okhttp3.Headers
+import okhttp3.HttpUrl
 
 fun StringValues.toHeaders(): Headers {
     return Headers.Builder().also { build ->
@@ -22,3 +23,6 @@ fun Map<String, String>.toHeaders(): Headers {
 }
 
 fun Headers.contains(key: String, value: String) = values(key).contains(value)
+
+fun HttpUrl.containsPath(vararg path: String) =
+    pathSegments().containsAll(path.toList())

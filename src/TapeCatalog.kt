@@ -12,6 +12,7 @@ import okreplay.TapeMode
 import helpers.attractors.RequestAttractors
 import helpers.content
 import helpers.toOkRequest
+import helpers.toReplayRequest
 import mimikMockHelpers.InteractionUseStates
 
 class TapeCatalog : OkReplayInterceptor() {
@@ -151,7 +152,17 @@ class TapeCatalog : OkReplayInterceptor() {
                     }
             }
 
-            else -> call.makeCatchResponse(hostTape.status) { hostTape.responseMsg ?: "" }
+            else -> {
+                BlankTape.Builder().build().also { tape ->
+                    tape.createNewInteraction { mock ->
+                        mock.request = callRequest.toReplayRequest
+                        mock.attractors = RequestAttractors(mock.requestData)
+                    }
+                    tape.saveFile()
+                    tapes.add(tape)
+                }
+                call.makeCatchResponse(hostTape.status) { hostTape.responseMsg ?: "" }
+            }
         }
     }
 
