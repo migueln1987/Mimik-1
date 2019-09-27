@@ -150,6 +150,11 @@ class BlankTape private constructor(
 
     override fun size() = chapters.size
 
+    /**
+     * Returns a Response from the given request.
+     *
+     * Note: if [isTestRunning] is true, the response body will contain the request body
+     */
     private fun miniResponse(
         request: okhttp3.Request,
         status: HttpStatusCode = HttpStatusCode.OK
@@ -217,10 +222,14 @@ class BlankTape private constructor(
         if (awaitMock.status == HttpStatusCode.Found) {
             awaitMock.item?.also {
                 val responseData = getData(okRequest)
-                it.response = toReplayResponse(responseData)
-                if (it.mockUses > 0)
-                    it.mockUses--
-                return it.response
+                return if (responseData.isSuccessful) {
+                    it.response = responseData.toReplayResponse
+                    if (it.mockUses > 0)
+                        it.mockUses--
+                    it.response
+                } else {
+                    miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
+                }
             }
         }
 

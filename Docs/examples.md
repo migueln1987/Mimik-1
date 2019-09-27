@@ -31,5 +31,9 @@ curl --request PUT \
   curl --request POST \
   --url http://0.0.0.0:4321/mail
 ```
+#### Prefaced with creating the companion mock
 >Response: `200 (OK)`<br>
 >Body: `{\n    "Data": false\n}`
+#### Independently called
+>Response: `404 (Not Found)`<br>
+>Also: New tape is created with request
