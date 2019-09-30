@@ -14,36 +14,48 @@ import io.ktor.features.ContentNegotiation
 import io.ktor.response.respondRedirect
 import io.ktor.routing.get
 import io.ktor.routing.routing
+import io.ktor.server.engine.applicationEngineEnvironment
+import io.ktor.server.engine.connector
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
 import networkRouting.CallProcessor
+import networkRouting.port
 import org.slf4j.event.Level
 import tapeItems.BlankTape
 
-fun main(args: Array<String> = arrayOf()) = io.ktor.server.netty.EngineMain.main(args)
+object Ports {
+    const val config = 4321
+    const val live = 2202
+}
 
-@Suppress("unused", "UNUSED_PARAMETER") // Referenced in application.conf
+fun main(args: Array<String> = arrayOf()) {
+    val env = applicationEngineEnvironment {
+        module { module() }
+        connector { port = Ports.config }
+        connector { port = Ports.live }
+    }
+    embeddedServer(Netty, env).start(true)
+}
+
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
     installFeatures()
 
     BlankTape.isTestRunning = testing
-    // load the tape data
-    TapeCatalog.Instance
+    TapeCatalog.Instance // +loads the tape data
 
 //    val client =
-    HttpClient(OkHttp) {
-        engine {
-        }
-    }
+    HttpClient(OkHttp) { engine {} }
 
     routing {
-        arrayOf(
-            CallProcessor("{...}"),
-            MimikMock("mock"),
-            TapeRouting("tapes")
-        ).forEach { it.init(this) }
+        port(Ports.live) {
+            CallProcessor("{...}").init(this@routing)
+        }
 
-        get {
-            call.respondRedirect("tapes")
+        port(Ports.config) {
+            MimikMock("mock").init(this@routing)
+            TapeRouting("tapes").init(this@routing)
+            get { call.respondRedirect("tapes") }
         }
 
         trace {

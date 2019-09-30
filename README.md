@@ -14,13 +14,13 @@ The purpose of this server is to return pre-recorded responses (tapes) or mock r
 ### iOS
   1. Change `domainProtocol` and `domainName` variables in corresponding
     .xcconfig file (e.g. **DemoConfig**, **DevConfig** or **QAConfig**) to be
-    `http` and `localhost:4321` accordingly (if mime is run locally on default
+    `http` and `localhost:2202` accordingly (if mimik is run locally on default
     port)
 
-  2. Add next Property List item to applications' [Info.plist](https://cardservices-git-dev.onefiserv.net/cardvalet/ios/blob/e-22044-cfc/CardValet/CardValet/Application/Info.plist)
+  2. Add next Property List item to applications' [Info.plist](https://cardservices-git-dev.onefiserv.net/cardvalet/ios/blob/develop/CardValet/CardValet/Application/Info.plist)
     right under first <dict> open tag (to open plist in xml presentation right
     click on the file in XCode -> Open As -> Source Code) to allow application
-    making http (not secured) calls to localhost:4321 domain:
+    making http (not secured) calls to localhost:2202 domain:
 
   ```xml
   <key>NSAppTransportSecurity</key>
@@ -29,7 +29,7 @@ The purpose of this server is to return pre-recorded responses (tapes) or mock r
       <true/>
       <key>NSExceptionDomains</key>
       <dict>
-          <key>localhost:4321</key>
+          <key>localhost:2202</key>
           <dict>
               <key>NSExceptionAllowsInsecureHTTPLoads</key>
               <true/>
@@ -44,7 +44,7 @@ The purpose of this server is to return pre-recorded responses (tapes) or mock r
   Switch your `Build Variants` to "mockDemo-x86" or a variant starting with "mock"
   
   **NOTE**<br>
-  Until the PR is approved, in `app/build.gradle`, the mock urls need to be updated to `... 10.0.2.2:4321 ...`
+  Until the PR is approved, in `app/build.gradle`, the mock urls need to be updated to `... 10.0.2.2:2202 ...`
   instead of the current `... 10.0.2.2:3000 ...`
 
 ## How to setup - Mimik server
@@ -56,10 +56,13 @@ The purpose of this server is to return pre-recorded responses (tapes) or mock r
 - [Via Mock API](Docs/mimikMockAPI.md)
 
 ### Tapes (location)
-Mimik accepts any json interactions under the `Tapes` directory.
-New tapes are saved to `Tapes/NewTapes`.<br>
+Mimik accepts any json interactions under the `Tapes` directory (and sub-directories).
 
 ## Using mock mimic recordings
-If the mimik server is able to find which tape to use (via tape/ chapter attractor values), 
+If the mimik server is able to find which tape to use (via tape/ mock attractor values), 
 then the server will automatically process the request and return a response.
+
+If no matching tape/ mock is found, a new tape will be created and the call is added to that tape.<br>
+>Note: The new interaction will be an `await` type. Adding a response manually or a routing url to 
+the host tape (and using the call again) will enable the interaction as fulfilled.
 

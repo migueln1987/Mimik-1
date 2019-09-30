@@ -120,9 +120,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private val Route.create
         get() = route(RoutePaths.CREATE.path) {
-            get {
-                call.respondHtml { getCreateTape() }
-            }
+            get { call.respondHtml { getCreateTape() } }
         }
 
     /**
