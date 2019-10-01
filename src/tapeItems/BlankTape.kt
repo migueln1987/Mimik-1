@@ -180,13 +180,8 @@ class BlankTape private constructor(
      */
     fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
         return object : Interceptor.Chain {
-            override fun request(): okhttp3.Request {
-                val tapeURL = httpRoutingUrl ?: return request
-                return request.reHost(tapeURL)
-                    .newBuilder()
-                    .header("HOST", tapeURL.host())
-                    .build()
-            }
+            override fun request(): okhttp3.Request = if (httpRoutingUrl == null)
+                request else request.reHost(httpRoutingUrl)
 
             override fun proceed(request: okhttp3.Request) = getData(request)
 
@@ -216,16 +211,19 @@ class BlankTape private constructor(
         findBestMatch(request).status == HttpStatusCode.Found
 
     override fun play(request: okreplay.Request): Response {
-        val okRequest = request.toOkRequest
+        val okRequest: okhttp3.Request = request.toOkRequest
 
         val awaitMock = findBestMatch(okRequest, searchPreferences.AwaitOnly)
         if (awaitMock.status == HttpStatusCode.Found) {
             awaitMock.item?.also {
+                System.out.println("Await Request: ${okRequest.url()}\n Body:\n${okRequest.body()}")
                 val responseData = getData(okRequest)
+                System.out.println("Await Response: ${responseData.code()} from ${okRequest.url()}")
                 return if (responseData.isSuccessful) {
                     it.response = responseData.toReplayResponse
                     if (it.mockUses > 0)
                         it.mockUses--
+                    saveFile()
                     it.response
                 } else {
                     miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
@@ -281,11 +279,16 @@ class BlankTape private constructor(
             }
             .associateBy({ it }, { it.attractors })
 
+        if (filteredChapters.isEmpty()) return QueryResponse {
+            status = HttpStatusCode.NotFound
+        }
+
         return RequestAttractors.findBest(
             filteredChapters,
             request.url().encodedPath(),
             request.url().query(),
-            request.body().content
+            if (HttpMethod.requiresRequestBody(request.method()))
+                request.body().content else null
         )
     }
 

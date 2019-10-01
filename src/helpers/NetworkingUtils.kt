@@ -102,18 +102,23 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
     }.build()
 }
 
-fun okhttp3.Request.reHost(outboundHost: HttpUrl): okhttp3.Request {
+fun okhttp3.Request.reHost(outboundHost: HttpUrl?): okhttp3.Request {
     return newBuilder().also { build ->
-        build.url(
-            "%s://%s%s%s".format(
-                outboundHost.scheme(),
-                outboundHost.host(),
-                url().encodedPath(),
-                if (url().querySize() > 0) {
-                    "?" + url().query()
-                } else ""
+        if (outboundHost != null) {
+            val newUrl = HttpUrl.parse(
+                "%s://%s%s%s".format(
+                    outboundHost.scheme(),
+                    outboundHost.host(),
+                    url().encodedPath(),
+                    if (url().querySize() > 0) "?" + url().query() else ""
+                )
             )
-        )
+
+            if (newUrl != null) {
+                build.url(newUrl)
+                build.header("HOST", newUrl.host())
+            }
+        }
     }.build()
 }
 

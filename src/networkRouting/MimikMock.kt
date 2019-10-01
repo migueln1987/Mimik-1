@@ -119,19 +119,19 @@ class MimikMock(path: String) : RoutingContract(path) {
             if (urlPath != null && attractors.routingPath?.value == null)
                 attractors.routingPath = RequestAttractorBit(urlPath)
 
-            if (tape.isUrlValid)
-                builder.url = tape.httpRoutingUrl?.run {
-                    newBuilder().apply {
-                        if (urlPath != null)
-                            addPathSegments(urlPath.removePrefix("/"))
-                        query(mockParams["route_params"])
-                    }.build()
-                }
+            builder.url = tape.httpRoutingUrl?.newBuilder()
+                ?.apply {
+                    if (urlPath != null)
+                        addPathSegments(urlPath.removePrefix("/"))
+                    query(mockParams["route_params"])
+                }?.build().toString()
 
-            builder.headers = mockParams
+            mockParams
                 .filter { it.key.startsWith("headerin_") }
                 .mapKeys { it.key.removePrefix("headerin_") }
-                .toHeaders()
+                .toHeaders().also {
+                    if (it.size() > 0) builder.headers = it
+                }
         }
 
         val bodyText = try {

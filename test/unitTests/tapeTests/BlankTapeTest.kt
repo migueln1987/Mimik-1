@@ -1,5 +1,6 @@
 package com.fiserv.mimik.tapeTests
 
+import apiTests.assertContains
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import mimikMockHelpers.RecordedInteractions
@@ -50,22 +51,22 @@ class BlankTapeTest {
             it.allowLiveRecordings = false
         }.build()
 
-        Assert.assertEquals(testObject.tapeName, name)
-        Assert.assertEquals(testObject.name, name)
+        Assert.assertEquals(name, testObject.tapeName)
+        Assert.assertEquals(name, testObject.name)
         Assert.assertTrue(testObject.usingCustomName)
 
         Assert.assertNotNull(testObject.attractors)
-        Assert.assertEquals(testObject.attractors?.routingPath, path)
+        assertContains(path, testObject.attractors?.routingPath?.value)
 
-        Assert.assertEquals(testObject.routingUrl, url)
+        Assert.assertEquals(url, testObject.routingUrl)
         Assert.assertTrue(testObject.isUrlValid)
 
         Assert.assertEquals(testObject.mode, TapeMode.READ_ONLY)
         Assert.assertTrue(testObject.isReadable)
         Assert.assertFalse(testObject.isWritable)
 
-        Assert.assertEquals(testObject.file?.nameWithoutExtension, name)
-        Assert.assertEquals(testObject.file?.extension, "json")
+        Assert.assertEquals(name, testObject.file?.nameWithoutExtension)
+        Assert.assertEquals("json", testObject.file?.extension)
     }
 
     @Test
@@ -75,7 +76,7 @@ class BlankTapeTest {
             it.tapeName = name
         }.build()
 
-        Assert.assertEquals(testObject.file?.nameWithoutExtension, "Name")
+        Assert.assertEquals("Name", testObject.file?.nameWithoutExtension)
     }
 
     @Test
@@ -137,8 +138,8 @@ class BlankTapeTest {
         val data = testObject.createNewInteraction {
             it.mockUses = 3
         }
-        Assert.assertEquals(testObject.size(), 1)
+        Assert.assertEquals(1, testObject.size())
 
-        Assert.assertEquals(testObject.chapters.first().mockUses, data.mockUses)
+        Assert.assertEquals(data.mockUses, testObject.chapters.first().mockUses)
     }
 }

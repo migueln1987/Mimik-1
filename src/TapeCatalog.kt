@@ -11,6 +11,7 @@ import okreplay.OkReplayInterceptor
 import okreplay.TapeMode
 import helpers.attractors.RequestAttractors
 import helpers.content
+import helpers.reHost
 import helpers.toOkRequest
 import helpers.toReplayRequest
 import mimikMockHelpers.InteractionUseStates
@@ -118,9 +119,10 @@ class TapeCatalog : OkReplayInterceptor() {
     }
 
     suspend fun processCall(call: ApplicationCall): okhttp3.Response {
-        val callRequest = call.toOkRequest()
+        var callRequest = call.toOkRequest()
 
         findResponseByQuery(callRequest).item?.also {
+            System.out.println("Using response tape ${it.name}")
             it.requestToChain(callRequest)?.also { chain ->
                 start(config, it)
                 return withContext(Dispatchers.IO) {
@@ -137,23 +139,32 @@ class TapeCatalog : OkReplayInterceptor() {
         return when (hostTape.status) {
             HttpStatusCode.Found -> {
                 hostTape.item?.let {
+                    System.out.println("Using tape ${it.name}")
+                    if (it.isUrlValid)
+                        callRequest = callRequest.reHost(it.httpRoutingUrl)
+
+                    it.createNewInteraction { mock ->
+                        mock.request = callRequest.toReplayRequest
+                        mock.attractors = RequestAttractors(mock.requestData)
+                    }
+                    it.saveFile()
+
                     it.requestToChain(callRequest)?.let { chain ->
                         start(config, it)
                         withContext(Dispatchers.IO) { intercept(chain) }
+                    } ?: call.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+                        R.getProperty("processCall_InvalidUrl")
                     }
-                        ?: call.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
-                            R.getProperty("processCall_InvalidUrl")
-                        }
+                } ?: let {
+                    call.makeCatchResponse(HttpStatusCode.Conflict) {
+                        R.getProperty("processCall_ConflictingTapes")
+                    }
                 }
-                    ?: let {
-                        call.makeCatchResponse(HttpStatusCode.Conflict) {
-                            R.getProperty("processCall_ConflictingTapes")
-                        }
-                    }
             }
 
             else -> {
                 BlankTape.Builder().build().also { tape ->
+                    System.out.println("Creating new tape/mock of ${tape.name}")
                     tape.createNewInteraction { mock ->
                         mock.request = callRequest.toReplayRequest
                         mock.attractors = RequestAttractors(mock.requestData)

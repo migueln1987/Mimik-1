@@ -21,7 +21,6 @@ curl --request PUT \
   --header 'mockRoute_Path: /mail' \
   --header 'Content-Type: application/json' \
   --header 'mockResponseCode: 200' \
-  --header 'mockFilter_Body~: .*' \
   --data '{\n    "Data": false\n}'
 ```
 > Postman returns: Status: `201 (Created)` or `302 (Found)`

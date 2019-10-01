@@ -23,6 +23,10 @@ class ResponseTapedata : Tapedata {
             headers = Headers.of("Content-Type", "text/plain")
     }
 
+    override fun toString(): String {
+        return "%s".format(code)
+    }
+
     var code: Int? = null
     var protocol: Protocol? = null
 

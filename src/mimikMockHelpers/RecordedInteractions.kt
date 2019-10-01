@@ -69,6 +69,12 @@ class RecordedInteractions {
             chapterName = UUID.randomUUID().toString()
     }
 
+    override fun toString(): String {
+        return "%s; Uses: %d".format(
+            chapterName, mockUses
+        )
+    }
+
     /**
      * @return
      * - (-1): there is no replay data

@@ -34,7 +34,7 @@ will apply the filter only to the mock.
 | Param<sup>1</sup> | Regex<sup>2</sup> | `null`| Parameter(s) in the url<br> Example: `Key1=Value1&Key2=Value2` |
 | Body<sup>1</sup> | Regex | `null`| Text to search for within the message body<br> Example: `countryCode.{0,8}US` |
 
-1: Appending a postfix of `~` will mark the filter as optional<br>
+1: Appending a postfix of `~` will mark the filter as optional. Otherwise, it is `required`.<br>
 2: Values in the form of `Key1=Value1&Key2=Value2` will be split into `Key1=Value1` and `Key2=Value2`
 
 ### Tape (prefix: "Tape_")

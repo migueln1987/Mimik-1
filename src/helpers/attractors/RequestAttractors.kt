@@ -1,11 +1,11 @@
 package helpers.attractors
 
 import helpers.anyTrue
-import helpers.isFalse
 import helpers.isTrue
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RequestTapedata
+import okhttp3.internal.http.HttpMethod
 
 class RequestAttractors {
     // "url/sub/path"
@@ -20,7 +20,7 @@ class RequestAttractors {
     }
 
     constructor(request: RequestTapedata) {
-        request.url?.also { url ->
+        request.httpUrl?.also { url ->
             routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
             if (routingPath?.value?.isEmpty().isTrue())
                 routingPath = null
@@ -33,6 +33,11 @@ class RequestAttractors {
             if (queryParamMatchers?.isEmpty().isTrue())
                 queryParamMatchers = null
         }
+
+        // If the call always has a body, but a matcher wasn't set
+        // then add a compliance matcher
+        if (HttpMethod.requiresRequestBody(request.method))
+            queryBodyMatchers = listOf(RequestAttractorBit(".*"))
     }
 
     companion object {
@@ -55,69 +60,41 @@ class RequestAttractors {
                 status = HttpStatusCode.NotFound
             }
 
-            val options = source.mapValues {
-                val response = AttractorMatches(0, 0, 0)
-                var matchPath = AttractorMatches()
-                var matchesParam = AttractorMatches()
-                var matchesBody = AttractorMatches()
-                val matchesCustom = custom.invoke(it.key)
-
-                it.value?.also { attr ->
-                    matchPath = attr.matchesPath(path)
-                    matchesParam = attr.getParamMatches(params)
-                    matchesBody = attr.getBodyMatches(body)
+            // Filter to early fail checks
+            val options = source.mapValues { it.value to AttractorMatches() }
+                .asSequence()
+                .filter {
+                    it.value.second.appendValues(custom.invoke(it.key))
+                    it.value.second.matchingRequired
                 }
+                .filter {
+                    it.value.second.appendValues(it.value.first?.matchesPath(path))
+                    it.value.second.matchingRequired
+                }
+                .filter {
+                    it.value.second.appendValues(it.value.first?.getParamMatches(params))
+                    it.value.second.matchingRequired
+                }
+                .filter {
+                    it.value.second.appendValues(it.value.first?.getBodyMatches(body))
+                    it.value.second.matchingRequired
+                }
+                .filter { it.value.second.satisfiesRequired }
+                .associate { it.key to it.value.second }
 
-                response.appendValues(matchPath)
-                    .appendValues(matchesParam)
-                    .appendValues(matchesBody)
-                    .appendValues(matchesCustom)
-            }.filter {
-                it.value.satisfiesRequirement
-            }
-
-            val response = QueryResponse<T>() {
+            val response = QueryResponse<T> {
                 status = HttpStatusCode.NotFound
             }
 
             if (options.isEmpty()) return response
 
-            val groupByReq = options.values
-                .groupBy({ it.MatchesReq }, { it })
-
-            // highestReq; group containing the highest "Required" matchers
-            val highestReq = groupByReq.keys.max() ?: -1
-            if (highestReq > -1) { // there is some by "Required"
-                when (groupByReq[highestReq]?.size ?: -1) { // matches in the group
-                    // 0 -> invalid, even 0 "Required" would return a count size
-                    1 -> { // we found a match!
-                        val bestKey = groupByReq[highestReq]?.first()
-                        response.item = options.filter { it.value == bestKey }.keys.first()
-                        response.status = HttpStatusCode.Found
-                    }
-
-                    in (2..Int.MAX_VALUE) -> { // many "Required" matches, filter them by "Optional"
-                        val reqOptionals = groupByReq[highestReq] ?: listOf()
-                        val groupByOpt = options.values
-                            .filter { reqOptionals.contains(it) }
-                            .groupBy({ it.MatchesOpt }, { it })
-
-                        // highestOpt; group containing the highest "Optional" matchers
-                        val highestOpt = groupByOpt.keys.max() ?: -1
-                        when (groupByOpt[highestOpt]?.size ?: -1) {
-                            1 -> { // we found a match!
-                                val bestKey = groupByOpt[highestOpt]?.first()
-                                response.item =
-                                    options.filter { it.value == bestKey }.keys.first()
-                                response.status = HttpStatusCode.Found
-                            }
-                            in (0..Int.MAX_VALUE) -> {
-                                // too many "Required" and "Optional", throw a Conflict error
-                                response.status = HttpStatusCode.Conflict
-                            }
-                        }
-                    }
-                }
+            val bestMatch = MatchFilter.findBestMatch(options)
+            if (bestMatch == null)
+                response.status = HttpStatusCode.Conflict
+            else {
+                response.item = options
+                    .filter { it.value.toString() == bestMatch.toString() }.keys.first()
+                response.status = HttpStatusCode.Found
             }
 
             return response
@@ -127,7 +104,7 @@ class RequestAttractors {
     val hasData: Boolean
         get() {
             return anyTrue(
-                routingPath?.value.isNullOrBlank().isFalse(),
+                routingPath?.hardValue?.isNotBlank().isTrue(),
                 queryParamMatchers?.isNotEmpty().isTrue(),
                 queryBodyMatchers?.isNotEmpty().isTrue()
             )
@@ -153,53 +130,65 @@ class RequestAttractors {
         }
     }
 
-    fun matchesPath(path: String?): AttractorMatches {
-        return routingPath?.regex?.let { regex ->
-            AttractorMatches(
-                1,
-                if (regex.containsMatchIn(path ?: "")) 1 else 0,
-                0
-            )
-        } ?: AttractorMatches()
-    }
-
     /**
      * Using the provided [matchScanner], the source list will be scanned for required and optional matches
+     *
+     * If there is no matchers, and there is data, assume the user doesn't want this to match
      */
     private fun getMatchCount(
         matchScanner: List<RequestAttractorBit>?,
         source: String?
     ): AttractorMatches {
-        return matchScanner?.let { matchers ->
-            // if (matchers.isEmpty() && source != null)
-            //    return AttractorMatches(1, 0, 0)
-            val reqCount = matchers.count { it.required }
-            if (source.isNullOrBlank())
-                return AttractorMatches(reqCount, 0, 0)
+        if (matchScanner == null || matchScanner.isEmpty())
+            return AttractorMatches().also {
+                if (!source.isNullOrEmpty()) it.Required = 1
+            }
 
-            val required = matchers.asSequence()
-                .filter { it.required }
-                .count { it.regex.containsMatchIn(source) }
+        // nothing can possibly match, so give up here
+        if (matchScanner.all { it.value.isEmpty() })
+            return AttractorMatches()
 
-            val optional = matchers.asSequence()
-                .filter { it.optional.isTrue() }
-                .count { it.regex.containsMatchIn(source) }
+        val reqCount = matchScanner.count { it.required }
+        if (source.isNullOrEmpty()) // hard fail if source is null/empty
+            return AttractorMatches(reqCount, -1, -1)
 
-            AttractorMatches(reqCount, required, optional)
-        } ?: AttractorMatches().also {
-            if (source != null)
-                it.Required = 1
+        val (required, reqRatio) = matchScanner.asSequence()
+            .filter { it.required }
+            .fold(0 to 0.0) { acc, x ->
+                val match = x.regex.find(source)
+                val matchVal = match?.groups?.get(0)?.value?.length ?: 0
+
+                (acc.first + (if (match.hasMatch) 1 else 0)) to
+                        (acc.second + (matchVal / source.length.toFloat()))
+            }
+
+        val (optional, optRatio) = matchScanner.asSequence()
+            .filter { it.optional.isTrue() }
+            .fold(0 to 0.0) { acc, x ->
+                val match = x.regex.find(source)
+                val matchVal = match?.groups?.get(0)?.value?.length ?: 0
+
+                (acc.first + (if (match.hasMatch) 1 else 0)) to
+                        (acc.second + (matchVal / source.length.toFloat()))
+            }
+
+        return AttractorMatches(reqCount, required, optional).also {
+            it.reqRatio = reqRatio
+            it.optRatio = optRatio
         }
     }
 
     /**
-     * Returns the (required, optional) matches
-     *
-     * No matchers will return (-1, -1)
-     *
-     * Null source will return (0, 0)
+     * Returns true if this [MatchResult] contains any matching groups
      */
-    fun getParamMatches(source: String?) = getMatchCount(queryParamMatchers, source)
+    private val MatchResult?.hasMatch: Boolean
+        get() = this?.groups?.isNotEmpty().isTrue()
+
+    fun matchesPath(source: String?) =
+        getMatchCount(routingPath?.let {
+            it.required = true
+            listOf(it)
+        }, source)
 
     /**
      * Returns the (required, optional) matches
@@ -208,5 +197,16 @@ class RequestAttractors {
      *
      * Null source will return (0, 0)
      */
-    fun getBodyMatches(source: String?) = getMatchCount(queryBodyMatchers, source)
+    fun getParamMatches(source: String?) =
+        getMatchCount(queryParamMatchers, source)
+
+    /**
+     * Returns the (required, optional) matches
+     *
+     * No matchers will return (-1, -1)
+     *
+     * Null source will return (0, 0)
+     */
+    fun getBodyMatches(source: String?) =
+        getMatchCount(queryBodyMatchers, source)
 }

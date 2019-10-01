@@ -1,5 +1,6 @@
 package apiTests
 
+import VCRConfig
 import com.beust.klaxon.internal.firstNotNullResult
 import helpers.containsPath
 import helpers.isJSONValid
@@ -9,19 +10,32 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
+import io.mockk.unmockkObject
+import org.junit.AfterClass
 import org.junit.Assert
+import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 
 class MockTests {
-    /**
-     * Cleanup tapes created during testing
-     */
-    private fun removeTapeByName(vararg name: String) {
-        TapeCatalog.Instance.tapes.filter { it.name in name.toList() }
-            .forEach {
-                it.file?.delete()
-                TapeCatalog.Instance.tapes.remove(it)
-            }
+    companion object {
+        @BeforeClass
+        @JvmStatic
+        fun setup() {
+            setupVCRConfig("test/apiTests")
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun tearDown() {
+            unmockkObject(VCRConfig)
+        }
+    }
+
+    @Before
+    fun clearTapes() {
+        TapeCatalog.Instance.tapes.forEach { it.file?.delete() }
+        TapeCatalog.Instance.tapes.clear()
     }
 
     @Test
@@ -48,8 +62,6 @@ class MockTests {
                 }
             }
         }
-
-        removeTapeByName("testCreateTape")
     }
 
     @Test
@@ -69,8 +81,6 @@ class MockTests {
                 }
             }
         }
-
-        removeTapeByName("testUseTape")
     }
 
     @Test
@@ -85,8 +95,6 @@ class MockTests {
                 }
             }
         }
-
-        removeTapeByName("testCreateTape_CreateMock")
     }
 
     @Test
@@ -106,8 +114,6 @@ class MockTests {
                 }
             }
         }
-
-        removeTapeByName("FindTape")
     }
 
     @Test
@@ -133,14 +139,11 @@ class MockTests {
                     }
                 }
         }
-
-        removeTapeByName("useMock")
     }
 
     @Test // This test filters each call (noParam, newParam, matchParam) into the respected tapes
     fun requiredFilterPriority() {
         val testingTapes = arrayOf("TestingTape1", "TestingTape2")
-        removeTapeByName(*testingTapes)
 
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {
@@ -148,7 +151,7 @@ class MockTests {
                 addHeader("mockTape_Only", "true")
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
-                addHeader("mockFilter_Param~", "Param")
+                addHeader("mockFilter_Param", "Param")
                 addHeader("mockFilter_Body~", ".*")
             }
 
@@ -179,16 +182,24 @@ class MockTests {
             val tape1 = tapes.firstOrNull { it.name == testingTapes[0] }
             Assert.assertNotNull(tape1)
             requireNotNull(tape1)
-            Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "noParam" })
-            Assert.assertTrue(tape1.chapters.any { it.request.bodyAsText() == "newParam" })
-
             val tape2 = tapes.firstOrNull { it.name == testingTapes[1] }
             Assert.assertNotNull(tape2)
             requireNotNull(tape2)
-            Assert.assertTrue(tape2.chapters.any { it.request.bodyAsText() == "matchParam" })
-        }
 
-        removeTapeByName(*testingTapes)
+            // check that tape 1 and tape 2 have the expected calls by filter
+            Assert.assertTrue(tape1.chapters.any { it.requestData.body == "newParam" })
+            Assert.assertTrue(tape2.chapters.any { it.requestData.body == "matchParam" })
+
+            // tape 1 and 2 should not have the non-filtering call
+            Assert.assertTrue(tape1.chapters.none { it.requestData.body == "noParam" })
+            Assert.assertTrue(tape2.chapters.none { it.requestData.body == "noParam" })
+
+            val hasNoParamCall = tapes.any { tape ->
+                tape.chapters.any { it.requestData.body == "noParam" }
+            }
+            // new call should have created it's own tape
+            Assert.assertTrue(hasNoParamCall)
+        }
     }
 
     @Test
@@ -226,8 +237,6 @@ class MockTests {
                     }
                 }
         }
-
-        removeTapeByName("awaitTape")
     }
 
     @Test
@@ -248,7 +257,7 @@ class MockTests {
                             .firstNotNullResult { tape ->
                                 tape.chapters.firstNotNullResult { chapter ->
                                     if (chapter.hasRequestData &&
-                                        chapter.requestData.url?.containsPath("await_test").isTrue()
+                                        chapter.requestData.httpUrl?.containsPath("await_test").isTrue()
                                     ) {
                                         tapeName = tape.name
                                         chapter
@@ -264,8 +273,5 @@ class MockTests {
                     }
                 }
         }
-
-        if (tapeName.isNotEmpty())
-            removeTapeByName(tapeName)
     }
 }

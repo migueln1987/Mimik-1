@@ -40,7 +40,7 @@ class TapeCatalogTests {
 
     @Test
     fun findResponseByQuery_Found() {
-        val mockChapter = mockk<RecordedInteractions>() {
+        val mockChapter = mockk<RecordedInteractions> {
             every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
@@ -64,7 +64,7 @@ class TapeCatalogTests {
 
     @Test
     fun findResponseByQuery_NotFound() {
-        val mockChapter = mockk<RecordedInteractions>() {
+        val mockChapter = mockk<RecordedInteractions> {
             every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
@@ -88,7 +88,7 @@ class TapeCatalogTests {
 
     @Test
     fun makeCatchResponseTest() {
-        val applicationCall = mockk<ApplicationCall>() {
+        val applicationCall = mockk<ApplicationCall> {
             every { request } returns mockk {
                 every { local.scheme } returns "http"
                 every { local.uri } returns "/none"

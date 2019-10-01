@@ -1,6 +1,13 @@
 package helpers
 
+/**
+ * Returns true only if [value] equals true
+ */
 fun Boolean?.isTrue() = this == true
+
+/**
+ * Returns true only if [value] equals false
+ */
 fun Boolean?.isFalse() = this == false
 
 /**
