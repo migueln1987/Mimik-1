@@ -274,4 +274,44 @@ class MockTests {
                 }
         }
     }
+
+    @Test
+    fun exceptTest() {
+        val avoidBody = "avoidBody"
+        val successBody = "successBody"
+
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockMethod", "POST")
+                addHeader("mockFilter_Path", "/path")
+                addHeader("mockFilter_Body", ".*")
+                addHeader("mockFilter_Body!", "avoid")
+                setBody(avoidBody)
+            }
+
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockMethod", "POST")
+                addHeader("mockFilter_Path", "/path")
+                setBody(successBody)
+            }
+
+            // this call should be filtered into the mock who does not allow a body containing "avoid"
+            handleRequest(HttpMethod.Post, "/path") {
+                setBody("avoidThis")
+            }.apply {
+                response {
+                    Assert.assertEquals(successBody, it.content)
+                }
+            }
+
+            handleRequest(HttpMethod.Post, "/path") {
+                setBody("anyBody")
+            }.apply {
+                response {
+                    // matches by path and "any body", but also doesn't contain "avoid"
+                    Assert.assertEquals(avoidBody, it.content)
+                }
+            }
+        }
+    }
 }

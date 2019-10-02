@@ -24,6 +24,7 @@ import mimikMockHelpers.InteractionUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
+import okhttp3.internal.http.HttpMethod
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
@@ -140,6 +141,13 @@ class MimikMock(path: String) : RoutingContract(path) {
             null
         }
 
+        // Method will have a body and filter isn't allowing bodies
+        if (HttpMethod.requiresRequestBody(requestMock.method ?: "") &&
+            (attractors.queryBodyMatchers.isNullOrEmpty().isTrue() ||
+                    attractors.queryBodyMatchers?.all { it.value.isBlank() }.isTrue())
+        ) // add the default "accept all bodies" to calls requiring a body
+            attractors.queryBodyMatchers = listOf(RequestAttractorBit(".*"))
+
         chapter.also { updateChapter ->
             updateChapter.attractors = attractors
             updateChapter.requestData = requestMock
@@ -249,6 +257,7 @@ class MimikMock(path: String) : RoutingContract(path) {
                     .map {
                         RequestAttractorBit { bit ->
                             bit.optional = kvvm.key.contains("~")
+                            bit.except = kvvm.key.contains("!")
                             bit.value = it
                         }
                     }

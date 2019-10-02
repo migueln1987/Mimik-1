@@ -109,7 +109,7 @@ class TapeCatalog : OkReplayInterceptor() {
         val params = request.url().query()
 
         val validTapes = tapes
-            .filter { it.isUrlValid && it.mode.isWritable }
+            .filter { it.mode.isWritable }
             .associateBy({ it }, { it.attractors })
 
         return RequestAttractors.findBest(

@@ -156,10 +156,23 @@ class RequestAttractors {
             .filter { it.required }
             .fold(0 to 0.0) { acc, x ->
                 val match = x.regex.find(source)
-                val matchVal = match?.groups?.get(0)?.value?.length ?: 0
+                var matchVal = 0
+                var matchRto = 0.0
 
-                (acc.first + (if (match.hasMatch) 1 else 0)) to
-                        (acc.second + (matchVal / source.length.toFloat()))
+                if (match.hasMatch) {
+                    if (!x.except) {
+                        matchVal = 1
+                        matchRto =
+                            (match?.groups?.get(0)?.value?.length ?: 0) / source.length.toDouble()
+                    }
+                } else {
+                    if (x.except) {
+                        matchVal = 1
+                        matchRto = 1.0
+                    }
+                }
+
+                (acc.first + matchVal) to (acc.second + matchRto)
             }
 
         val (optional, optRatio) = matchScanner.asSequence()

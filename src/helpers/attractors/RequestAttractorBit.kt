@@ -24,6 +24,11 @@ class RequestAttractorBit {
             optional = !value
         }
 
+    /**
+     * when true, the regex must not find a match
+     */
+    var except: Boolean = false
+
     val regex
         get() = hardValue.toRegex()
 
@@ -36,6 +41,10 @@ class RequestAttractorBit {
     }
 
     override fun toString(): String {
-        return "Req: $required - {$hardValue}"
+        return "Req: %b %s {%s}".format(
+            required,
+            if (except) "-!" else "+",
+            hardValue
+        )
     }
 }
