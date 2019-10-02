@@ -1,11 +1,13 @@
 package networkRouting
 
+import helpers.appendHeaders
 import helpers.content
 import io.ktor.application.ApplicationCall
 import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.response.header
 import io.ktor.response.respondText
 import io.ktor.routing.Routing
 import io.ktor.routing.get
@@ -28,12 +30,13 @@ class CallProcessor(path: String) : RoutingContract(path) {
     }
 
     private suspend fun ApplicationCall.action() {
-        val response = tapeCatalog.processCall(this)
-        val contentType = response.header("content-type") ?: "text/plain"
-        val code = HttpStatusCode.fromValue(response.code())
+        val processResponse = tapeCatalog.processCall(this)
+        val contentType = processResponse.header("content-type") ?: "text/plain"
+        val code = HttpStatusCode.fromValue(processResponse.code())
 
+        response.headers.appendHeaders(processResponse.headers())
         respondText(ContentType.parse(contentType), code) {
-            response.body().content
+            processResponse.body().content
         }
     }
 }

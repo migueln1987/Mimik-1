@@ -94,7 +94,7 @@ class RecordedInteractions {
         if (!hasRequestData || request.headers().size() < 2)
             return AttractorMatches()
 
-        val response = AttractorMatches(0, 0, 0)
+        val response = AttractorMatches()
         val source = request.headers().toMultimap()
         val input = inputRequest.headers().toMultimap()
 

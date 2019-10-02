@@ -46,6 +46,7 @@ class MimikMock(path: String) : RoutingContract(path) {
         get() = route(RoutePaths.MOCK.path) {
             put {
                 call.processPutMock().apply {
+                    System.out.println(responseMsg)
                     call.respond(status, responseMsg ?: "")
                 }
             }
@@ -76,6 +77,7 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         val tape = query.item ?: return QueryResponse {
             status = HttpStatusCode.InternalServerError
+            responseMsg = HttpStatusCode.InternalServerError.description
         }
 
         when (query.status) {
@@ -91,7 +93,13 @@ class MimikMock(path: String) : RoutingContract(path) {
         if (mockParams["tape_save"].isTrue())
             tape.saveFile()
 
-        if (mockParams.containsKey("tape_only")) return query
+        if (mockParams.containsKey("tape_only")) return query.also {
+            it.responseMsg = "Tape (%s): %s"
+                .format(
+                    if (query.status == HttpStatusCode.Created) "New" else "Old",
+                    query.item?.name
+                )
+        }
 
         // Step 2: Get existing chapter (to override) or create a new one
         val interactionName = mockParams["name"]
@@ -197,11 +205,15 @@ class MimikMock(path: String) : RoutingContract(path) {
                 query.status == HttpStatusCode.Created,
                 creatingNewChapter
             )
-            status = if (created)
-                HttpStatusCode.Created else
-                HttpStatusCode.Found
+            status = if (created) HttpStatusCode.Created else HttpStatusCode.Found
+            responseMsg = "Tape (%s): %s, Mock (%s): %s".format(
+                if (query.status == HttpStatusCode.Created) "New" else "Old",
+                query.item?.name,
+                if (creatingNewChapter) "New" else "Old",
+                chapter.chapterName
+            )
             if (!isJson && bodyText.isNullOrBlank()) {
-                responseMsg = "Note; input body is not recognized as a valid json.\n" +
+                responseMsg += "\nNote; input body is not recognized as a valid json.\n" +
                         bodyText.isJSONValidMsg
             }
         }
@@ -227,10 +239,8 @@ class MimikMock(path: String) : RoutingContract(path) {
         val bodyAttractors = filters.filterAttractorKeys("body")
 
         return RequestAttractors { attr ->
-            urlPath?.also { path ->
-                attr.routingPath = RequestAttractorBit(path)
-            }
-
+            if (urlPath != null)
+                attr.routingPath = RequestAttractorBit(urlPath)
             if (paramAttractors.isNotEmpty())
                 attr.queryParamMatchers = paramAttractors
             if (bodyAttractors.isNotEmpty())
@@ -239,7 +249,8 @@ class MimikMock(path: String) : RoutingContract(path) {
     }
 
     /**
-     * Filters this [key, values] map into a list of Attractor bits
+     * Filters this [key, values] map into a list of Attractor bits.
+     * Function also sets [optional] and [required] flags
      */
     private fun Map<String, List<String>>.filterAttractorKeys(
         key: String,

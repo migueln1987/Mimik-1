@@ -216,14 +216,31 @@ class BlankTape private constructor(
         val awaitMock = findBestMatch(okRequest, searchPreferences.AwaitOnly)
         if (awaitMock.status == HttpStatusCode.Found) {
             awaitMock.item?.also {
-                System.out.println("Await Request: ${okRequest.url()}\n Body:\n${okRequest.body()}")
+                System.out.println(
+                    "== Await Request ==\n-Url: %s\n-Body:\n%s\n-Headers:\n%s"
+                        .format(
+                            okRequest.url(),
+                            okRequest.body().content,
+                            okRequest.headers().toString()
+                        )
+                )
                 val responseData = getData(okRequest)
-                System.out.println("Await Response: ${responseData.code()} from ${okRequest.url()}")
+                System.out.println(
+                    "== Await Response ==\n- Code %d from %s"
+                        .format(responseData.code(), okRequest.url())
+                )
                 return if (responseData.isSuccessful) {
                     it.response = responseData.toReplayResponse
                     if (it.mockUses > 0)
                         it.mockUses--
                     saveFile()
+                    System.out.println(
+                        "== Await Response Data ==\n-Body:\n%s\n-Headers:\n%s"
+                            .format(
+                                it.responseData.body,
+                                it.responseData.headers.toString()
+                            )
+                    )
                     it.response
                 } else {
                     miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse

@@ -82,9 +82,8 @@ class TapeCatalog : OkReplayInterceptor() {
         val foundChapter = RequestAttractors.findBest(
             validChapters,
             path, params, body
-        ) {
-            it.matchingHeaders(request)
-        }
+        ) // todo; re-enable header filter?
+        // { it.matchingHeaders(request) }
 
         val foundTape = tapes.firstOrNull {
             it.chapters.contains(foundChapter.item)

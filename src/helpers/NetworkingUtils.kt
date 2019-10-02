@@ -3,9 +3,11 @@ package helpers
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import io.ktor.application.ApplicationCall
+import io.ktor.http.HttpHeaders
 import io.ktor.request.contentType
 import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
+import io.ktor.response.ResponseHeaders
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.MediaType
@@ -232,3 +234,12 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
             override fun toYaml() = TODO()
         }
     }
+
+fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) {
+    headers.toMultimap().forEach { t, u ->
+        u.forEach {
+            if (!HttpHeaders.isUnsafe(t))
+                append(t, it)
+        }
+    }
+}

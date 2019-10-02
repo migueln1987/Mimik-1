@@ -314,4 +314,25 @@ class MockTests {
             }
         }
     }
+
+    @Test
+    fun headersOutTest() {
+        val headerKey = "headerKey"
+        val headerValue = "headerValue"
+
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockMethod", "POST")
+                addHeader("mockFilter_Path", "/path")
+                addHeader("mockHeaderOut_$headerKey", headerValue)
+            }
+
+            handleRequest(HttpMethod.Post, "/path", {}).apply {
+                response {
+                    Assert.assertTrue(it.headers.contains(headerKey))
+                    Assert.assertEquals(headerValue, it.headers[headerKey])
+                }
+            }
+        }
+    }
 }

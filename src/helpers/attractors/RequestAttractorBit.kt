@@ -36,8 +36,19 @@ class RequestAttractorBit {
         builder.invoke(this)
     }
 
-    constructor(input: String) {
+    constructor(input: String, builder: (RequestAttractorBit) -> Unit = {}) {
         value = input.removePrefix("/")
+        builder.invoke(this)
+    }
+
+    /**
+     * Returns a deep copy of this object
+     */
+    fun clone(): RequestAttractorBit {
+        return RequestAttractorBit(value) {
+            it.optional = optional
+            it.except = except
+        }
     }
 
     override fun toString(): String {
@@ -47,4 +58,9 @@ class RequestAttractorBit {
             hardValue
         )
     }
+
+    override fun equals(other: Any?) =
+        (other is RequestAttractorBit) && (other.toString() == toString())
+
+    override fun hashCode() = toString().hashCode()
 }

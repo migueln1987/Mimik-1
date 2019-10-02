@@ -28,7 +28,9 @@ class ResponseTapedata : Tapedata {
     }
 
     var code: Int? = null
+        get() = field ?: HttpStatusCode.OK.value
     var protocol: Protocol? = null
+        get() = field ?: Protocol.HTTP_1_1
 
     val replayResponse: okreplay.Response
         get() {

@@ -8,11 +8,8 @@ import mimikMockHelpers.RequestTapedata
 import okhttp3.internal.http.HttpMethod
 
 class RequestAttractors {
-    // "url/sub/path"
     var routingPath: RequestAttractorBit? = null
-
     var queryParamMatchers: List<RequestAttractorBit>? = null
-    // regex match of body items
     var queryBodyMatchers: List<RequestAttractorBit>? = null
 
     constructor(config: (RequestAttractors) -> Unit = {}) {
@@ -111,7 +108,12 @@ class RequestAttractors {
         }
 
     fun append(data: RequestAttractors?) {
-        data?.queryParamMatchers?.also { newData ->
+        if (data == null) return
+
+        if (routingPath == null && data.routingPath != null)
+            routingPath = data.routingPath?.clone()
+
+        data.queryParamMatchers?.also { newData ->
             queryParamMatchers = (queryParamMatchers ?: listOf())
                 .toMutableList()
                 .apply {
@@ -120,7 +122,7 @@ class RequestAttractors {
                 }
         }
 
-        data?.queryBodyMatchers?.also { newData ->
+        data.queryBodyMatchers?.also { newData ->
             queryBodyMatchers = (queryBodyMatchers ?: listOf())
                 .toMutableList()
                 .apply {
@@ -149,7 +151,7 @@ class RequestAttractors {
             return AttractorMatches()
 
         val reqCount = matchScanner.count { it.required }
-        if (source.isNullOrEmpty()) // hard fail if source is null/empty
+        if (source == null) // hard fail if source is null
             return AttractorMatches(reqCount, -1, -1)
 
         val (required, reqRatio) = matchScanner.asSequence()

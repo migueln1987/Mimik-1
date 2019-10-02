@@ -38,7 +38,7 @@ class RequestTapedata : Tapedata {
     }
 
     var method: String? = null
-        get() = field?.toUpperCase()
+        get() = field?.toUpperCase() ?: "GET"
 
     var url: String? = ""
     val httpUrl: HttpUrl?

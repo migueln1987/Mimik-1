@@ -87,7 +87,7 @@ The following items are direct filters for calls to be matched against
 | Param        | Type        | Default | Action |
 |--------------|-------------|---------|--------|
 | Method       | String | `GET` | The type of call to listen for.<br> Example: GET, POST, DELETE, etc. |
-| HeaderIn_{Key}<sup>1</sup> | Any | `Content-Type : text/plain` | Attractor headers |
+| ~~HeaderIn_{Key}~~<sup>1</sup> | Any | `Content-Type : text/plain` | Attractor headers |
 
 1: Replace {Key} to be the expected header to look for.
 
