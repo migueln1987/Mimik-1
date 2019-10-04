@@ -8,12 +8,11 @@ import kotlinx.coroutines.withContext
 import mimikMockHelpers.QueryResponse
 import okhttp3.Protocol
 import okreplay.OkReplayInterceptor
-import okreplay.TapeMode
 import helpers.attractors.RequestAttractors
 import helpers.content
 import helpers.reHost
 import helpers.toOkRequest
-import helpers.toReplayRequest
+import helpers.toTapeData
 import mimikMockHelpers.InteractionUseStates
 
 class TapeCatalog : OkReplayInterceptor() {
@@ -43,13 +42,9 @@ class TapeCatalog : OkReplayInterceptor() {
             .map { it to it.readText() }
             .mapNotNull {
                 try {
-                    @Suppress("USELESS_ELVIS")
                     gson.fromJson(it.second, BlankTape::class.java)
                         ?.also { tape ->
                             tape.file = it.first
-                            tape.mode = TapeMode.READ_WRITE
-                            tape.chapters = tape.chapters ?: mutableListOf()
-                            tape.tapeName = tape.tapeName ?: tape.hashCode().toString()
                         }
                 } catch (e: Exception) {
                     println(e.toString())
@@ -121,7 +116,7 @@ class TapeCatalog : OkReplayInterceptor() {
         var callRequest = call.toOkRequest()
 
         findResponseByQuery(callRequest).item?.also {
-            System.out.println("Using response tape ${it.name}")
+            println("Using response tape ${it.name}")
             it.requestToChain(callRequest)?.also { chain ->
                 start(config, it)
                 return withContext(Dispatchers.IO) {
@@ -138,12 +133,12 @@ class TapeCatalog : OkReplayInterceptor() {
         return when (hostTape.status) {
             HttpStatusCode.Found -> {
                 hostTape.item?.let {
-                    System.out.println("Using tape ${it.name}")
+                    println("Using tape ${it.name}")
                     if (it.isUrlValid)
                         callRequest = callRequest.reHost(it.httpRoutingUrl)
 
                     it.createNewInteraction { mock ->
-                        mock.request = callRequest.toReplayRequest
+                        mock.requestData = callRequest.toTapeData
                         mock.attractors = RequestAttractors(mock.requestData)
                     }
                     it.saveFile()
@@ -163,9 +158,9 @@ class TapeCatalog : OkReplayInterceptor() {
 
             else -> {
                 BlankTape.Builder().build().also { tape ->
-                    System.out.println("Creating new tape/mock of ${tape.name}")
+                    println("Creating new tape/mock of ${tape.name}")
                     tape.createNewInteraction { mock ->
-                        mock.request = callRequest.toReplayRequest
+                        mock.requestData = callRequest.toTapeData
                         mock.attractors = RequestAttractors(mock.requestData)
                     }
                     tape.saveFile()

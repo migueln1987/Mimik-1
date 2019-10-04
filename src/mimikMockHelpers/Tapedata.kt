@@ -1,11 +1,16 @@
 package mimikMockHelpers
 
+import io.ktor.http.HttpHeaders
 import okhttp3.Headers
 
 abstract class Tapedata {
-    lateinit var headers: Headers
-    var body: String? = null
+    var headers: Headers? = null
+    val tapeHeaders: Headers
+        get() {
+            return headers?.let {
+                if (it.size() < 1) null else it
+            } ?: Headers.of(HttpHeaders.ContentType, "text/plain")
+        }
 
-    val hasHeaders: Boolean
-        get() = ::headers.isInitialized
+    var body: String? = null
 }

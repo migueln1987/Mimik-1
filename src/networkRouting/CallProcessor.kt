@@ -6,6 +6,7 @@ import io.ktor.application.ApplicationCall
 import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.header
 import io.ktor.response.respondText
@@ -31,7 +32,7 @@ class CallProcessor(path: String) : RoutingContract(path) {
 
     private suspend fun ApplicationCall.action() {
         val processResponse = tapeCatalog.processCall(this)
-        val contentType = processResponse.header("content-type") ?: "text/plain"
+        val contentType = processResponse.header(HttpHeaders.ContentType) ?: "text/plain"
         val code = HttpStatusCode.fromValue(processResponse.code())
 
         response.headers.appendHeaders(processResponse.headers())

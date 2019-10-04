@@ -40,7 +40,7 @@ val String?.isJSONValid: Boolean
         Gson().fromJson(adjustedString, Any::class.java)
         true
     } catch (ex: Exception) {
-        System.out.println(ex)
+        println("= isJSONValid =\n $ex")
         false
     }
 

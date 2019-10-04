@@ -6,7 +6,7 @@ object R : Properties() {
             try {
                 load(it.openStream())
             } catch (e: Exception) {
-                System.out.println(e.toString())
+                println(e.toString())
             }
         }
     }

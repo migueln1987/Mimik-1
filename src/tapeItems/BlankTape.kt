@@ -9,9 +9,11 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import helpers.attractors.RequestAttractors
 import helpers.content
+import helpers.isTrue
 import helpers.reHost
 import helpers.toOkRequest
 import helpers.toReplayResponse
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.InteractionUseStates
 import mimikMockHelpers.QueryResponse
@@ -28,9 +30,7 @@ import java.io.Writer
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
-class BlankTape private constructor(
-    var tapeName: String = hashCode().toString()
-) : Tape {
+class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     class Builder(config: (Builder) -> Unit = {}) {
         var tapeName: String? = null
         var routingURL: String? = null
@@ -46,17 +46,15 @@ class BlankTape private constructor(
             config.invoke(this)
         }
 
-        fun build() = BlankTape(
-            tapeName ?: hashCode().toString()
-        ).also {
-            it.usingCustomName = tapeName != null
-            it.attractors = attractors
-            it.routingUrl = routingURL
-            it.mode = if (allowLiveRecordings == true)
+        fun build() = BlankTape { tape ->
+            tapeName?.also { tape.tapeName = it }
+            tape.attractors = attractors
+            tape.routingUrl = routingURL
+            tape.mode = if (allowLiveRecordings == true)
                 TapeMode.READ_WRITE else TapeMode.READ_ONLY
-            it.file = File(
+            tape.file = File(
                 VCRConfig.getConfig.tapeRoot.get(),
-                it.tapeName.toJsonName
+                tape.name.toJsonName
             )
         }
 
@@ -98,12 +96,20 @@ class BlankTape private constructor(
         }
     }
 
+    var tapeName: String? = null
+    val usingCustomName
+        get() = tapeName.isNullOrBlank().not()
+
     @Transient
     var file: File? = null
 
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
+
+    var chapters: MutableList<RecordedInteractions> = mutableListOf()
+
     private var tapeMode: TapeMode? = TapeMode.READ_WRITE
+        get() = if (field == null) TapeMode.READ_WRITE else field
 
     val httpRoutingUrl: HttpUrl?
         get() = HttpUrl.parse(routingUrl ?: "")
@@ -114,25 +120,19 @@ class BlankTape private constructor(
     val isUrlValid: Boolean
         get() = !routingUrl.isNullOrBlank() && httpRoutingUrl != null
 
-    override fun getName() = tapeName
+    override fun getName() = tapeName ?: hashCode().toString()
 
-    @Transient
-    var usingCustomName = false
-
-    private enum class searchPreferences {
+    private enum class SearchPreferences {
         ALL, MockOnly, LiveOnly, AwaitOnly
     }
 
     fun updateNameByURL(url: String) {
-        usingCustomName = true
         tapeName = String.format(
             "%s_%d",
             url.removePrefix("/"),
             url.hashCode()
         )
     }
-
-    var chapters: MutableList<RecordedInteractions> = mutableListOf()
 
     override fun setMatchRule(matchRule: MatchRule?) {}
 
@@ -163,7 +163,7 @@ class BlankTape private constructor(
             it.request(request)
             it.protocol(Protocol.HTTP_1_1)
             it.code(status.value)
-            it.header("Content-Type", "text/plain")
+            it.header(HttpHeaders.ContentType, "text/plain")
             if (HttpMethod.requiresRequestBody(request.method()))
                 it.body(
                     ResponseBody.create(
@@ -213,10 +213,10 @@ class BlankTape private constructor(
     override fun play(request: okreplay.Request): Response {
         val okRequest: okhttp3.Request = request.toOkRequest
 
-        val awaitMock = findBestMatch(okRequest, searchPreferences.AwaitOnly)
+        val awaitMock = findBestMatch(okRequest, SearchPreferences.AwaitOnly)
         if (awaitMock.status == HttpStatusCode.Found) {
             awaitMock.item?.also {
-                System.out.println(
+                println(
                     "== Await Request ==\n-Url: %s\n-Body:\n%s\n-Headers:\n%s"
                         .format(
                             okRequest.url(),
@@ -225,22 +225,25 @@ class BlankTape private constructor(
                         )
                 )
                 val responseData = getData(okRequest)
-                System.out.println(
+                println(
                     "== Await Response ==\n- Code %d from %s"
                         .format(responseData.code(), okRequest.url())
                 )
                 return if (responseData.isSuccessful) {
                     it.response = responseData.toReplayResponse
-                    if (it.mockUses > 0)
-                        it.mockUses--
+                    if (it.mockUses > 0) it.mockUses--
                     saveFile()
-                    System.out.println(
+
+                    val bodyIsImage = it.responseData.tapeHeaders[HttpHeaders.ContentType]
+                        ?.contains("image").isTrue()
+                    println(
                         "== Await Response Data ==\n-Body:\n%s\n-Headers:\n%s"
                             .format(
-                                it.responseData.body,
+                                if (bodyIsImage) "[image]" else it.responseData.body,
                                 it.responseData.headers.toString()
                             )
                     )
+
                     it.response
                 } else {
                     miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
@@ -248,7 +251,7 @@ class BlankTape private constructor(
             }
         }
 
-        val limitedMock = findBestMatch(okRequest, searchPreferences.MockOnly)
+        val limitedMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
                 it.mockUses--
@@ -256,7 +259,7 @@ class BlankTape private constructor(
             }
         }
 
-        val liveMock = findBestMatch(okRequest, searchPreferences.LiveOnly)
+        val liveMock = findBestMatch(okRequest, SearchPreferences.LiveOnly)
         if (liveMock.status == HttpStatusCode.Found) {
             liveMock.item?.also {
                 return it.response
@@ -268,7 +271,7 @@ class BlankTape private constructor(
 
     private fun findBestMatch(
         request: okhttp3.Request,
-        preference: searchPreferences = searchPreferences.ALL
+        preference: SearchPreferences = SearchPreferences.ALL
     ): QueryResponse<RecordedInteractions> {
         val filteredChapters = chapters.asSequence()
             .filter {
@@ -281,16 +284,16 @@ class BlankTape private constructor(
             }
             .filter {
                 when (preference) {
-                    searchPreferences.ALL ->
+                    SearchPreferences.ALL ->
                         true
 
-                    searchPreferences.AwaitOnly ->
+                    SearchPreferences.AwaitOnly ->
                         it.awaitResponse
 
-                    searchPreferences.LiveOnly ->
+                    SearchPreferences.LiveOnly ->
                         it.mockUses == InteractionUseStates.ALWAYS.state
 
-                    searchPreferences.MockOnly ->
+                    SearchPreferences.MockOnly ->
                         it.mockUses in (1..Int.MAX_VALUE)
                 }
             }
@@ -311,7 +314,7 @@ class BlankTape private constructor(
 
     private fun findBestMatch(
         request: okreplay.Request,
-        preference: searchPreferences = searchPreferences.ALL
+        preference: SearchPreferences = SearchPreferences.ALL
     ) = findBestMatch(request.toOkRequest, preference)
 
     override fun record(request: Request, response: Response) {
@@ -374,4 +377,8 @@ class BlankTape private constructor(
             interaction.invoke(it) // in case we want to change anything
             chapters.add(it)
         }
+
+    init {
+        config.invoke(this)
+    }
 }

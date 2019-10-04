@@ -1,6 +1,7 @@
 package com.fiserv.mimik.tapeTests
 
 import apiTests.assertContains
+import apiTests.assertStartsWith
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import mimikMockHelpers.RecordedInteractions
@@ -51,7 +52,6 @@ class BlankTapeTest {
             it.allowLiveRecordings = false
         }.build()
 
-        Assert.assertEquals(name, testObject.tapeName)
         Assert.assertEquals(name, testObject.name)
         Assert.assertTrue(testObject.usingCustomName)
 

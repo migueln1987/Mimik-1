@@ -8,6 +8,9 @@ import io.ktor.request.contentType
 import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
 import io.ktor.response.ResponseHeaders
+import io.ktor.util.StringValues
+import mimikMockHelpers.RequestTapedata
+import mimikMockHelpers.ResponseTapedata
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.MediaType
@@ -19,6 +22,186 @@ import org.w3c.dom.NodeList
 import java.io.IOException
 import java.nio.charset.Charset
 
+// == okHttp3
+val okhttp3.Response.toJson: String
+    get() {
+        return try {
+            body()?.byteStream()?.let { stream ->
+                (Parser.default().parse(stream) as JsonObject)
+                    .toJsonString(true, true)
+            }
+        } catch (_: Exception) {
+            null
+        } ?: ""
+    }
+
+/**
+ * Returns the string contents of a RequestBody
+ */
+val RequestBody?.content: String
+    get() = this?.let { _ ->
+        Buffer().let { buffer ->
+            writeTo(buffer)
+            val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
+            buffer.readString(charset)
+        }
+    } ?: ""
+
+val ResponseBody?.content: String
+    get() {
+        return try {
+            this?.string() ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+val StringValues.toHeaders: Headers
+    get() {
+        return Headers.Builder().also { build ->
+            entries().forEach { entry ->
+                entry.value.forEach { value ->
+                    build.add(entry.key, value)
+                }
+            }
+        }.build()
+    }
+
+val Map<String, String>.toHeaders: Headers
+    get() {
+        return Headers.Builder().also { build ->
+            forEach { entry ->
+                build.add(entry.key, entry.value)
+            }
+        }.build()
+    }
+
+fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) {
+    headers.toMultimap().forEach { t, u ->
+        u.forEach {
+            if (!HttpHeaders.isUnsafe(t))
+                append(t, it)
+        }
+    }
+}
+
+fun Headers.contains(key: String, value: String) = values(key).contains(value)
+
+fun HttpUrl.containsPath(vararg path: String) =
+    pathSegments().containsAll(path.toList())
+
+fun okhttp3.Request.reHost(outboundHost: HttpUrl?): okhttp3.Request {
+    return newBuilder().also { build ->
+        if (outboundHost != null) {
+            val newUrl = HttpUrl.parse(
+                "%s://%s%s%s".format(
+                    outboundHost.scheme(),
+                    outboundHost.host(),
+                    url().encodedPath(),
+                    if (url().querySize() > 0) "?" + url().query() else ""
+                )
+            )
+
+            if (newUrl != null) {
+                build.url(newUrl)
+                build.header("HOST", newUrl.host())
+            }
+        }
+    }.build()
+}
+
+/**
+ * Converts a [okhttp3.Request] to [okreplay.Request]
+ */
+val okhttp3.Request.toReplayRequest: okreplay.Request
+    get() {
+        val newRequest = newBuilder().build()
+        val contentCharset = newRequest.body()?.contentType()?.charset()
+            ?: Charset.forName("UTF-8")
+        val bodyData = newRequest.body()?.content
+
+        return object : okreplay.Request {
+            override fun method() = newRequest.method()
+            override fun url() = newRequest.url()
+
+            override fun headers() = newRequest.headers()
+            override fun header(name: String) = headers().get(name)
+            override fun getContentType() = headers().get(HttpHeaders.ContentType)
+
+            override fun getCharset() = contentCharset
+            override fun getEncoding() = charset.name()
+
+            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
+            override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
+            override fun bodyAsText() = bodyData ?: ""
+
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
+        }
+    }
+
+/**
+ * Converts a [okhttp3.Request] to [RequestTapedata]
+ */
+val okhttp3.Request.toTapeData: RequestTapedata
+    get() = this.toReplayRequest.toTapeData
+
+val okhttp3.Response.toReplayResponse: okreplay.Response
+    get() {
+        val newResponse = newBuilder().build()
+        val contentCharset = newResponse.body()?.contentType()?.charset()
+            ?: Charset.forName("UTF-8")
+        val bodyData = newResponse.body()?.content
+
+        return object : okreplay.Response {
+            override fun code() = newResponse.code()
+            override fun protocol() = newResponse.protocol()
+
+            override fun headers() = newResponse.headers()
+            override fun header(name: String) = headers().get(name)
+            override fun getContentType() = headers().get(HttpHeaders.ContentType)
+
+            override fun getCharset() = contentCharset
+            override fun getEncoding() = charset.name()
+
+            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
+            override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
+            override fun bodyAsText() = bodyData ?: ""
+
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
+        }
+    }
+
+fun ResponseBody?.clone(): ResponseBody? {
+    try {
+        if (this == null) return null
+        val source = source()
+        source.request(java.lang.Long.MAX_VALUE)
+        return ResponseBody.create(
+            contentType(), contentLength(),
+            source.buffer.clone()
+        )
+    } catch (e: IOException) {
+        return null
+    }
+}
+
+fun cloneResponseBody(responseBody: ResponseBody): ResponseBody {
+    try {
+        val source = responseBody.source()
+        source.request(java.lang.Long.MAX_VALUE)
+        return ResponseBody.create(
+            responseBody.contentType(), responseBody.contentLength(),
+            source.buffer.clone()
+        )
+    } catch (e: IOException) {
+        throw RuntimeException("Failed to read response body", e)
+    }
+}
+
+// == okreplay
+
 /**
  * Returns the body, if any, or [default] when null
  */
@@ -28,6 +211,10 @@ fun okreplay.Request.tryGetBody(default: String = ""): String? {
     } else null
 }
 
+/**
+ * Attempts to parse the [okreplay.Request] as a [RequestBody], otherwise [default] is returned.
+ * Note: The process is skipped if the [okreplay.Request] method does not require a body
+ */
 fun okreplay.Request.asRequestBody(default: String = ""): RequestBody? {
     return if (HttpMethod.requiresRequestBody(method())) {
         RequestBody.create(
@@ -43,25 +230,29 @@ fun okreplay.Request.asRequestBody(default: String = ""): RequestBody? {
 fun okreplay.Response.tryGetBody(default: String = ""): String =
     if (hasBody()) bodyAsText() else default
 
-fun StringBuilder.toJson(): String {
-    return if (toString().isJSONValid) {
-        (Parser.default().parse(this) as JsonObject)
-            .toJsonString(true, true)
-    } else ""
-}
+/**
+ * Converts the [okreplay.Request] to [okhttp3.Request]
+ */
+val okreplay.Request.toOkRequest: okhttp3.Request
+    get() {
+        return okhttp3.Request.Builder().also { builder ->
+            builder.url(url())
+            builder.headers(headers())
+            builder.method(method(), asRequestBody())
+        }.build()
+    }
 
-fun okhttp3.Response.toJson(): String {
-    return (try {
-        body()?.byteStream()?.let { stream ->
-            (Parser.default().parse(stream) as JsonObject)
-                .toJsonString(true, true)
-        }
-    } catch (_: Exception) {
-        null
-    }) ?: ""
-}
+/**
+ * Converts the [okreplay.Request] to [RequestTapedata]
+ */
+val okreplay.Request.toTapeData: RequestTapedata
+    get() = RequestTapedata(this)
 
-fun NodeList.asList() = (0..length).mapNotNull(this::item)
+/**
+ * Converts the [okreplay.Response] to [ResponseTapedata]
+ */
+val okreplay.Response.toTapeData: ResponseTapedata
+    get() = ResponseTapedata(this)
 
 suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
     val requestBody = when {
@@ -69,7 +260,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
             try {
                 receiveText()
             } catch (e: Exception) {
-                System.out.println(e)
+                println(e)
                 ""
             }
         }
@@ -104,142 +295,12 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
     }.build()
 }
 
-fun okhttp3.Request.reHost(outboundHost: HttpUrl?): okhttp3.Request {
-    return newBuilder().also { build ->
-        if (outboundHost != null) {
-            val newUrl = HttpUrl.parse(
-                "%s://%s%s%s".format(
-                    outboundHost.scheme(),
-                    outboundHost.host(),
-                    url().encodedPath(),
-                    if (url().querySize() > 0) "?" + url().query() else ""
-                )
-            )
-
-            if (newUrl != null) {
-                build.url(newUrl)
-                build.header("HOST", newUrl.host())
-            }
-        }
-    }.build()
+// == Others
+fun StringBuilder.toJson(): String {
+    return if (toString().isJSONValid) {
+        (Parser.default().parse(this) as JsonObject)
+            .toJsonString(true, true)
+    } else ""
 }
 
-/**
- * Returns the string contents of a RequestBody
- */
-val RequestBody?.content: String
-    get() = this?.let { _ ->
-        Buffer().let { buffer ->
-            writeTo(buffer)
-            val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
-            buffer.readString(charset)
-        }
-    } ?: ""
-
-val ResponseBody?.content: String
-    get() {
-        return try {
-            this?.string() ?: ""
-        } catch (e: Exception) {
-            ""
-        }
-    }
-
-val okreplay.Request.toOkRequest: okhttp3.Request
-    get() {
-        return okhttp3.Request.Builder().also { builder ->
-            builder.url(url())
-            builder.headers(headers())
-            builder.method(method(), asRequestBody())
-        }.build()
-    }
-
-fun cloneResponseBody(responseBody: ResponseBody): ResponseBody {
-    try {
-        val source = responseBody.source()
-        source.request(java.lang.Long.MAX_VALUE)
-        return ResponseBody.create(
-            responseBody.contentType(), responseBody.contentLength(),
-            source.buffer.clone()
-        )
-    } catch (e: IOException) {
-        throw RuntimeException("Failed to read response body", e)
-    }
-}
-
-fun ResponseBody?.clone(): ResponseBody? {
-    try {
-        if (this == null) return null
-        val source = source()
-        source.request(java.lang.Long.MAX_VALUE)
-        return ResponseBody.create(
-            contentType(), contentLength(),
-            source.buffer.clone()
-        )
-    } catch (e: IOException) {
-        return null
-    }
-}
-
-val okhttp3.Request.toReplayRequest: okreplay.Request
-    get() {
-        val newRequest = newBuilder().build()
-        val contentCharset = newRequest.body()?.contentType()?.charset()
-            ?: Charset.forName("UTF-8")
-        val bodyData = newRequest.body()?.content
-
-        return object : okreplay.Request {
-            override fun method() = newRequest.method()
-            override fun url() = newRequest.url()
-
-            override fun headers() = newRequest.headers()
-            override fun header(name: String) = headers().get(name)
-            override fun getContentType() = headers().get("Content-Type")
-
-            override fun getCharset() = contentCharset
-            override fun getEncoding() = charset.name()
-
-            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
-            override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
-            override fun bodyAsText() = bodyData ?: ""
-
-            override fun newBuilder() = TODO()
-            override fun toYaml() = TODO()
-        }
-    }
-
-val okhttp3.Response.toReplayResponse: okreplay.Response
-    get() {
-        val newResponse = newBuilder().build()
-        val contentCharset = newResponse.body()?.contentType()?.charset()
-            ?: Charset.forName("UTF-8")
-        val bodyData = newResponse.body()?.content
-
-        return object : okreplay.Response {
-            override fun code() = newResponse.code()
-            override fun protocol() = newResponse.protocol()
-
-            override fun headers() = newResponse.headers()
-            override fun header(name: String) = headers().get(name)
-            override fun getContentType() = headers().get("Content-Type")
-
-            override fun getCharset() = contentCharset
-            override fun getEncoding() = charset.name()
-
-            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
-            override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
-            override fun bodyAsText() = bodyData ?: ""
-
-            override fun newBuilder() = TODO()
-            override fun toYaml() = TODO()
-        }
-    }
-
-fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) {
-    headers.toMultimap().forEach { t, u ->
-        u.forEach {
-            if (!HttpHeaders.isUnsafe(t))
-                append(t, it)
-        }
-    }
-}
+fun NodeList.asList() = (0..length).mapNotNull(this::item)

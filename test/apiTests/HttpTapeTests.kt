@@ -24,7 +24,7 @@ class HttpTapeTests {
                 .apply {
                     response {
                         val hasTape = TapeCatalog.Instance.tapes
-                            .any { it.tapeName == tapeName }
+                            .any { it.name == tapeName }
 
                         Assert.assertFalse(hasTape)
                     }

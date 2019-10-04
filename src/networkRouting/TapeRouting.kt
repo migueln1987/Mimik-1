@@ -96,7 +96,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
     private val Route.delete
         get() = route(RoutePaths.DELETE.path) {
             get {
-                tapeCatalog.tapes.firstOrNull { it.tapeName == call.parameters["tape"] }
+                tapeCatalog.tapes.firstOrNull { it.name == call.parameters["tape"] }
                     ?.also { tape ->
                         val chapterName = call.parameters["chapter"]
                         if (chapterName == null) {
@@ -104,7 +104,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             if (tape.file?.exists().isTrue())
                                 tape.file?.delete()
                         } else {
-                            tape.chapters.removeIf { it.chapterName == chapterName }
+                            tape.chapters.removeIf { it.name == chapterName }
                             call.respondRedirect(RoutePaths.EDIT.path)
                             return@get
                         }
@@ -133,7 +133,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 tapeCatalog.tapes.add(newTape)
                 respondRedirect {
                     encodedPath = RoutePaths.EDIT.path
-                    parameters.append("Tape", newTape.tapeName)
+                    parameters.append("Tape", newTape.name)
                 }
                 return
             }
@@ -150,7 +150,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
         when (data["Action"]) {
             "SaveToHardTape" -> {
                 tapeCatalog.tapes
-                    .firstOrNull { it.tapeName == data["tape"] }
+                    .firstOrNull { it.name == data["tape"] }
                     ?.saveFile()
                 respondRedirect(RoutePaths.ALL.path)
             }
@@ -286,7 +286,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             tapeCatalog.tapes.forEach { t ->
                 table {
                     tr {
-                        th { +t.tapeName }
+                        th { +t.name }
 
                         td {
                             if (t.file?.exists().isTrue()) {
@@ -297,7 +297,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     action = RoutePaths.ACTION.path,
                                     encType = FormEncType.multipartFormData
                                 ) {
-                                    hiddenInput(name = "tape") { value = t.tapeName }
+                                    hiddenInput(name = "tape") { value = t.name }
                                     button(name = "Action") {
                                         value = "SaveToHardTape"
                                         text("Save tape as a hard tape")
@@ -370,7 +370,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 action = RoutePaths.ACTION.path,
                                 encType = FormEncType.multipartFormData
                             ) {
-                                hiddenInput(name = "tape") { value = t.tapeName }
+                                hiddenInput(name = "tape") { value = t.name }
                                 p {
                                     submitInput(name = "Action") {
                                         value = "Edit"
@@ -666,9 +666,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
      */
     private fun HTML.getEditChapterPage(params: Parameters) {
         val activeTape = tapeCatalog.tapes
-            .firstOrNull { it.tapeName == params["tape"] }
+            .firstOrNull { it.name == params["tape"] }
         val activeChapter = activeTape?.chapters
-            ?.firstOrNull { it.chapterName == params["chapter"] }
+            ?.firstOrNull { it.name == params["chapter"] }
 
         if (activeChapter == null) {
             body {

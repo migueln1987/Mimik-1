@@ -2,8 +2,8 @@ package mimikMockHelpers
 
 import helpers.isJSONValid
 import helpers.tryGetBody
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import okhttp3.Headers
 import okhttp3.Protocol
 import java.nio.charset.Charset
 
@@ -17,10 +17,6 @@ class ResponseTapedata : Tapedata {
 
     constructor(builder: (ResponseTapedata) -> Unit = {}) {
         builder.invoke(this)
-        // todo; fact check to make sure the header is a multiple of 2
-
-        if (!hasHeaders)
-            headers = Headers.of("Content-Type", "text/plain")
     }
 
     override fun toString(): String {
@@ -35,12 +31,10 @@ class ResponseTapedata : Tapedata {
     val replayResponse: okreplay.Response
         get() {
             val isJson = body.isJSONValid
-            if (headers.values("Content-Type").isEmpty()) {
-                headers = headers.newBuilder().add(
-                    "Content-Type",
-                    if (isJson) "application/json" else "text/plain"
-                ).build()
-            }
+            headers = tapeHeaders.newBuilder().set(
+                HttpHeaders.ContentType,
+                if (isJson) "application/json" else "text/plain"
+            ).build()
 
             return object : okreplay.Response {
                 override fun code() = code ?: HttpStatusCode.OK.value
@@ -49,9 +43,9 @@ class ResponseTapedata : Tapedata {
                 override fun getEncoding() = ""
                 override fun getCharset() = Charset.forName("UTF-8")
 
-                override fun headers() = headers
-                override fun header(name: String) = headers[name]
-                override fun getContentType() = headers["Content-Type"]
+                override fun headers() = tapeHeaders
+                override fun header(name: String) = tapeHeaders[name]
+                override fun getContentType() = tapeHeaders[HttpHeaders.ContentType]
 
                 override fun hasBody() = !body.isNullOrBlank()
                 override fun body() = bodyAsText().toByteArray()

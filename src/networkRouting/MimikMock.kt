@@ -46,7 +46,7 @@ class MimikMock(path: String) : RoutingContract(path) {
         get() = route(RoutePaths.MOCK.path) {
             put {
                 call.processPutMock().apply {
-                    System.out.println(responseMsg)
+                    println(responseMsg)
                     call.respond(status, responseMsg ?: "")
                 }
             }
@@ -106,7 +106,7 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         var creatingNewChapter = false
         val chapter =
-            tape.chapters.firstOrNull { it.chapterName == interactionName }
+            tape.chapters.firstOrNull { it.name == interactionName }
                 ?: let {
                     creatingNewChapter = true
                     tape.createNewInteraction()
@@ -138,7 +138,8 @@ class MimikMock(path: String) : RoutingContract(path) {
             mockParams
                 .filter { it.key.startsWith("headerin_") }
                 .mapKeys { it.key.removePrefix("headerin_") }
-                .toHeaders().also {
+                .toHeaders
+                .also {
                     if (it.size() > 0) builder.headers = it
                 }
         }
@@ -161,7 +162,7 @@ class MimikMock(path: String) : RoutingContract(path) {
             updateChapter.requestData = requestMock
 
             // In case we want to update an existing chapter's name
-            updateChapter.chapterName = interactionName ?: updateChapter.chapterName
+            updateChapter.chapterName = interactionName ?: updateChapter.name
 
             if (!(hasAwait && awaitResponse)) {
                 updateChapter.responseData = ResponseTapedata { rData ->
@@ -170,7 +171,7 @@ class MimikMock(path: String) : RoutingContract(path) {
                     rData.headers = mockParams
                         .filter { it.key.startsWith("headerout_") }
                         .mapKeys { it.key.removePrefix("headerout_") }
-                        .toHeaders()
+                        .toHeaders
 
                     // todo 1; Beautify the input if it's a valid json?
                     // todo 2; skip body if the method doesn't allow bodies
@@ -210,7 +211,7 @@ class MimikMock(path: String) : RoutingContract(path) {
                 if (query.status == HttpStatusCode.Created) "New" else "Old",
                 query.item?.name,
                 if (creatingNewChapter) "New" else "Old",
-                chapter.chapterName
+                chapter.name
             )
             if (!isJson && bodyText.isNullOrBlank()) {
                 responseMsg += "\nNote; input body is not recognized as a valid json.\n" +
@@ -290,7 +291,7 @@ class MimikMock(path: String) : RoutingContract(path) {
 
         var result = QueryResponse<BlankTape> {
             status = HttpStatusCode.NotFound
-            item = tapeCatalog.tapes.firstOrNull { it.tapeName.equals(paramTapeName, true) }
+            item = tapeCatalog.tapes.firstOrNull { it.name.equals(paramTapeName, true) }
                 ?.also { status = HttpStatusCode.Found }
         }
 

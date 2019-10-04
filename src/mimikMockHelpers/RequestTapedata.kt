@@ -1,7 +1,7 @@
 package mimikMockHelpers
 
 import helpers.tryGetBody
-import okhttp3.Headers
+import io.ktor.http.HttpHeaders
 import okhttp3.HttpUrl
 import okhttp3.internal.http.HttpMethod
 import java.nio.charset.Charset
@@ -20,16 +20,12 @@ class RequestTapedata : Tapedata {
 
         if (method != null && HttpMethod.requiresRequestBody(method) && body == null)
             body = ""
-
-        // todo; fact check to make sure the header is a multiple of 2
-        if (!hasHeaders)
-            headers = Headers.of("Content-Type", "text/plain")
     }
 
     fun clone(postClone: (RequestTapedata) -> Unit) = RequestTapedata {
         it.method = method
         it.url = url.toString()
-        it.headers = headers.newBuilder().build()
+        it.headers = tapeHeaders.newBuilder().build()
         it.body = body
     }.also { postClone.invoke(it) }
 
@@ -38,7 +34,7 @@ class RequestTapedata : Tapedata {
     }
 
     var method: String? = null
-        get() = field?.toUpperCase() ?: "GET"
+        get() = field?.toUpperCase()
 
     var url: String? = ""
     val httpUrl: HttpUrl?
@@ -53,9 +49,9 @@ class RequestTapedata : Tapedata {
                 override fun getEncoding() = ""
                 override fun getCharset() = Charset.forName("UTF-8")
 
-                override fun headers() = headers
-                override fun header(name: String) = headers[name]
-                override fun getContentType() = headers["Content-Type"]
+                override fun headers() = tapeHeaders
+                override fun header(name: String) = tapeHeaders[name]
+                override fun getContentType() = tapeHeaders[HttpHeaders.ContentType]
 
                 override fun hasBody() = !body.isNullOrBlank()
                 override fun body() = bodyAsText().toByteArray()

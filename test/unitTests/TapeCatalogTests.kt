@@ -41,7 +41,6 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_Found() {
         val mockChapter = mockk<RecordedInteractions> {
-            every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
                 it.routingPath = RequestAttractorBit("/path")
@@ -65,7 +64,6 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_NotFound() {
         val mockChapter = mockk<RecordedInteractions> {
-            every { matchingHeaders(any()) } returns AttractorMatches()
             every { mockUses } returns 1
             every { attractors } returns RequestAttractors {
                 it.routingPath = RequestAttractorBit("/other")
