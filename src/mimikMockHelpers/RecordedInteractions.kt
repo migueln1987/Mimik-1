@@ -80,6 +80,7 @@ class RecordedInteractions {
      * - (0): does not match the path
      */
     // todo; update to be included in matches
+    @Deprecated("update to be included in matches")
     fun matchesPath(inputRequest: okhttp3.Request): Int {
         if (!hasRequestData) return -1
         return if (requestData.httpUrl?.encodedPath() == inputRequest.url().encodedPath())
@@ -90,6 +91,7 @@ class RecordedInteractions {
      * Returns how many headers from [requestData] match this source's request
      */
     // todo; update to be included in matches
+    @Deprecated("update to be included in matches")
     fun matchingHeaders(inputRequest: okhttp3.Request): AttractorMatches {
         if (!hasRequestData || requestData.tapeHeaders.size() < 2)
             return AttractorMatches()

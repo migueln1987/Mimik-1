@@ -24,9 +24,11 @@ Filtering is used for both Tape and Mock interactions.
 Tapes; filter new (unknown) calls into the tape.<br>
 Mocks; filter calls to known mocks.<br>
 
-Note: Including filtering data in a mock request, which is going to an existing tape, 
-will apply the filter only to the mock.
+Note: Including filtering data in a mock request, which will use an existing tape, 
+will apply the filter only to the mock plus append the tape's filters.
 <br>
+
+
 
 | Param | Type   | Default| Action |
 |-------|--------|--------|--------|
@@ -34,10 +36,15 @@ will apply the filter only to the mock.
 | Param<sup>1</sup> | Regex<sup>2</sup> | `null`| Parameter(s) in the url<br> Example: `Key1=Value1&Key2=Value2` |
 | Body<sup>1</sup> | Regex | `null`<sup>3</sup> | Text to search for within the message body<br> Example: `countryCode.{0,8}US` |
 
-1: Appending a postfix of `~` will mark the filter as optional. Otherwise, it is `required`.<br>
-2: Values in the form of `Key1=Value1&Key2=Value2` will be split into `Key1=Value1` and `Key2=Value2`<br>
-3: If no filter is mentioned, then `.*` (accept all body text) is added automatically to mocks whose method always has a body.
-- Methods with bodies: `POST`, `PUT`, `PATCH`, `PROPATCH`, and `REPORT`
+1. Postfix options
+   - `~` will mark the filter as `optional`. Otherwise, it is `required`.
+   - `!` will mark the filter as `avoid`; the filter must not match to be true.
+   - [Sequence Diagram](actionCharts.md#requestattractors-mockfilter_filter)
+     - `Ratio` is defined by "how much of the literal regex matches"
+     - `avoid` ratio will always equal `1` if it matches
+2. Values in the form of `Key1=Value1&Key2=Value2` will be split into `Key1=Value1` and `Key2=Value2`<br>
+3. If no filter is mentioned, then `.*` (accept all body text) is added automatically to mocks whose method always has a body.
+   - Methods with bodies: `POST`, `PUT`, `PATCH`, `PROPATCH`, and `REPORT`
 
 ### Tape (prefix: "Tape_")
 | Param            | Type    | Default | Action |
@@ -106,12 +113,15 @@ Body data is used based on the included HTTP Method
 ## HTTP Methods
 ### PUT
 When creating a mock, the entire body is used as the response body
+- [Sequence Diagram](actionCharts.md#put)
 - [Creating a tape](examples.md#basic_createtape)
 - [Creating a tape and mock in the same call](examples.md#basic_apply)
 - [Creating a mock, being applied to a tape](examples.md#basic_retrieve)
 
 ### PATCH
-- Work in progress
+- [Sequence Diagram](actionCharts.md#patch)
+- ~~Update a tape~~
+- ~~Update a mock~~
 
 ## HTTP Mock Responses
 - Created (201)

@@ -42,18 +42,18 @@ object MatchFilter {
         if (byReq?.isEmpty().isTrue()) return null
         if (byReq?.size == 1) return byReq.first()
 
-        // filter by "Optional" matchers
-        val byOpt = findBestByGroup(byReq) { it.MatchesOpt }
-        if (byOpt?.isEmpty().isTrue()) return null
-        if (byOpt?.size == 1) return byOpt.first()
-
         // filter by how well the "Required" matchers match
-        val byReqR = findBestByGroup(byOpt) { it.reqRatio }
+        val byReqR = findBestByGroup(byReq) { it.reqRatio }
         if (byReqR?.isEmpty().isTrue()) return null
         if (byReqR?.size == 1) return byReqR.first()
 
+        // filter by "Optional" matchers
+        val byOpt = findBestByGroup(byReqR) { it.MatchesOpt }
+        if (byOpt?.isEmpty().isTrue()) return null
+        if (byOpt?.size == 1) return byOpt.first()
+
         // filter by how well the "Optional" matchers match
-        val byOptR = findBestByGroup(byReqR) { it.optRatio }
+        val byOptR = findBestByGroup(byOpt) { it.optRatio }
         if (byOptR?.isEmpty().isTrue()) return null
         if (byOptR?.size == 1) return byOptR.first()
 
