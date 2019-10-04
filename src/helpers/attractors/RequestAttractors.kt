@@ -165,7 +165,8 @@ class RequestAttractors {
                     if (!x.except) {
                         matchVal = 1
                         matchRto =
-                            (match?.groups?.get(0)?.value?.length ?: 0) / source.length.toDouble()
+                            (if (match.hasMatch) x.regex.pattern.length else 0) /
+                                    source.length.toDouble()
                     }
                 } else {
                     if (x.except) {
@@ -181,10 +182,11 @@ class RequestAttractors {
             .filter { it.optional.isTrue() }
             .fold(0 to 0.0) { acc, x ->
                 val match = x.regex.find(source)
-                val matchVal = match?.groups?.get(0)?.value?.length ?: 0
+                val matchRto = (if (match.hasMatch) x.regex.pattern.length else 0) /
+                        source.length.toDouble()
 
                 (acc.first + (if (match.hasMatch) 1 else 0)) to
-                        (acc.second + (matchVal / source.length.toFloat()))
+                        (acc.second + matchRto)
             }
 
         return AttractorMatches(reqCount, required, optional).also {
