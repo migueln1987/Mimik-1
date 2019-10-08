@@ -7,15 +7,11 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
+import helpers.* // ktlint-disable no-wildcard-imports
 import helpers.attractors.RequestAttractors
-import helpers.content
-import helpers.isTrue
-import helpers.reHost
-import helpers.toOkRequest
-import helpers.toReplayResponse
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import mimikMockHelpers.InteractionUseStates
+import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
@@ -47,7 +43,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         }
 
         fun build() = BlankTape { tape ->
-            tapeName?.also { tape.tapeName = it }
+            if (!tapeName.isNullOrBlank())
+                tape.tapeName = tapeName
             tape.attractors = attractors
             tape.routingUrl = routingURL
             tape.mode = if (allowLiveRecordings == true)
@@ -106,6 +103,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
 
+    var alwaysLive: Boolean? = false
+
     var chapters: MutableList<RecordedInteractions> = mutableListOf()
 
     private var tapeMode: TapeMode? = TapeMode.READ_WRITE
@@ -123,7 +122,23 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     override fun getName() = tapeName ?: hashCode().toString()
 
     private enum class SearchPreferences {
-        ALL, MockOnly, LiveOnly, AwaitOnly
+        /**
+         * Interactions which will ALWAYS use a live response
+         */
+        AlwaysLive,
+        /**
+         * Mocks waiting for a response body
+         */
+        AwaitOnly,
+        /**
+         * Mocks which have a limited number of uses before expiration
+         */
+        LimitedOnly,
+        /**
+         * Normal mock interactions
+         */
+        MockOnly,
+        ALL
     }
 
     fun updateNameByURL(url: String) {
@@ -168,7 +183,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 it.body(
                     ResponseBody.create(
                         MediaType.parse("text/plain"),
-                        if (isTestRunning) request.body().content else ""
+                        if (isTestRunning) request.body().content() else ""
                     )
                 )
             it.message(status.description)
@@ -213,56 +228,107 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     override fun play(request: okreplay.Request): Response {
         val okRequest: okhttp3.Request = request.toOkRequest
 
+        val alwaysLive = findBestMatch(okRequest, SearchPreferences.AlwaysLive)
+        if (alwaysLive.status == HttpStatusCode.Found) {
+            alwaysLive.item?.also {
+                println(
+                    "== Live Request ==\n" +
+                            "-Name\n %s\n-Can Complete: %b\n" +
+                            "-Url: %s\n-Body:\n %s\n-Headers:\n %s%s\n",
+                    it.name,
+                    isUrlValid,
+                    okRequest.url(),
+                    okRequest.body().content("{null}").valueOrIsEmpty,
+                    okRequest.headers().toString().valueOrIsEmpty,
+                    if (it.mockUses >= 0)
+                        "- Uses: ${it.mockUses}" else ""
+                )
+
+                if (isUrlValid) {
+                    val responseData = getData(okRequest)
+                    println(
+                        "== Live Response ==\n- Code %d from %s\n",
+                        responseData.code(), okRequest.url()
+                    )
+                    if (responseData.isSuccessful) {
+                        if (it.mockUses > 0) it.mockUses--
+                        println(
+                            "== Live Response Data ==\n-Body:\n %s\n-Headers:\n %s%s\n",
+                            if (it.responseData.isImage)
+                                "[image]" else it.responseData?.body,
+                            it.responseData?.headers.toString(),
+                            if (it.mockUses >= 0)
+                                "\n- Remaining Uses: ${it.mockUses}" else ""
+                        )
+                        return responseData.toReplayResponse
+                    }
+                }
+            }
+
+            return miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
+        }
+
         val awaitMock = findBestMatch(okRequest, SearchPreferences.AwaitOnly)
         if (awaitMock.status == HttpStatusCode.Found) {
             awaitMock.item?.also {
                 println(
-                    "== Await Request ==\n-Url: %s\n-Body:\n%s\n-Headers:\n%s"
-                        .format(
-                            okRequest.url(),
-                            okRequest.body().content,
-                            okRequest.headers().toString()
-                        )
+                    "== Await Request ==\n-Name\n %s\n-Url: %s\n-Body:\n %s\n-Headers:\n %s%s",
+                    it.name,
+                    okRequest.url(),
+                    okRequest.body().content("{null}").valueOrIsEmpty,
+                    okRequest.headers().toString().valueOrIsEmpty,
+                    if (it.mockUses >= 0)
+                        "\n- Uses: ${it.mockUses}" else ""
                 )
                 val responseData = getData(okRequest)
                 println(
-                    "== Await Response ==\n- Code %d from %s"
-                        .format(responseData.code(), okRequest.url())
+                    "== Await Response ==\n-Code (%d) from %s\n",
+                    responseData.code(), okRequest.url()
                 )
                 return if (responseData.isSuccessful) {
                     it.response = responseData.toReplayResponse
                     if (it.mockUses > 0) it.mockUses--
                     saveFile()
 
-                    val bodyIsImage = it.responseData.tapeHeaders[HttpHeaders.ContentType]
-                        ?.contains("image").isTrue()
                     println(
-                        "== Await Response Data ==\n-Body:\n%s\n-Headers:\n%s"
-                            .format(
-                                if (bodyIsImage) "[image]" else it.responseData.body,
-                                it.responseData.headers.toString()
-                            )
+                        "== Await Response Data ==\n-Body:\n %s\n-Headers:\n %s%s",
+                        if (it.responseData.isImage)
+                            "[image]" else it.responseData?.body,
+                        it.responseData?.headers.toString(),
+                        if (it.mockUses >= 0)
+                            "\n- Remaining Uses: ${it.mockUses}" else ""
                     )
 
                     it.response
+                        ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
                 } else {
                     miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
                 }
             }
         }
 
-        val limitedMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
+        val limitedMock = findBestMatch(okRequest, SearchPreferences.LimitedOnly)
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
                 it.mockUses--
+                println(
+                    "== Limited Mock ==\n-Name\n %s\n-Remaining Uses\n %s\n",
+                    it.name, it.mockUses
+                )
                 return it.response
+                    ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
             }
         }
 
-        val liveMock = findBestMatch(okRequest, SearchPreferences.LiveOnly)
+        val liveMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
         if (liveMock.status == HttpStatusCode.Found) {
             liveMock.item?.also {
+                println(
+                    "== Mock ==\n-Name\n %s\n",
+                    it.name
+                )
                 return it.response
+                    ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
             }
         }
 
@@ -276,8 +342,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         val filteredChapters = chapters.asSequence()
             .filter {
                 when (it.mockUses) {
-                    InteractionUseStates.DISABLE.state,
-                    InteractionUseStates.DISABLEDMOCK.state ->
+                    MockUseStates.DISABLE.state,
+                    MockUseStates.DISABLEDLIMITED.state ->
                         false
                     else -> true
                 }
@@ -287,13 +353,16 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     SearchPreferences.ALL ->
                         true
 
+                    SearchPreferences.AlwaysLive ->
+                        it.alwaysLive.isTrue()
+
                     SearchPreferences.AwaitOnly ->
                         it.awaitResponse
 
-                    SearchPreferences.LiveOnly ->
-                        it.mockUses == InteractionUseStates.ALWAYS.state
-
                     SearchPreferences.MockOnly ->
+                        it.mockUses == MockUseStates.ALWAYS.state
+
+                    SearchPreferences.LimitedOnly ->
                         it.mockUses in (1..Int.MAX_VALUE)
                 }
             }
@@ -308,7 +377,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             request.url().encodedPath(),
             request.url().query(),
             if (HttpMethod.requiresRequestBody(request.method()))
-                request.body().content else null
+                request.body().content() else null
         )
     }
 
@@ -330,8 +399,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 ((it as JsonObject)["mockUses"] as? JsonPrimitive)
                     ?.let { jsonMockUses ->
                         when (jsonMockUses.asInt) {
-                            InteractionUseStates.ALWAYS.state,
-                            InteractionUseStates.DISABLE.state
+                            MockUseStates.ALWAYS.state,
+                            MockUseStates.DISABLE.state
                             -> true // export non memory-only chapters
                             else -> false
                         }

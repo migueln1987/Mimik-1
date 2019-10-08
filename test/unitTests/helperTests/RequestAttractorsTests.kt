@@ -22,11 +22,11 @@ class RequestAttractorsTests {
         val ratioA = bitA.hardValue.length / input.length.toDouble()
         val ratioB = bitB.hardValue.length / input.length.toDouble()
 
-        textObject.queryBodyMatchers = listOf(bitA)
-        val responseA = textObject.getBodyMatches(input)
+        val matchBitA = listOf(bitA)
+        val responseA = textObject.getMatchCount(matchBitA, input)
 
-        textObject.queryBodyMatchers = listOf(bitB)
-        val responseB = textObject.getBodyMatches(input)
+        val matchBitB = listOf(bitB)
+        val responseB = textObject.getMatchCount(matchBitB, input)
 
         Assert.assertEquals(responseA.Required, responseB.Required)
         Assert.assertEquals(responseA.MatchesReq, responseB.MatchesReq)
@@ -45,11 +45,11 @@ class RequestAttractorsTests {
         val ratioA = bitA.hardValue.length / input.length.toDouble()
         val ratioB = bitB.hardValue.length / input.length.toDouble()
 
-        textObject.queryBodyMatchers = listOf(dummyReq, bitA)
-        val responseA = textObject.getBodyMatches(input)
+        val matchBitA = listOf(dummyReq, bitA)
+        val responseA = textObject.getMatchCount(matchBitA, input)
 
-        textObject.queryBodyMatchers = listOf(dummyReq, bitB)
-        val responseB = textObject.getBodyMatches(input)
+        val matchBitB = listOf(dummyReq, bitB)
+        val responseB = textObject.getMatchCount(matchBitB, input)
 
         Assert.assertEquals(responseA.MatchesOpt, responseB.MatchesOpt)
         Assert.assertTrue(responseA.optRatio > responseB.optRatio)

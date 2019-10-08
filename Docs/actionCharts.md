@@ -54,7 +54,7 @@ m->>c: Set filters
 Note over m: Create mock http request
 m->>c: Set mock http request
 
-opt "Await" is not set
+opt "Live" is not true & "Await" is not true
 	Note over m: Create mock http response
 	m->>c: Set mock http response
 end

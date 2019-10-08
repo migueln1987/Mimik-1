@@ -3,7 +3,6 @@ package networkRouting
 import helpers.appendHeaders
 import helpers.content
 import io.ktor.application.ApplicationCall
-import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -23,10 +22,6 @@ class CallProcessor(path: String) : RoutingContract(path) {
         route.route(path) {
             get { call.action() }
             post { call.action() }
-            intercept(ApplicationCallPipeline.Call) {
-                @Suppress("UNUSED_VARIABLE")
-                val interceptViewer = this
-            }
         }
     }
 
@@ -37,7 +32,7 @@ class CallProcessor(path: String) : RoutingContract(path) {
 
         response.headers.appendHeaders(processResponse.headers())
         respondText(ContentType.parse(contentType), code) {
-            processResponse.body().content
+            processResponse.body().content()
         }
     }
 }

@@ -4,6 +4,7 @@ import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.request.contentType
 import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
@@ -14,6 +15,7 @@ import mimikMockHelpers.ResponseTapedata
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.MediaType
+import okhttp3.Protocol
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import okhttp3.internal.http.HttpMethod
@@ -38,23 +40,23 @@ val okhttp3.Response.toJson: String
 /**
  * Returns the string contents of a RequestBody
  */
-val RequestBody?.content: String
-    get() = this?.let { _ ->
+fun RequestBody?.content(default: String = ""): String {
+    return this?.let { _ ->
         Buffer().let { buffer ->
             writeTo(buffer)
             val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
             buffer.readString(charset)
         }
-    } ?: ""
+    } ?: default
+}
 
-val ResponseBody?.content: String
-    get() {
-        return try {
-            this?.string() ?: ""
-        } catch (e: Exception) {
-            ""
-        }
+fun ResponseBody?.content(default: String = ""): String {
+    return try {
+        this?.string() ?: ""
+    } catch (e: Exception) {
+        ""
     }
+}
 
 val StringValues.toHeaders: Headers
     get() {
@@ -76,6 +78,12 @@ val Map<String, String>.toHeaders: Headers
         }.build()
     }
 
+/**
+ * Returns the value of [Headers] if it contains any values, or [null]
+ */
+val Headers.valueOrNull: Headers?
+    get() = if (size() > 0) this else null
+
 fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) {
     headers.toMultimap().forEach { t, u ->
         u.forEach {
@@ -89,6 +97,21 @@ fun Headers.contains(key: String, value: String) = values(key).contains(value)
 
 fun HttpUrl.containsPath(vararg path: String) =
     pathSegments().containsAll(path.toList())
+
+/**
+ * Returns a brief okHttp response to respond with a defined response [status] and [message]
+ */
+fun okhttp3.Request.makeCatchResponse(
+    status: HttpStatusCode,
+    message: () -> String = { "" }
+): okhttp3.Response {
+    return okhttp3.Response.Builder().also {
+        it.request(this)
+        it.protocol(Protocol.HTTP_1_1)
+        it.code(status.value)
+        it.message(message.invoke())
+    }.build()
+}
 
 fun okhttp3.Request.reHost(outboundHost: HttpUrl?): okhttp3.Request {
     return newBuilder().also { build ->
@@ -118,7 +141,7 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
         val newRequest = newBuilder().build()
         val contentCharset = newRequest.body()?.contentType()?.charset()
             ?: Charset.forName("UTF-8")
-        val bodyData = newRequest.body()?.content
+        val bodyData = newRequest.body()?.content()
 
         return object : okreplay.Request {
             override fun method() = newRequest.method()
@@ -151,7 +174,7 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
         val newResponse = newBuilder().build()
         val contentCharset = newResponse.body()?.contentType()?.charset()
             ?: Charset.forName("UTF-8")
-        val bodyData = newResponse.body()?.content
+        val bodyData = newResponse.body()?.content()
 
         return object : okreplay.Response {
             override fun code() = newResponse.code()
@@ -254,13 +277,14 @@ val okreplay.Request.toTapeData: RequestTapedata
 val okreplay.Response.toTapeData: ResponseTapedata
     get() = ResponseTapedata(this)
 
+// ktor
 suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
     val requestBody = when {
         HttpMethod.requiresRequestBody(request.httpMethod.value) -> {
             try {
                 receiveText()
             } catch (e: Exception) {
-                println(e)
+                println("ApplicationCall.toOkRequest \n$e")
                 ""
             }
         }
@@ -294,6 +318,14 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         )
     }.build()
 }
+
+// == mimik
+/**
+ * Returns if the response
+ */
+val ResponseTapedata?.isImage: Boolean
+    get() = if (this == null) false else
+        tapeHeaders.get(HttpHeaders.ContentType)?.contains("image").isTrue()
 
 // == Others
 fun StringBuilder.toJson(): String {

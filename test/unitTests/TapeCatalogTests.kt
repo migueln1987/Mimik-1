@@ -1,19 +1,16 @@
 package unitTests
 
 import TapeCatalog
-import helpers.attractors.AttractorMatches
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.makeCatchResponse
 import io.ktor.application.ApplicationCall
-import io.ktor.http.Headers
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.RequestConnectionPoint
-import io.ktor.request.ApplicationRequest
 import io.ktor.request.httpMethod
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import org.junit.Assert
 import org.junit.Before
@@ -41,7 +38,7 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_Found() {
         val mockChapter = mockk<RecordedInteractions> {
-            every { mockUses } returns 1
+            every { mockUses } returns MockUseStates.ALWAYS.state
             every { attractors } returns RequestAttractors {
                 it.routingPath = RequestAttractorBit("/path")
             }
@@ -64,7 +61,7 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_NotFound() {
         val mockChapter = mockk<RecordedInteractions> {
-            every { mockUses } returns 1
+            every { mockUses } returns MockUseStates.ALWAYS.state
             every { attractors } returns RequestAttractors {
                 it.routingPath = RequestAttractorBit("/other")
             }
@@ -86,21 +83,13 @@ class TapeCatalogTests {
 
     @Test
     fun makeCatchResponseTest() {
-        val applicationCall = mockk<ApplicationCall> {
-            every { request } returns mockk {
-                every { local.scheme } returns "http"
-                every { local.uri } returns "/none"
-                every { headers } returns io.ktor.http.headersOf("key", "value")
-                every { httpMethod.value } returns "POST"
-            }
-        }
-
+        val request = mockk<okhttp3.Request>()
         val testCode = HttpStatusCode.Continue
         val testMessage = "test"
 
         runBlocking {
             testObject.apply {
-                val response = applicationCall.makeCatchResponse(testCode)
+                val response = request.makeCatchResponse(testCode)
                 { testMessage }
 
                 Assert.assertEquals(response.code(), testCode.value)

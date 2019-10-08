@@ -5,6 +5,7 @@ package com.fiserv.mimik
 import networkRouting.MimikMock
 import networkRouting.TapeRouting
 import io.ktor.application.Application
+import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.client.HttpClient
@@ -61,6 +62,11 @@ fun Application.module(testing: Boolean = false) {
         trace {
             @Suppress("UNUSED_VARIABLE")
             val traceViewer = it
+        }
+
+        intercept(ApplicationCallPipeline.Call) {
+            @Suppress("UNUSED_VARIABLE")
+            val interceptViewer = this
         }
     }
 }

@@ -6,14 +6,14 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mimikMockHelpers.QueryResponse
-import okhttp3.Protocol
 import okreplay.OkReplayInterceptor
 import helpers.attractors.RequestAttractors
 import helpers.content
+import helpers.makeCatchResponse
 import helpers.reHost
 import helpers.toOkRequest
 import helpers.toTapeData
-import mimikMockHelpers.InteractionUseStates
+import mimikMockHelpers.MockUseStates
 
 class TapeCatalog : OkReplayInterceptor() {
     private val config = VCRConfig.getConfig
@@ -67,11 +67,11 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val path = request.url().encodedPath().removePrefix("/")
         val params = request.url().query()
-        val body = request.body()?.content
+        val body = request.body()?.content()
 
         val validChapters = tapes.asSequence()
             .flatMap { it.chapters.asSequence() }
-            .filter { InteractionUseStates.asState(it.mockUses).isEnabled }
+            .filter { MockUseStates.isEnabled(it.mockUses) }
             .associateBy({ it }, { it.attractors })
 
         val foundChapter = RequestAttractors.findBest(
@@ -124,7 +124,7 @@ class TapeCatalog : OkReplayInterceptor() {
                 }
             }
 
-            return call.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+            return callRequest.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
                 R.getProperty("processCall_InvalidUrl")
             }
         }
@@ -140,17 +140,18 @@ class TapeCatalog : OkReplayInterceptor() {
                     it.createNewInteraction { mock ->
                         mock.requestData = callRequest.toTapeData
                         mock.attractors = RequestAttractors(mock.requestData)
+                        mock.alwaysLive = it.alwaysLive
                     }
                     it.saveFile()
 
                     it.requestToChain(callRequest)?.let { chain ->
                         start(config, it)
                         withContext(Dispatchers.IO) { intercept(chain) }
-                    } ?: call.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+                    } ?: callRequest.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
                         R.getProperty("processCall_InvalidUrl")
                     }
                 } ?: let {
-                    call.makeCatchResponse(HttpStatusCode.Conflict) {
+                    callRequest.makeCatchResponse(HttpStatusCode.Conflict) {
                         R.getProperty("processCall_ConflictingTapes")
                     }
                 }
@@ -166,23 +167,8 @@ class TapeCatalog : OkReplayInterceptor() {
                     tape.saveFile()
                     tapes.add(tape)
                 }
-                call.makeCatchResponse(hostTape.status) { hostTape.responseMsg ?: "" }
+                callRequest.makeCatchResponse(hostTape.status) { hostTape.responseMsg ?: "" }
             }
         }
-    }
-
-    /**
-     * Returns a brief okHttp response to respond with a defined response [status] and [message]
-     */
-    suspend fun ApplicationCall.makeCatchResponse(
-        status: HttpStatusCode,
-        message: () -> String = { "" }
-    ): okhttp3.Response {
-        return okhttp3.Response.Builder().also {
-            it.request(toOkRequest("local.host"))
-            it.protocol(Protocol.HTTP_1_1)
-            it.code(status.value)
-            it.message(message.invoke())
-        }.build()
     }
 }
