@@ -1,4 +1,3 @@
-
 # Mock API
 
 ## PUT
@@ -51,12 +50,12 @@ opt Using existing tape
 	t-->>m: Append tape filters to new call filters
 end
 m->>c: Set filters
-Note over m: Create mock http request
-m->>c: Set mock http request
 
-opt "Await" is not set
+alt "Live" is not true & "Await" is not true
 	Note over m: Create mock http response
 	m->>c: Set mock http response
+else
+	m->>c: Set mock http response to null
 end
 
 m->>c: Set "use" value

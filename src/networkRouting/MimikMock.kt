@@ -9,6 +9,7 @@ import helpers.isJSONValidMsg
 import helpers.isTrue
 import helpers.removePrefix
 import helpers.toHeaders
+import helpers.valueOrNull
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers
@@ -20,9 +21,8 @@ import io.ktor.routing.Routing
 import io.ktor.routing.put
 import io.ktor.routing.route
 import java.lang.Exception
-import mimikMockHelpers.InteractionUseStates
+import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
-import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
 import okhttp3.internal.http.HttpMethod
 import tapeItems.BlankTape
@@ -71,6 +71,7 @@ class MimikMock(path: String) : RoutingContract(path) {
         mockParams = mockParams
             .filterNot { it.key.startsWith("filter", true) }
         val attractors = createRequestAttractor(request.headers)
+        val alwaysLive = if (mockParams["live"].isTrue()) true else null
 
         // Step 1: get existing tape or create a new tape
         val query = putmockGetTape(mockParams)
@@ -89,6 +90,8 @@ class MimikMock(path: String) : RoutingContract(path) {
                 attractors.append(tape.attractors)
             }
         }
+
+        query.item?.alwaysLive = alwaysLive
 
         if (mockParams["tape_save"].isTrue())
             tape.saveFile()
@@ -113,36 +116,28 @@ class MimikMock(path: String) : RoutingContract(path) {
                 }
 
         // Step 3: Set the MimikMock data
-        if (!chapter.hasRequestData)
-            chapter.requestData = RequestTapedata()
+//        if (!chapter.hasRequestData)
+//            chapter.requestData = RequestTapedata()
 
         val hasAwait = mockParams.containsKey("await")
         val awaitResponse = mockParams["await"].isTrue()
 
-        val requestMock = RequestTapedata() { builder ->
-            builder.method = mockParams["method"]
-
-            val urlPath = mockParams["route_path"] // try using the input data
-                ?: attractors.routingPath?.value // or the tape data
-
-            if (urlPath != null && attractors.routingPath?.value == null)
-                attractors.routingPath = RequestAttractorBit(urlPath)
-
-            builder.url = tape.httpRoutingUrl?.newBuilder()
-                ?.apply {
-                    if (urlPath != null)
-                        addPathSegments(urlPath.removePrefix("/"))
-                    query(mockParams["route_params"])
-                }?.build().toString()
-
-            mockParams
-                .filter { it.key.startsWith("headerin_") }
-                .mapKeys { it.key.removePrefix("headerin_") }
-                .toHeaders
-                .also {
-                    if (it.size() > 0) builder.headers = it
-                }
-        }
+//        val requestMock = RequestTapedata() { builder ->
+//            builder.method = mockParams["method"]
+//
+//            builder.url = tape.httpRoutingUrl?.newBuilder()
+//                ?.apply {
+//                    attractors.routingPath?.value?.also {
+//                        addPathSegments(it.removePrefix("/"))
+//                    }
+//                    query(mockParams["route_params"])
+//                }?.build().toString()
+//
+//            builder.headers = mockParams
+//                .filter { it.key.startsWith("headerin_") }
+//                .mapKeys { it.key.removePrefix("headerin_") }
+//                .toHeaders.valueOrNull
+//        }
 
         val bodyText = try {
             receiveText()
@@ -151,46 +146,47 @@ class MimikMock(path: String) : RoutingContract(path) {
         }
 
         // Method will have a body and filter isn't allowing bodies
-        if (HttpMethod.requiresRequestBody(requestMock.method ?: "") &&
+        if (HttpMethod.requiresRequestBody(mockParams["method"] ?: "") &&
             (attractors.queryBodyMatchers.isNullOrEmpty().isTrue() ||
                     attractors.queryBodyMatchers?.all { it.value.isBlank() }.isTrue())
         ) // add the default "accept all bodies" to calls requiring a body
             attractors.queryBodyMatchers = listOf(RequestAttractorBit(".*"))
 
         chapter.also { updateChapter ->
+            updateChapter.alwaysLive = alwaysLive
             updateChapter.attractors = attractors
-            updateChapter.requestData = requestMock
+//            updateChapter.requestData = requestMock
 
             // In case we want to update an existing chapter's name
             updateChapter.chapterName = interactionName ?: updateChapter.name
 
-            if (!(hasAwait && awaitResponse)) {
-                updateChapter.responseData = ResponseTapedata { rData ->
-                    rData.code = mockParams["response_code"]?.toIntOrNull()
+            updateChapter.responseData = if (alwaysLive.isTrue() || (hasAwait && awaitResponse))
+                null
+            else ResponseTapedata { rData ->
+                rData.code = mockParams["response_code"]?.toIntOrNull()
 
-                    rData.headers = mockParams
-                        .filter { it.key.startsWith("headerout_") }
-                        .mapKeys { it.key.removePrefix("headerout_") }
-                        .toHeaders
+                rData.headers = mockParams
+                    .filter { it.key.startsWith("headerout_") }
+                    .mapKeys { it.key.removePrefix("headerout_") }
+                    .toHeaders.valueOrNull
 
-                    // todo 1; Beautify the input if it's a valid json?
-                    // todo 2; skip body if the method doesn't allow bodies
-                    rData.body = bodyText
-                }
+                // todo 1; Beautify the input if it's a valid json?
+                // todo 2; skip body if the method doesn't allow bodies
+                rData.body = bodyText
             }
 
             val useRequest = mockParams["use"]
             updateChapter.mockUses = if (mockParams["readonly"].isTrue()) {
                 when (useRequest?.toLowerCase()) {
-                    "disable" -> InteractionUseStates.DISABLE
-                    else -> InteractionUseStates.ALWAYS
+                    "disable" -> MockUseStates.DISABLE
+                    else -> MockUseStates.ALWAYS
                 }.state
             } else {
                 useRequest?.toIntOrNull()
                     ?: when (useRequest?.toLowerCase()) {
-                        "disable" -> InteractionUseStates.DISABLE
-                        "always" -> InteractionUseStates.ALWAYS
-                        else -> InteractionUseStates.asState(updateChapter.mockUses)
+                        "disable" -> MockUseStates.DISABLE
+                        "always" -> MockUseStates.ALWAYS
+                        else -> MockUseStates.asState(updateChapter.mockUses)
                     }.state
             }
         }
@@ -278,44 +274,27 @@ class MimikMock(path: String) : RoutingContract(path) {
     }
 
     /**
-     * Attempts to find an existing tape suitable tape, or creates a new one.
-     *
-     * Find priority:
-     * 1. tape name
-     * 2. route values attractors
+     * Attempts to find an existing tape suitable tape (by name) or creates a new one.
      */
     private fun putmockGetTape(mockParams: Map<String, String>): QueryResponse<BlankTape> {
         val paramTapeName = mockParams["tape_name"]?.split("/")?.last()
         // todo; add an option for sub-directories
         // val paramTapeDir = mockParams["tape_name"]?.replace(paramTapeName ?: "", "")
 
-        var result = QueryResponse<BlankTape> {
+        val result = QueryResponse<BlankTape> {
             status = HttpStatusCode.NotFound
             item = tapeCatalog.tapes.firstOrNull { it.name.equals(paramTapeName, true) }
                 ?.also { status = HttpStatusCode.Found }
         }
 
         if (result.status != HttpStatusCode.Found) {
-            // No matching tape by name
-            // so try finding a tape which accepts the query path/ params
-            val queryPath = mockParams["route_path"]
-            val queryParams = mockParams["route_params"]
-
-            val tapeMap = tapeCatalog.tapes
-                .associateBy({ it }, { it.attractors })
-
-            result = RequestAttractors.findBest(tapeMap, queryPath, queryParams)
-
-            if (result.status != HttpStatusCode.Found) {
-                // no viable tape found, so return a new tape
-                result.status = HttpStatusCode.Created
-                result.item = BlankTape.Builder {
-                    it.routingURL = mockParams["tape_url"]
-                    it.allowLiveRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
-                    it.tapeName = paramTapeName
-                }.build()
-                    .also { tapeCatalog.tapes.add(it) }
-            }
+            result.status = HttpStatusCode.Created
+            result.item = BlankTape.Builder {
+                it.tapeName = paramTapeName
+                it.routingURL = mockParams["tape_url"]
+                it.allowLiveRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
+            }.build()
+                .also { tapeCatalog.tapes.add(it) }
         }
 
         return result

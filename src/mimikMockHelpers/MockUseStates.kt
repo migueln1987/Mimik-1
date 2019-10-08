@@ -2,33 +2,46 @@ package mimikMockHelpers
 
 import helpers.anyTrue
 
-class InteractionUseStates(val state: Int) {
+class MockUseStates(val state: Int) {
     companion object {
-        val ALWAYS = InteractionUseStates(-1)
-        val DISABLE = InteractionUseStates(-2)
-        val DISABLEDMOCK = InteractionUseStates(0)
+        val ALWAYS = MockUseStates(-1)
+        val DISABLE = MockUseStates(-2)
+        val DISABLEDLIMITED = MockUseStates(0)
         /**
          * Single use mock
          */
-        val SINGLEMOCK = InteractionUseStates(1)
+        val SINGLEMOCK = MockUseStates(1)
 
         /**
          * Creates a State using the input [state].
          *
          * Note: [default] is used if [state] is not valid.
          */
-        fun asState(state: Int, default: InteractionUseStates = ALWAYS): InteractionUseStates {
-            return InteractionUseStates(
+        fun asState(state: Int, default: MockUseStates = ALWAYS): MockUseStates {
+            return MockUseStates(
                 if (state in (-2..Int.MAX_VALUE))
                     state else default.state
             )
         }
+
+        /**
+         * Returns true if [value] is equal to a state which is disabled
+         */
+        fun isDisabled(value: Int) = when (value) {
+            DISABLE.state, DISABLEDLIMITED.state -> true
+            else -> false
+        }
+
+        /**
+         * Returns true if [value] is a type of enabled state
+         */
+        fun isEnabled(value: Int): Boolean = !isDisabled(value)
     }
 
     /**
      * Returns if this state is a type of MOCK state
      */
-    val isMock: Boolean
+    val isLimited: Boolean
         get() = state in (0..Int.MAX_VALUE)
 
     @Suppress("RemoveRedundantQualifierName")
@@ -43,9 +56,9 @@ class InteractionUseStates(val state: Int) {
      *
      * Note: invalid values set this state as DISABLEDMOCK
      */
-    fun asMock(uses: Int): InteractionUseStates {
+    fun asLimited(uses: Int): MockUseStates {
         if (uses == state) return this
-        return InteractionUseStates(
+        return MockUseStates(
             if (uses in (0..Int.MAX_VALUE))
                 uses else 0
         )
@@ -55,6 +68,6 @@ class InteractionUseStates(val state: Int) {
      * Returns this State as type of Disabled
      */
     @Suppress("RemoveRedundantQualifierName")
-    val asDisabled: InteractionUseStates
-        get() = if (isMock) DISABLEDMOCK else DISABLE
+    val asDisabled: MockUseStates
+        get() = if (isLimited) DISABLEDLIMITED else DISABLE
 }

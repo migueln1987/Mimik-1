@@ -28,6 +28,8 @@ class RecordedInteractions {
     val name: String
         get() = chapterName ?: UUID.randomUUID().toString()
 
+    var alwaysLive: Boolean? = false
+
     var attractors: RequestAttractors? = null
 
     /**
@@ -37,35 +39,35 @@ class RecordedInteractions {
      *
      * -2 = disable.
      *
-     * 0 = memory only mock, disabled due to expired uses.
+     * 0 = limited mock, disabled due to expired uses.
      *
-     * (1..Int.Max_Value) = memory only mock
+     * (1..Int.Max_Value) = limited mock
      */
-    var mockUses = InteractionUseStates.ALWAYS.state
+    var mockUses = MockUseStates.ALWAYS.state
 
     val awaitResponse: Boolean
         get() = !hasResponseData
 
-    var request: okreplay.Request
-        get() = requestData.replayRequest
+    var request: okreplay.Request?
+        get() = requestData?.replayRequest
         set(value) {
-            requestData = value.toTapeData
+            requestData = value?.toTapeData
         }
 
-    var response: okreplay.Response
-        get() = responseData.replayResponse
+    var response: okreplay.Response?
+        get() = responseData?.replayResponse
         set(value) {
-            responseData = value.toTapeData
+            responseData = value?.toTapeData
         }
 
-    lateinit var requestData: RequestTapedata
-    lateinit var responseData: ResponseTapedata
+    var requestData: RequestTapedata? = null
+    var responseData: ResponseTapedata? = null
 
     val hasRequestData: Boolean
-        get() = ::requestData.isInitialized
+        get() = requestData != null
 
     val hasResponseData: Boolean
-        get() = ::responseData.isInitialized
+        get() = responseData != null
 
     override fun toString(): String {
         return "%s; Uses: %d".format(
@@ -80,10 +82,10 @@ class RecordedInteractions {
      * - (0): does not match the path
      */
     // todo; update to be included in matches
-    @Deprecated("update to be included in matches")
-    fun matchesPath(inputRequest: okhttp3.Request): Int {
+    @Deprecated(message = "update to be included in matches", level = DeprecationLevel.ERROR)
+    private fun matchesPath(inputRequest: okhttp3.Request): Int {
         if (!hasRequestData) return -1
-        return if (requestData.httpUrl?.encodedPath() == inputRequest.url().encodedPath())
+        return if (requestData?.httpUrl?.encodedPath() == inputRequest.url().encodedPath())
             1 else 0
     }
 
@@ -91,13 +93,13 @@ class RecordedInteractions {
      * Returns how many headers from [requestData] match this source's request
      */
     // todo; update to be included in matches
-    @Deprecated("update to be included in matches")
-    fun matchingHeaders(inputRequest: okhttp3.Request): AttractorMatches {
-        if (!hasRequestData || requestData.tapeHeaders.size() < 2)
+    @Deprecated(message = "update to be included in matches", level = DeprecationLevel.ERROR)
+    private fun matchingHeaders(inputRequest: okhttp3.Request): AttractorMatches {
+        if (!hasRequestData || (requestData?.tapeHeaders?.size() ?: 0) < 2)
             return AttractorMatches()
 
         val response = AttractorMatches()
-        val source = requestData.tapeHeaders.toMultimap()
+        val source = requestData!!.tapeHeaders.toMultimap()
         val input = inputRequest.headers().toMultimap()
 
         source.forEach { (t, u) ->

@@ -19,7 +19,7 @@ import io.ktor.routing.* // ktlint-disable no-wildcard-imports
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
 import tapeItems.BlankTape
 import helpers.attractors.RequestAttractors
-import mimikMockHelpers.InteractionUseStates
+import mimikMockHelpers.MockUseStates
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
@@ -310,18 +310,17 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 p {
                                     val recAlways =
                                         t.chapters.count {
-                                            it.mockUses == InteractionUseStates.ALWAYS.state
+                                            it.mockUses == MockUseStates.ALWAYS.state
                                         }
                                     val recDisabled =
                                         t.chapters.count {
-                                            it.mockUses == InteractionUseStates.DISABLE.state
+                                            it.mockUses == MockUseStates.DISABLE.state
                                         }
                                     val recMemory =
                                         t.chapters.count { it.mockUses > 0 }
-                                    val recExpired =
-                                        t.chapters.count {
-                                            it.mockUses == InteractionUseStates.DISABLEDMOCK.state
-                                        }
+                                    val recExpired = t.chapters.count {
+                                        it.mockUses == MockUseStates.DISABLEDLIMITED.state
+                                    }
 
                                     table {
                                         tr {

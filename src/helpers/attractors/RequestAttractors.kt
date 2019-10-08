@@ -10,14 +10,15 @@ import okhttp3.internal.http.HttpMethod
 class RequestAttractors {
     var routingPath: RequestAttractorBit? = null
     var queryParamMatchers: List<RequestAttractorBit>? = null
+    var queryHeaderMatchers: List<RequestAttractorBit>? = null
     var queryBodyMatchers: List<RequestAttractorBit>? = null
 
     constructor(config: (RequestAttractors) -> Unit = {}) {
         config.invoke(this)
     }
 
-    constructor(request: RequestTapedata) {
-        request.httpUrl?.also { url ->
+    constructor(request: RequestTapedata?) {
+        request?.httpUrl?.also { url ->
             routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
             if (routingPath?.value?.isEmpty().isTrue())
                 routingPath = null
@@ -33,7 +34,7 @@ class RequestAttractors {
 
         // If the call always has a body, but a matcher wasn't set
         // then add a compliance matcher
-        if (HttpMethod.requiresRequestBody(request.method))
+        if (HttpMethod.requiresRequestBody(request?.method))
             queryBodyMatchers = listOf(RequestAttractorBit(".*"))
     }
 
@@ -72,6 +73,10 @@ class RequestAttractors {
                     it.value.second.appendValues(it.value.first?.getParamMatches(params))
                     it.value.second.matchingRequired
                 }
+//                .filter {
+//                    it.value.second.appendValues(it.value.first?.getHeaderMatches(params))
+//                    it.value.second.matchingRequired
+//                }
                 .filter {
                     it.value.second.appendValues(it.value.first?.getBodyMatches(body))
                     it.value.second.matchingRequired
@@ -137,7 +142,7 @@ class RequestAttractors {
      *
      * If there is no matchers, and there is data, assume the user doesn't want this to match
      */
-    private fun getMatchCount(
+    fun getMatchCount(
         matchScanner: List<RequestAttractorBit>?,
         source: String?
     ): AttractorMatches {
@@ -201,29 +206,18 @@ class RequestAttractors {
     private val MatchResult?.hasMatch: Boolean
         get() = this?.groups?.isNotEmpty().isTrue()
 
-    fun matchesPath(source: String?) =
+    private fun matchesPath(source: String?) =
         getMatchCount(routingPath?.let {
             it.required = true
             listOf(it)
         }, source)
 
-    /**
-     * Returns the (required, optional) matches
-     *
-     * No matchers will return (-1, -1)
-     *
-     * Null source will return (0, 0)
-     */
-    fun getParamMatches(source: String?) =
+    private fun getParamMatches(source: String?) =
         getMatchCount(queryParamMatchers, source)
 
-    /**
-     * Returns the (required, optional) matches
-     *
-     * No matchers will return (-1, -1)
-     *
-     * Null source will return (0, 0)
-     */
-    fun getBodyMatches(source: String?) =
+    private fun getHeaderMatches(source: String?) =
+        getMatchCount(queryHeaderMatchers, source)
+
+    private fun getBodyMatches(source: String?) =
         getMatchCount(queryBodyMatchers, source)
 }

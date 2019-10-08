@@ -52,3 +52,15 @@ val String?.isJSONValidMsg: String
     } catch (ex: Exception) {
         ex.toString()
     }
+
+/**
+ * Returns the source, or "{empty}" if empty
+ */
+val String.valueOrIsEmpty: String
+    get() = if (this.isEmpty()) "{empty}" else this
+
+/** Prints the given [message], with optional formatting [args],
+ * and the line separator to the standard output stream. */
+@Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
+fun println(message: String, vararg args: Any? = arrayOf()) =
+    System.out.println(message.format(*args))

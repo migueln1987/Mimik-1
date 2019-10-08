@@ -2,7 +2,6 @@ package apiTests
 
 import VCRConfig
 import com.beust.klaxon.internal.firstNotNullResult
-import helpers.containsPath
 import helpers.isJSONValid
 import helpers.isTrue
 import io.ktor.client.request.request
@@ -11,6 +10,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import io.mockk.unmockkObject
+import mimikMockHelpers.MockUseStates
 import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.Before
@@ -126,8 +126,7 @@ class MockTests {
                 addHeader("mockTape_Name", "useMock")
                 addHeader("mockMethod", "POST")
                 addHeader("mockResponseCode", "200")
-                addHeader("mockRoute_path", "/mail")
-                addHeader("mockFilter_body~", ".*") // post ALWAYS has a body
+                addHeader("mockFilter_Path", "/mail")
                 setBody(testBody)
             }
 
@@ -152,7 +151,6 @@ class MockTests {
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
                 addHeader("mockFilter_Param", "Param")
-                addHeader("mockFilter_Body~", ".*")
             }
 
             handleRequest(HttpMethod.Put, "/mock") {
@@ -161,7 +159,6 @@ class MockTests {
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
                 addHeader("mockFilter_Param", "Param=Value")
-                addHeader("mockFilter_Body~", ".*")
             }
 
             handleRequest(HttpMethod.Post, "/long/path/name") {
@@ -187,15 +184,15 @@ class MockTests {
             requireNotNull(tape2)
 
             // check that tape 1 and tape 2 have the expected calls by filter
-            Assert.assertTrue(tape1.chapters.any { it.requestData.body == "newParam" })
-            Assert.assertTrue(tape2.chapters.any { it.requestData.body == "matchParam" })
+            Assert.assertTrue(tape1.chapters.any { it.requestData?.body == "newParam" })
+            Assert.assertTrue(tape2.chapters.any { it.requestData?.body == "matchParam" })
 
             // tape 1 and 2 should not have the non-filtering call
-            Assert.assertTrue(tape1.chapters.none { it.requestData.body == "noParam" })
-            Assert.assertTrue(tape2.chapters.none { it.requestData.body == "noParam" })
+            Assert.assertTrue(tape1.chapters.none { it.requestData?.body == "noParam" })
+            Assert.assertTrue(tape2.chapters.none { it.requestData?.body == "noParam" })
 
             val hasNoParamCall = tapes.any { tape ->
-                tape.chapters.any { it.requestData.body == "noParam" }
+                tape.chapters.any { it.requestData?.body == "noParam" }
             }
             // new call should have created it's own tape
             Assert.assertTrue(hasNoParamCall)
@@ -211,7 +208,6 @@ class MockTests {
 
                 addHeader("mockAwait", "true")
                 addHeader("mockFilter_Path", ".*")
-                addHeader("mockFilter_Body~", ".*")
             }
 
             handleRequest(HttpMethod.Post, "/awaittape_test") {
@@ -224,7 +220,7 @@ class MockTests {
                         val interaction = TapeCatalog.Instance.tapes
                             .firstNotNullResult { tape ->
                                 tape.chapters.firstNotNullResult {
-                                    if (it.hasResponseData && it.responseData.body == "awaittape")
+                                    if (it.hasResponseData && it.responseData?.body == "awaittape")
                                         it else null
                                 }
                             }
@@ -241,10 +237,9 @@ class MockTests {
 
     @Test
     fun newCallCreatedAwaitTape() {
-        var tapeName = ""
-
+        val path = "await_test"
         TestApp {
-            handleRequest(HttpMethod.Post, "/await_test") {
+            handleRequest(HttpMethod.Post, "/$path") {
                 request {
                     setBody("testBody")
                 }
@@ -255,14 +250,7 @@ class MockTests {
 
                         val interaction = TapeCatalog.Instance.tapes
                             .firstNotNullResult { tape ->
-                                tape.chapters.firstNotNullResult { chapter ->
-                                    if (chapter.hasRequestData &&
-                                        chapter.requestData.httpUrl?.containsPath("await_test").isTrue()
-                                    ) {
-                                        tapeName = tape.name
-                                        chapter
-                                    } else null
-                                }
+                                tape.chapters.firstOrNull()
                             }
 
                         Assert.assertNotNull(interaction)
@@ -270,6 +258,8 @@ class MockTests {
 
                         Assert.assertTrue(interaction.awaitResponse)
                         Assert.assertFalse(interaction.hasResponseData)
+
+                        Assert.assertEquals(path, interaction.attractors?.routingPath?.value)
                     }
                 }
         }
@@ -284,8 +274,9 @@ class MockTests {
             handleRequest(HttpMethod.Put, "/mock") {
                 addHeader("mockMethod", "POST")
                 addHeader("mockFilter_Path", "/path")
-                addHeader("mockFilter_Body", ".*")
                 addHeader("mockFilter_Body!", "avoid")
+                // wild-card "all", to allow this mock to accept any body (addition to above filter)
+                addHeader("mockFilter_Body", ".*")
                 setBody(avoidBody)
             }
 
@@ -333,6 +324,145 @@ class MockTests {
                     Assert.assertEquals(headerValue, it.headers[headerKey])
                 }
             }
+        }
+    }
+
+    @Test
+    fun alwaysLiveMock_NoUrl() {
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockMethod", "POST")
+                addHeader("mockResponseCode", "200")
+                addHeader("mockFilter_Path", "/mail")
+                addHeader("mockLive", "true")
+            }
+
+            val mock = TapeCatalog.Instance.tapes.firstOrNull()
+                ?.chapters?.firstOrNull()
+
+            Assert.assertNotNull(mock)
+            Assert.assertTrue(mock?.alwaysLive ?: false)
+            Assert.assertNull(mock?.responseData)
+
+            handleRequest(HttpMethod.Post, "/mail") {}
+                .apply {
+                    response {
+                        Assert.assertEquals(HttpStatusCode.BadGateway, it.status())
+                    }
+                }
+        }
+    }
+
+    @Test
+    fun alwaysLiveMock() {
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockLive", "true")
+                addHeader("mockTape_Url", "http://valid.url")
+                addHeader("mockMethod", "POST")
+                addHeader("mockFilter_Path", "/mail")
+            }
+
+            val mock = TapeCatalog.Instance.tapes.firstOrNull()
+                ?.chapters?.firstOrNull()
+
+            Assert.assertNotNull(mock)
+            requireNotNull(mock)
+            Assert.assertTrue(mock.alwaysLive ?: false)
+            Assert.assertNull(mock.responseData)
+
+            handleRequest(HttpMethod.Post, "/mail") {}
+                .apply {
+                    response {
+                        Assert.assertEquals(HttpStatusCode.OK, it.status())
+                        Assert.assertNull(mock.responseData)
+                    }
+                }
+        }
+    }
+
+    @Test // Runs the live mock a limited time, then mocking response
+    fun alwaysLiveLimitedMock() {
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockTape_Name", "liveTape")
+                addHeader("mockLive", "true")
+                addHeader("mockTape_Url", "http://valid.url")
+                addHeader("mockTape_Only", "true")
+            }
+
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockTape_Name", "liveTape")
+                addHeader("mockName", "mock_limited")
+                addHeader("mockLive", "true")
+                addHeader("mockFilter_Path", "/mail")
+                addHeader("mockUse", MockUseStates.SINGLEMOCK.state.toString())
+            }
+
+            val mockBody = "TestBody"
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockTape_Name", "liveTape")
+                addHeader("mockName", "mock_full")
+                addHeader("mockFilter_Path", "/mail")
+                addHeader("mockMethod", "POST")
+                setBody(mockBody)
+            }
+
+            val mock = TapeCatalog.Instance.tapes.firstOrNull()
+                ?.chapters?.firstOrNull()
+
+            Assert.assertNotNull(mock)
+            requireNotNull(mock)
+            Assert.assertTrue(mock.alwaysLive ?: false)
+            Assert.assertNull(mock.responseData)
+
+            handleRequest(HttpMethod.Post, "/mail")
+                .apply {
+                    response {
+                        Assert.assertEquals(HttpStatusCode.OK, it.status())
+                        Assert.assertTrue(MockUseStates.isDisabled(mock.mockUses))
+                        Assert.assertNull(mock.responseData)
+                        Assert.assertNotEquals(mockBody, it.content)
+                    }
+                }
+
+            handleRequest(HttpMethod.Post, "/mail")
+                .apply {
+                    response {
+                        Assert.assertEquals(HttpStatusCode.OK, it.status())
+                        Assert.assertEquals(mockBody, it.content)
+                    }
+                }
+        }
+    }
+
+    @Test
+    fun alwaysLiveTape() {
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock") {
+                addHeader("mockTape_Url", "http://valid.url")
+                addHeader("mockFilter_Path", "/mail")
+                addHeader("mockLive", "true")
+                addHeader("mockTape_Only", "true")
+            }
+
+            val tape = TapeCatalog.Instance.tapes.firstOrNull()
+                ?.also {
+                    Assert.assertTrue(it.chapters.isEmpty())
+                }
+
+            Assert.assertNotNull(tape)
+            requireNotNull(tape)
+            Assert.assertTrue(tape.alwaysLive ?: false)
+
+            handleRequest(HttpMethod.Post, "/mail") {}
+                .apply {
+                    response {
+                        Assert.assertEquals(HttpStatusCode.OK, it.status())
+                        Assert.assertTrue(tape.chapters.isNotEmpty())
+                        Assert.assertTrue(tape.chapters.first().alwaysLive.isTrue())
+                    }
+                }
         }
     }
 }

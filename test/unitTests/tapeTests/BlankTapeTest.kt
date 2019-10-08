@@ -4,6 +4,7 @@ import apiTests.assertContains
 import apiTests.assertStartsWith
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import okreplay.TapeMode
 import org.junit.Assert
@@ -136,7 +137,7 @@ class BlankTapeTest {
     fun createInteractionTest() {
         Assert.assertEquals(testObject.size(), 0)
         val data = testObject.createNewInteraction {
-            it.mockUses = 3
+            it.mockUses = MockUseStates.ALWAYS.state
         }
         Assert.assertEquals(1, testObject.size())
 

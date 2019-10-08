@@ -5,7 +5,7 @@ import helpers.attractors.RequestAttractors
 import io.ktor.http.HttpStatusCode
 import io.mockk.every
 import io.mockk.mockk
-import mimikMockHelpers.InteractionUseStates
+import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import okhttp3.Headers
 import okhttp3.HttpUrl
@@ -40,7 +40,7 @@ class ReplayTapeTests {
     @Test
     fun seekTest() {
         val chapter = RecordedInteractions {
-            it.mockUses = 1
+            it.mockUses = MockUseStates.SINGLEMOCK.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
             }
@@ -61,9 +61,8 @@ class ReplayTapeTests {
     @Test
     fun playMockChapter() {
         val mockBodyMessage = "body_Mock"
-        val mockUseCount = 1
         val chapterMock = RecordedInteractions {
-            it.mockUses = mockUseCount
+            it.mockUses = MockUseStates.ALWAYS.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
             }
@@ -88,15 +87,13 @@ class ReplayTapeTests {
         val response = testObject.play(request)
 
         Assert.assertEquals(mockBodyMessage, response.bodyAsText())
-        Assert.assertTrue(chapterMock.mockUses < mockUseCount)
     }
 
     @Test
     fun playMockThenLive() {
-        val mockUseCount = InteractionUseStates.SINGLEMOCK
         val mockBodyMessage = "body_Mock"
         val chapterMock = RecordedInteractions {
-            it.mockUses = mockUseCount.state
+            it.mockUses = MockUseStates.SINGLEMOCK.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
             }
@@ -111,7 +108,7 @@ class ReplayTapeTests {
 
         val liveBodyMessage = "body_Live"
         val chapterLive = RecordedInteractions {
-            it.mockUses = InteractionUseStates.ALWAYS.state
+            it.mockUses = MockUseStates.ALWAYS.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
             }
@@ -138,7 +135,7 @@ class ReplayTapeTests {
 
         // Expect to receive the chapterMock data
         Assert.assertEquals(mockBodyMessage, response.bodyAsText())
-        Assert.assertEquals(mockUseCount.asDisabled.state, chapterMock.mockUses)
+        Assert.assertTrue(MockUseStates.isDisabled(chapterMock.mockUses))
 
         // Expect to receive the chapterLive data
         response = testObject.play(request)
