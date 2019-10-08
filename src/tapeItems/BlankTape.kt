@@ -241,13 +241,13 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
                     if (it.mockUses >= 0)
-                        "- Uses: ${it.mockUses}" else ""
+                        "-Uses: ${it.mockUses}" else ""
                 )
 
                 if (isUrlValid) {
                     val responseData = getData(okRequest)
                     println(
-                        "== Live Response ==\n- Code %d from %s\n",
+                        "== Live Response ==\n-Code %d from %s\n",
                         responseData.code(), okRequest.url()
                     )
                     if (responseData.isSuccessful) {
@@ -258,7 +258,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                                 "[image]" else it.responseData?.body,
                             it.responseData?.headers.toString(),
                             if (it.mockUses >= 0)
-                                "\n- Remaining Uses: ${it.mockUses}" else ""
+                                "\n-Remaining Uses: ${it.mockUses}" else ""
                         )
                         return responseData.toReplayResponse
                     }
@@ -278,7 +278,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
                     if (it.mockUses >= 0)
-                        "\n- Uses: ${it.mockUses}" else ""
+                        "\n-Uses: ${it.mockUses}" else ""
                 )
                 val responseData = getData(okRequest)
                 println(
@@ -296,7 +296,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                             "[image]" else it.responseData?.body,
                         it.responseData?.headers.toString(),
                         if (it.mockUses >= 0)
-                            "\n- Remaining Uses: ${it.mockUses}" else ""
+                            "\n-Remaining Uses: ${it.mockUses}" else ""
                     )
 
                     it.response

@@ -160,21 +160,20 @@ class MimikMock(path: String) : RoutingContract(path) {
             // In case we want to update an existing chapter's name
             updateChapter.chapterName = interactionName ?: updateChapter.name
 
-            if (!alwaysLive.isTrue() && !(hasAwait && awaitResponse)) {
-                updateChapter.responseData = ResponseTapedata { rData ->
-                    rData.code = mockParams["response_code"]?.toIntOrNull()
+            updateChapter.responseData = if (alwaysLive.isTrue() || (hasAwait && awaitResponse))
+                null
+            else ResponseTapedata { rData ->
+                rData.code = mockParams["response_code"]?.toIntOrNull()
 
-                    rData.headers = mockParams
-                        .filter { it.key.startsWith("headerout_") }
-                        .mapKeys { it.key.removePrefix("headerout_") }
-                        .toHeaders.valueOrNull
+                rData.headers = mockParams
+                    .filter { it.key.startsWith("headerout_") }
+                    .mapKeys { it.key.removePrefix("headerout_") }
+                    .toHeaders.valueOrNull
 
-                    // todo 1; Beautify the input if it's a valid json?
-                    // todo 2; skip body if the method doesn't allow bodies
-                    rData.body = bodyText
-                }
-            } else
-                updateChapter.responseData = null
+                // todo 1; Beautify the input if it's a valid json?
+                // todo 2; skip body if the method doesn't allow bodies
+                rData.body = bodyText
+            }
 
             val useRequest = mockParams["use"]
             updateChapter.mockUses = if (mockParams["readonly"].isTrue()) {
