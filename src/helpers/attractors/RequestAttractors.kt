@@ -108,6 +108,7 @@ class RequestAttractors {
             return anyTrue(
                 routingPath?.hardValue?.isNotBlank().isTrue(),
                 queryParamMatchers?.isNotEmpty().isTrue(),
+                queryHeaderMatchers?.isNotEmpty().isTrue(),
                 queryBodyMatchers?.isNotEmpty().isTrue()
             )
         }

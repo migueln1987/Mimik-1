@@ -28,6 +28,13 @@ fun String.ensurePrefix(prefix: String) =
     if (startsWith(prefix)) this else prefix + this
 
 /**
+ * If this string starts with the given [prefix] (in order of input), returns a copy of this string
+ * with the prefix removed. Otherwise, returns this string.
+ */
+fun String.removePrefixs(vararg prefixs: CharSequence) =
+    prefixs.fold(this) { acc, t -> acc.removePrefix(t) }
+
+/**
  * If this string does not start with the given [prefix],
  * then the string is returned with [value] added.
  * Else the original string is returned.

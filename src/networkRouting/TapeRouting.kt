@@ -19,6 +19,7 @@ import io.ktor.routing.* // ktlint-disable no-wildcard-imports
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
 import tapeItems.BlankTape
 import helpers.attractors.RequestAttractors
+import helpers.removePrefixs
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 
@@ -31,9 +32,10 @@ class TapeRouting(path: String) : RoutingContract(path) {
     private val subDirectoryDefault = "[ Default Directory ]"
     private val subDirectoryCustom = "[ Custom Directory ]"
 
-    private val queryParamValue = "QueryParamValue"
-    private val queryParamOpt = "QueryParamOpt"
-    private val queryParamExcept = "queryParamExcept"
+    private val filterParamValue = "filterParamValue"
+    private val filterParamOpt = "filterParamOpt"
+    private val filterParamExcept = "filterParamExcept"
+    private val loadFlag = "_load_"
 
     enum class RoutePaths(val path: String) {
         ALL("all"),
@@ -150,16 +152,22 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
         when (data["Action"]) {
             "SaveTape" -> {
-                // todo; save tape data
+                data.saveToTape()
+                respondRedirect {
+                    path(RoutePaths.EDIT.asSubPath)
+                    parameters.apply {
+                        append("tape", data["tape"] ?: "")
+                    }
+                }
             }
 
             "SaveToHardTape" -> {
-                tapeCatalog.tapes
+                val foundTape = tapeCatalog.tapes
                     .firstOrNull { it.name == data["tape"] }
-                    ?.saveFile()
+                    ?.also { it.saveFile() }
 
                 respondRedirect {
-                    if (data["resumeEdit"] == "true") {
+                    if (foundTape != null && data["resumeEdit"] == "true") {
                         path(RoutePaths.EDIT.asSubPath)
                         parameters.apply {
                             append("tape", data["tape"] ?: "")
@@ -176,6 +184,19 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             .forEach { (t, u) -> append(t, u) }
                     }
                 }
+            }
+
+            "Remove" -> {
+                tapeCatalog.tapes.firstOrNull { it.name == parameters["tape"] }
+                    ?.also { tape ->
+                        parameters["chapter"]?.also { chap ->
+                            tape.chapters.removeIf { it.name == chap }
+                            respondRedirect(RoutePaths.EDIT.path)
+                            return
+                        } ?: tapeCatalog.tapes.remove(tape)
+                    }
+
+                respondRedirect(RoutePaths.ALL.path)
             }
 
             "Delete" -> {
@@ -202,23 +223,33 @@ class TapeRouting(path: String) : RoutingContract(path) {
             tape.allowLiveRecordings = get("SaveNewCalls") == "on"
 
             tape.attractors = RequestAttractors { attr ->
-                get("RoutingPath")?.trim()?.also { path ->
-                    attr.routingPath?.value = path
+                get("filterPath")?.trim()?.also { path ->
+                    if (path.isNotEmpty())
+                        attr.routingPath?.value = path
                 }
 
-                if (keys.any { it.startsWith(queryParamValue) }) {
+                if (keys.any { it.startsWith(filterParamValue) }) {
                     val values = asSequence()
                         .filter { it.value.isNotBlank() }
-                        .filter { it.key.startsWith(queryParamValue) }
-                        .associate { it.key.removePrefix(queryParamValue) to it.value }
+                        .filter { it.key.startsWith(filterParamValue) }
+                        .associateBy(
+                            { it.key.removePrefixs(filterParamValue, loadFlag) },
+                            { it.value }
+                        )
 
                     val optionals = asSequence()
-                        .filter { it.key.startsWith(queryParamOpt) }
-                        .associate { it.key.removePrefix(queryParamOpt) to it.value }
+                        .filter { it.key.startsWith(filterParamOpt) }
+                        .associateBy(
+                            { it.key.removePrefixs(filterParamOpt, loadFlag) },
+                            { it.value }
+                        )
 
                     val excepts = asSequence()
-                        .filter { it.key.startsWith(queryParamExcept) }
-                        .associate { it.key.removePrefix(queryParamExcept) to it.value }
+                        .filter { it.key.startsWith(filterParamExcept) }
+                        .associateBy(
+                            { it.key.removePrefixs(filterParamExcept, loadFlag) },
+                            { it.value }
+                        )
 
                     attr.queryParamMatchers = values.keys.map { key ->
                         RequestAttractorBit {
@@ -270,6 +301,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         .tb_25wide {
                             width: 25%
                         }
+                        .center{ text-align: center; }
                         .infoText {
                             font-size: 14px;
                             color: #555
@@ -300,7 +332,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             tapeCatalog.tapes.forEach { t ->
                 table {
                     tr {
-                        th { +t.name }
+                        th(classes = "center") { +t.name }
 
                         td {
                             if (t.file?.exists().isTrue()) {
@@ -314,68 +346,25 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     hiddenInput(name = "tape") { value = t.name }
                                     button(name = "Action") {
                                         value = "SaveToHardTape"
-                                        text("Save tape as a hard tape")
+                                        +"Save tape as a hard tape"
                                     }
                                 }
                             }
-                            p { +"Recordings: ${t.chapters.size}" }
 
-                            if (t.chapters.isNotEmpty()) {
-                                p {
-                                    val recAlways =
-                                        t.chapters.count {
-                                            it.mockUses == MockUseStates.ALWAYS.state
-                                        }
-                                    val recDisabled =
-                                        t.chapters.count {
-                                            it.mockUses == MockUseStates.DISABLE.state
-                                        }
-                                    val recMemory =
-                                        t.chapters.count { it.mockUses > 0 }
-                                    val recExpired = t.chapters.count {
-                                        it.mockUses == MockUseStates.DISABLEDLIMITED.state
-                                    }
-
-                                    table {
-                                        tr {
-                                            if (recAlways > 0)
-                                                th(classes = "tb_25wide") { +"Always" }
-                                            if (recDisabled > 0)
-                                                th(classes = "tb_25wide") { +"Disabled" }
-                                            if (recMemory > 0)
-                                                th(classes = "tb_25wide") { +"In-Memory" }
-                                            if (recExpired > 0)
-                                                th(classes = "tb_25wide") { +"In-Memory (Expired)" }
-                                        }
-                                        tr {
-                                            if (recAlways > 0)
-                                                td(classes = "tb_25wide") { text(recAlways) }
-                                            if (recDisabled > 0)
-                                                td(classes = "tb_25wide") { text(recDisabled) }
-                                            if (recMemory > 0)
-                                                td(classes = "tb_25wide") { text(recMemory) }
-                                            if (recExpired > 0)
-                                                td(classes = "tb_25wide") { text(recExpired) }
-                                        }
-                                    }
-                                }
-                            }
+                            displayTapeRecInfo(t)
 
                             br()
 
-                            if (t.isUrlValid) {
-                                p { +"Routing URL: ${t.httpRoutingUrl!!}" }
-                            } else {
-                                p { +"Routing URL: [ Invalid ]" }
+                            p {
+                                +"Routing URL: %s".format(
+                                    when {
+                                        t.routingUrl == null -> "{ no routing url }"
+                                        t.isUrlValid -> t.httpRoutingUrl!!
+                                        else -> "{ Invalid }"
+                                    }
+                                )
                             }
-
-                            if (!t.attractors?.routingPath?.value.isNullOrBlank()) {
-                                p { +"Routing Path: ${t.attractors?.routingPath}" }
-                            }
-
-                            if (t.attractors?.queryParamMatchers?.isNotEmpty().isTrue()) {
-                                p { +"Routing Query: ${t.attractors?.queryParamMatchers?.size}" }
-                            }
+                            displayTapeAttrInfo(t.attractors)
                         }
 
                         td {
@@ -388,8 +377,29 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     submitInput(name = "Action") { value = "Edit" }
                                 }
                                 p {
-                                    submitInput(name = "Action") { value = "Delete" }
+                                    submitInput(name = "Action") {
+                                        onClick = """
+                                            if(confirm(${R.getProperty("viewTapeRemoveInfo")}))
+                                                submit();
+                                            else
+                                                type="button";
+                                        """.trimIndent()
+                                        value = "Remove"
+                                    }
                                 }
+
+                                if (t.file?.exists() == true)
+                                    p {
+                                        submitInput(name = "Action") {
+                                            onClick = """
+                                            if(confirm(${R.getProperty("viewTapeDeleteInfo")}))
+                                                submit();
+                                            else
+                                                type="button";
+                                        """.trimIndent()
+                                            value = "Delete"
+                                        }
+                                    }
                             }
                         }
                     }
@@ -398,6 +408,113 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
     }
 
+    /**
+     * Renders the [total, live, limited, mock] recordings of this [tape] as a table.
+     * Note: Nothing is rendered if there are no chapter data
+     */
+    private fun FlowContent.displayTapeRecInfo(tape: BlankTape) {
+        if (tape.chapters.isEmpty()) {
+            p { +"{ no chapters }" }
+            return
+        }
+
+        p {
+            table {
+                thead {
+                    tr {
+                        td()
+                        th { +"Total" }
+                        th { +"Live" }
+                        th { +"Mock" }
+                        th { +"Await" }
+                    }
+                }
+                tbody {
+                    tr {
+                        th { +"Enabled" }
+                        td { +tape.chapters.count { MockUseStates.isEnabled(it.mockUses) } }
+                        td {
+                            +tape.chapters.count {
+                                MockUseStates.isEnabled(it.mockUses) &&
+                                        it.alwaysLive ?: false
+                            }.toString()
+                        }
+                        td {
+                            +tape.chapters.count {
+                                MockUseStates.isEnabled(it.mockUses) &&
+                                        !MockUseStates.isLimitedMock(it.mockUses)
+                            }.toString()
+                        }
+                        td {
+                            +tape.chapters.count {
+                                MockUseStates.isEnabled(it.mockUses) &&
+                                        it.awaitResponse
+                            }.toString()
+                        }
+                    }
+
+                    tr {
+                        th { +"Disabled" }
+                        td { +tape.chapters.count { MockUseStates.isDisabled(it.mockUses) } }
+                        td {
+                            +tape.chapters.count {
+                                MockUseStates.isDisabled(it.mockUses) &&
+                                        it.alwaysLive ?: false
+                            }.toString()
+                        }
+                        td {
+                            +tape.chapters.count {
+                                MockUseStates.isDisabled(it.mockUses) &&
+                                        !MockUseStates.isLimitedMock(it.mockUses)
+                            }.toString()
+                        }
+                        td {
+                            +tape.chapters.count {
+                                MockUseStates.isDisabled(it.mockUses) &&
+                                        it.awaitResponse
+                            }.toString()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun FlowContent.displayTapeAttrInfo(attr: RequestAttractors?) {
+        if (attr == null || !attr.hasData) {
+            p { +"{ no attractors }" }
+            return
+        }
+
+        table {
+            thead {
+                tr {
+                    td(classes = "center") { +"Attractors" }
+                    th { +"Route" }
+                    th { +"Param" }
+                    th { +"Header" }
+                }
+            }
+
+            tbody {
+                tr {
+                    th { +"Count" }
+                    td {
+                        +when (attr.routingPath?.value?.trim()) {
+                            null, "" -> "null"
+                            else -> "1"
+                        }
+                    }
+                    td { +attr.queryParamMatchers?.count().toString() }
+                    td { +attr.queryHeaderMatchers?.count().toString() }
+                }
+            }
+        }
+    }
+
+    /**
+     * Create and Edit page for a single tape
+     */
     private fun HTML.getTapePage(params: Parameters) {
         val randomVal = randomHost.nextRandom()
         val randomValStr = randomHost.valueAsChars
@@ -432,16 +549,16 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 var newrow = FilterParamTable.insertRow(FilterParamTable.rows.length-1);
                                 
                                 var filterValue = newrow.insertCell(0);
-                                var valueInput = createTextInput("$queryParamValue", queryParamID);
+                                var valueInput = createTextInput("$filterParamValue", queryParamID);
                                 filterValue.appendChild(valueInput);
                                 
                                 var filterFlags = newrow.insertCell(1);
-                                var isOptionalInput = createCheckbox("$queryParamOpt", queryParamID);
+                                var isOptionalInput = createCheckbox("$filterParamOpt", queryParamID);
                                 filterFlags.appendChild(isOptionalInput);
                                 filterFlags.append(" Optional");
                                 filterFlags.appendChild(document.createElement("br"));
 
-                                var isExceptInput = createCheckbox("$queryParamExcept", queryParamID);
+                                var isExceptInput = createCheckbox("$filterParamExcept", queryParamID);
                                 filterFlags.appendChild(isExceptInput);
                                 filterFlags.append(" Except");
                                 queryParamID++;
@@ -450,10 +567,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 actionBtns.appendChild(createDeleteBtn());
                             }
                             
+                            function disableEnter(field) {
+                                field.onkeydown = function(e) {return event.key != 'Enter';};
+                            }
+                            
                             function createTextInput(fieldType, fieldID) {
                                 var inputField = document.createElement("input");
                                 inputField.name = fieldType + fieldID;
-                                inputField.type = "text";
+                                disableEnter(inputField);
                                 return inputField;
                             }
                             
@@ -568,13 +689,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
                             div {
                                 textInput(name = "name") {
-                                    id = "tapeName"
+                                    disableEnterKey
+                                    id = "TapeName"
                                     if (tape == null) {
                                         placeholder = expectedTapeName ?: randomVal.toString()
                                         value = expectedTapeName ?: randomVal.toString()
                                     } else {
                                         placeholder = tape.name
-                                        value = if (tape.usingCustomName) tape.name else ""
+                                        value = if (tape.hasNameSet) tape.name else ""
                                     }
                                     onKeyUp = tapeNameAction
                                 }
@@ -582,12 +704,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 text(" ")
                                 if (tape == null) {
                                     button(type = ButtonType.button) {
-                                        onClick = "tapeName.value = $randomVal;$tapeNameAction"
+                                        onClick = "TapeName.value = $randomVal;$tapeNameAction"
                                         +"Use generated number"
                                     }
 
                                     button(type = ButtonType.button) {
-                                        onClick = "tapeName.value = \"$randomValStr\";$tapeNameAction"
+                                        onClick =
+                                            "TapeName.value = \"$randomValStr\";$tapeNameAction"
                                         +"Use generated char string"
                                     }
                                 }
@@ -622,8 +745,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     tr {
                         th { +"Routing URL" }
                         td {
-                            textInput(name = "routingUrl") {
-                                id = "routingUrl"
+                            textInput(name = "RoutingUrl") {
+                                disableEnterKey
+                                id = "RoutingUrl"
                                 if (tape == null) {
                                     placeholder = "Example: http://google.com"
                                     value = ""
@@ -643,7 +767,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     id = "urlValReset"
                                     hidden = true
                                     onClick = """
-                                        routingUrl.value = routingUrl.placeholder;
+                                        RoutingUrl.value = RoutingUrl.placeholder;
                                         urlResetCheck();
                                     """.trimIndent()
                                     +"Reset"
@@ -680,7 +804,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 tr {
                                     th { +"Path" }
                                     td {
-                                        textInput(name = "RoutingPath") {
+                                        textInput(name = "filterPath") {
+                                            disableEnterKey
                                             var path = ""
                                             if (tape != null)
                                                 path = tape.attractors?.routingPath?.value ?: ""
@@ -777,6 +902,18 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     displayTapeChapters(tape)
                                 }
                             }
+
+                            if (!expectedTape && !haveTape) {
+                                br()
+                                postButton(name = "CreateTape") {
+                                    id = "SaveAddChapters"
+                                    onClick = """
+                                        type = "button";
+                                        alert('Insert Create Chapter action');
+                                    """.trimIndent()
+                                    +"Save and add Tape Chapters"
+                                }
+                            }
                         }
                     }
 
@@ -790,15 +927,21 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     if (tape.file?.exists() != true) {
                                         hiddenInput(name = "tape") { value = tape.name }
                                         hiddenInput(name = "resumeEdit") { value = "true" }
+
                                         postButton(name = "Action") {
                                             formAction = RoutePaths.ACTION.path
                                             value = "SaveToHardTape"
-                                            text("Save tape as a hard tape")
+                                            +"Save tape as a hard tape"
                                         }
+                                        div(classes = "infoText") {
+                                            +" - Saves this tape to the '/$currentPath' directory "
+                                        }
+
+                                        br()
                                         br()
                                     }
 
-                                    postButton(name = "SaveTape", classes = "btn_50wide") {
+                                    postButton(name = "SaveTape") {
                                         formAction = RoutePaths.ACTION.path
                                         id = "SaveTape"
                                         // value = "SaveTape"
@@ -812,18 +955,11 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     }
                                     br()
 
-                                    postButton(name = "CreateTape", classes = "btn_50wide") {
+                                    postButton(name = "CreateTape") {
                                         formAction = RoutePaths.ACTION.path
                                         id = "SaveViewAllTapes"
                                         value = "SaveViewAllTapes"
                                         +"Save and goto View Tapes"
-                                    }
-
-                                    postButton(name = "CreateTape", classes = "btn_50wide") {
-                                        id = "SaveAddChapters"
-                                        type = ButtonType.button
-                                        onClick = "alert('Insert Create Chapter action')"
-                                        +"Save and add Tape Chapters"
                                     }
                                 }
                             }
@@ -858,17 +994,24 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 }
                 tbody {
                     tape.chapters.forEach { mock ->
-                        addMockInfo(tape.name, mock)
+                        addChapterRow(tape.name, mock)
                     }
                 }
+            }
+            br()
+
+            div(classes = "infoText") {
+                +"Uses: Setting the value as '-1' will make it non-limited"
             }
         }
     }
 
-    private fun TBODY.addMockInfo(tape: String, mock: RecordedInteractions) {
+    private fun TBODY.addChapterRow(tape: String, mock: RecordedInteractions) {
         tr {
             td { +mock.name }
+
             td { +(mock.alwaysLive ?: false).toString() }
+
             td {
                 mock.attractors?.also { attr ->
                     table {
@@ -900,8 +1043,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
                 } ?: text("{ none }")
             }
+
             td {
-                text("Enabled")
+                text("Enabled: ")
                 checkBoxInput {
                     id = mock.name + "_usesEnabled"
                     checked = MockUseStates.isEnabled(mock.mockUses)
@@ -915,11 +1059,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     value = (if (mock.mockUses == MockUseStates.DISABLE.state)
                         MockUseStates.ALWAYS.state else mock.mockUses).toString()
                 }
-                div(classes = "infoText") {
-                    +"Setting the value as '-1' will make it always enabled"
-//                    text(R.getProperty("tapeSaveNewCallsInfo"))
-                }
             }
+
             td {
                 getForm(action = RoutePaths.EDIT.path) {
                     hiddenInput(name = "tape") { value = tape }
@@ -930,6 +1071,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         +"Edit"
                     }
                 }
+                br()
 
                 getForm(action = RoutePaths.DELETE.path) {
                     hiddenInput(name = "tape") { value = tape }
@@ -942,23 +1084,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 }
             }
         }
-        // name
-        // isLive
-        // Attractors (count)
-        // Uses: text
-        // - text
-        // : -1 = always
-        // : -2 = disabled
-        // : 0 =  disabled (limited)
-        // : 1+ = value
-        //
     }
 
     private fun TBODY.appendBit(bit: RequestAttractorBit, count: Int) {
         tr {
             id = bit.hashCode().toString()
             td {
-                textInput(name = "${queryParamValue}_load_$count") {
+                textInput(name = "$filterParamValue$loadFlag$count") {
+                    disableEnterKey
                     placeholder = bit.hardValue
                     value = bit.hardValue
                 }
@@ -967,13 +1100,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
             }
 
             td {
-                checkBoxInput(name = "${queryParamOpt}_load_$count") {
+                checkBoxInput(name = "$filterParamOpt$loadFlag$count") {
                     checked = bit.optional ?: false
                 }
                 text(" Optional")
                 br()
 
-                checkBoxInput(name = "${queryParamExcept}_load_$count") {
+                checkBoxInput(name = "$filterParamExcept$loadFlag$count") {
                     checked = bit.except ?: false
                 }
                 text(" Except")
