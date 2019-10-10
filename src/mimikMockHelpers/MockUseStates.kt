@@ -36,6 +36,11 @@ class MockUseStates(val state: Int) {
          * Returns true if [value] is a type of enabled state
          */
         fun isEnabled(value: Int): Boolean = !isDisabled(value)
+
+        /**
+         * Returns true if [value] is a type of limited state
+         */
+        fun isLimitedMock(value: Int) = value in (0..Int.MAX_VALUE)
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.fiserv.mimik.tapeTests
 
 import apiTests.assertContains
-import apiTests.assertStartsWith
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import mimikMockHelpers.MockUseStates
@@ -24,7 +23,7 @@ class BlankTapeTest {
     @Test
     fun testBuilder() {
         Assert.assertTrue(testObject.name.isNotEmpty())
-        Assert.assertFalse(testObject.usingCustomName)
+        Assert.assertFalse(testObject.hasNameSet)
 
         Assert.assertNull(testObject.attractors)
         Assert.assertFalse(testObject.isUrlValid)
@@ -54,7 +53,7 @@ class BlankTapeTest {
         }.build()
 
         Assert.assertEquals(name, testObject.name)
-        Assert.assertTrue(testObject.usingCustomName)
+        Assert.assertTrue(testObject.hasNameSet)
 
         Assert.assertNotNull(testObject.attractors)
         assertContains(path, testObject.attractors?.routingPath?.value)
@@ -86,7 +85,7 @@ class BlankTapeTest {
         testObject.updateNameByURL(url)
 
         Assert.assertTrue(testObject.name.contains(url.removePrefix("/")))
-        Assert.assertTrue(testObject.usingCustomName)
+        Assert.assertTrue(testObject.hasNameSet)
     }
 
     @Test

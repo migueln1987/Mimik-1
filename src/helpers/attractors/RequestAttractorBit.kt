@@ -6,10 +6,10 @@ import helpers.isTrue
  * A request attractor which could be optional
  */
 class RequestAttractorBit {
-    lateinit var value: String
+    var value: String? = null
 
     var hardValue: String
-        get() = if (::value.isInitialized) value else ""
+        get() = value ?: ""
         set(newValue) {
             value = newValue
         }
@@ -27,7 +27,7 @@ class RequestAttractorBit {
     /**
      * when true, the regex must not find a match
      */
-    var except: Boolean = false
+    var except: Boolean? = false
 
     val regex
         get() = hardValue.toRegex()
@@ -45,7 +45,8 @@ class RequestAttractorBit {
      * Returns a deep copy of this object
      */
     fun clone(): RequestAttractorBit {
-        return RequestAttractorBit(value) {
+        return RequestAttractorBit {
+            it.value = value
             it.optional = optional
             it.except = except
         }
@@ -54,7 +55,7 @@ class RequestAttractorBit {
     override fun toString(): String {
         return "Req: %b %s {%s}".format(
             required,
-            if (except) "-!" else "+",
+            if (except.isTrue()) "-!" else "+",
             hardValue
         )
     }

@@ -46,7 +46,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             if (!tapeName.isNullOrBlank())
                 tape.tapeName = tapeName
             tape.attractors = attractors
-            tape.routingUrl = routingURL
+            if (!routingURL.isNullOrBlank())
+                tape.routingUrl = routingURL?.ensurePrefix("http", "http://")
+
             tape.mode = if (allowLiveRecordings == true)
                 TapeMode.READ_WRITE else TapeMode.READ_ONLY
             tape.file = File(
@@ -94,7 +96,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     var tapeName: String? = null
-    val usingCustomName
+    val hasNameSet
         get() = tapeName.isNullOrBlank().not()
 
     @Transient
@@ -119,7 +121,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     val isUrlValid: Boolean
         get() = !routingUrl.isNullOrBlank() && httpRoutingUrl != null
 
-    override fun getName() = tapeName ?: hashCode().toString()
+    override fun getName() = tapeName ?: file?.nameWithoutExtension ?: hashCode().toString()
 
     private enum class SearchPreferences {
         /**
@@ -320,9 +322,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             }
         }
 
-        val liveMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
-        if (liveMock.status == HttpStatusCode.Found) {
-            liveMock.item?.also {
+        val activeMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
+        if (activeMock.status == HttpStatusCode.Found) {
+            activeMock.item?.also {
                 println(
                     "== Mock ==\n-Name\n %s\n",
                     it.name
