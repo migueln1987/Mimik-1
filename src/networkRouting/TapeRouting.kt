@@ -941,10 +941,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                         br()
                                     }
 
-                                    postButton(name = "SaveTape") {
+                                    postButton(name = "Action") {
                                         formAction = RoutePaths.ACTION.path
-                                        id = "SaveTape"
-                                        // value = "SaveTape"
+                                        value = "SaveTape"
                                         +"Save tape data"
                                     }
                                 } else {
