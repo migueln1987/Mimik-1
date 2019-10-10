@@ -28,6 +28,14 @@ fun String.ensurePrefix(prefix: String) =
     if (startsWith(prefix)) this else prefix + this
 
 /**
+ * If this string does not start with the given [prefix],
+ * then the string is returned with [value] added.
+ * Else the original string is returned.
+ */
+fun String.ensurePrefix(prefix: String, value: String) =
+    if (startsWith(prefix)) this else value + this
+
+/**
  * Returns `true` if the contents of this string is equal to the word "true", ignoring case, and `false` otherwise.
  *
  * If the value is null, [default] is returned instead, which is initially 'false'

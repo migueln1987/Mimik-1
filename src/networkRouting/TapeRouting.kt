@@ -20,6 +20,7 @@ import kotlinx.html.* // ktlint-disable no-wildcard-imports
 import tapeItems.BlankTape
 import helpers.attractors.RequestAttractors
 import mimikMockHelpers.MockUseStates
+import mimikMockHelpers.RecordedInteractions
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting(path: String) : RoutingContract(path) {
@@ -30,9 +31,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
     private val subDirectoryDefault = "[ Default Directory ]"
     private val subDirectoryCustom = "[ Custom Directory ]"
 
-    private val queryParamKey = "QueryParamKey"
     private val queryParamValue = "QueryParamValue"
     private val queryParamOpt = "QueryParamOpt"
+    private val queryParamExcept = "queryParamExcept"
 
     enum class RoutePaths(val path: String) {
         ALL("all"),
@@ -85,7 +86,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         if (call.parameters.contains("chapter")) {
                             getEditChapterPage(call.parameters)
                         } else
-                            getEditTapePage(call.parameters)
+                            getTapePage(call.parameters)
                     }
                 }
             }
@@ -120,7 +121,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private val Route.create
         get() = route(RoutePaths.CREATE.path) {
-            get { call.respondHtml { getCreateTape() } }
+            get { call.respondHtml { getTapePage(call.parameters) } }
         }
 
     /**
@@ -148,11 +149,23 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
 
         when (data["Action"]) {
+            "SaveTape" -> {
+                // todo; save tape data
+            }
+
             "SaveToHardTape" -> {
                 tapeCatalog.tapes
                     .firstOrNull { it.name == data["tape"] }
                     ?.saveFile()
-                respondRedirect(RoutePaths.ALL.path)
+
+                respondRedirect {
+                    if (data["resumeEdit"] == "true") {
+                        path(RoutePaths.EDIT.asSubPath)
+                        parameters.apply {
+                            append("tape", data["tape"] ?: "")
+                        }
+                    } else path(RoutePaths.ALL.asSubPath)
+                }
             }
 
             "Edit" -> {
@@ -183,23 +196,19 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private fun Map<String, String>.saveToTape(): BlankTape {
         return BlankTape.Builder { tape ->
-            // subDirectory = get("SubDirectory")?.trim()
+            // subDirectory = get("Directory")?.trim()
             tape.tapeName = get("TapeName")?.trim() ?: randomHost.value.toString()
             tape.routingURL = get("RoutingUrl")?.trim()
-            tape.allowLiveRecordings = get("SaveRecordings") == "on"
+            tape.allowLiveRecordings = get("SaveNewCalls") == "on"
 
             tape.attractors = RequestAttractors { attr ->
                 get("RoutingPath")?.trim()?.also { path ->
                     attr.routingPath?.value = path
                 }
 
-                if (keys.any { it.startsWith(queryParamKey) }) {
-                    val keys = asSequence()
-                        .filter { it.value.isNotBlank() }
-                        .filter { it.key.startsWith(queryParamKey) }
-                        .associate { it.key.removePrefix(queryParamKey) to it.value }
-
+                if (keys.any { it.startsWith(queryParamValue) }) {
                     val values = asSequence()
+                        .filter { it.value.isNotBlank() }
                         .filter { it.key.startsWith(queryParamValue) }
                         .associate { it.key.removePrefix(queryParamValue) to it.value }
 
@@ -207,10 +216,15 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         .filter { it.key.startsWith(queryParamOpt) }
                         .associate { it.key.removePrefix(queryParamOpt) to it.value }
 
-                    attr.queryParamMatchers = keys.keys.map { key ->
+                    val excepts = asSequence()
+                        .filter { it.key.startsWith(queryParamExcept) }
+                        .associate { it.key.removePrefix(queryParamExcept) to it.value }
+
+                    attr.queryParamMatchers = values.keys.map { key ->
                         RequestAttractorBit {
                             it.value = values.getValue(key)
                             it.optional = optionals.getOrDefault(key, "") == "on"
+                            it.except = excepts.getOrDefault(key, "") == "on"
                         }
                     }
                 }
@@ -371,10 +385,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                             ) {
                                 hiddenInput(name = "tape") { value = t.name }
                                 p {
-                                    submitInput(name = "Action") {
-                                        value = "Edit"
-                                        disabled = true
-                                    }
+                                    submitInput(name = "Action") { value = "Edit" }
                                 }
                                 p {
                                     submitInput(name = "Action") { value = "Delete" }
@@ -387,7 +398,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
     }
 
-    private fun HTML.getCreateTape() {
+    private fun HTML.getTapePage(params: Parameters) {
         val randomVal = randomHost.nextRandom()
         val randomValStr = randomHost.valueAsChars
         val currentPath = VCRConfig.getConfig.tapeRoot.get().path
@@ -395,45 +406,61 @@ class TapeRouting(path: String) : RoutingContract(path) {
         val folders = mutableListOf(subDirectoryDefault)
             .apply { addAll(VCRConfig.getConfig.tapeRoot.get().getFolders()) }
 
-        body {
-            setupStyle()
+        val tape = tapeCatalog.tapes
+            .firstOrNull { it.name == params["tape"] }
+
+        val expectedTape = params["tape"] != null
+        val haveTape = tape != null
+        val expectedTapeName = params["tape"]
+
+        head {
             script {
                 unsafe {
                     raw(
                         """
-                            var queryParamID = 0
+                            function preVerifyURL(url) {
+                                if(url == null || url.length == 0)
+                                    return "{ empty }";
+                                var regex = /^((?:[a-z]{3,9}:\/\/)?(?:(?:(?:\d{1,3}\.){3}\d{1,3})|(?:[\w.-]+\.(?:[a-z]{2,10}))))/i;
+                                var match = url.match(regex);
+                                if(match == null) 
+                                    return "{ no match }"; else return match[0];
+                            }
+                            
+                            var queryParamID = 0;
                             function addNewParamFilter() {
                                 var newrow = FilterParamTable.insertRow(FilterParamTable.rows.length-1);
                                 
-                                var newKey = newrow.insertCell(0);
-                                var newKeyInput = createNewInput("$queryParamKey", queryParamID);
-                                newKey.appendChild(newKeyInput);
+                                var filterValue = newrow.insertCell(0);
+                                var valueInput = createTextInput("$queryParamValue", queryParamID);
+                                filterValue.appendChild(valueInput);
                                 
-                                var newValue = newrow.insertCell(1);
-                                var newValueInput = createNewInput("$queryParamValue", queryParamID);
-                                newValue.appendChild(newValueInput);
+                                var filterFlags = newrow.insertCell(1);
+                                var isOptionalInput = createCheckbox("$queryParamOpt", queryParamID);
+                                filterFlags.appendChild(isOptionalInput);
+                                filterFlags.append(" Optional");
+                                filterFlags.appendChild(document.createElement("br"));
+
+                                var isExceptInput = createCheckbox("$queryParamExcept", queryParamID);
+                                filterFlags.appendChild(isExceptInput);
+                                filterFlags.append(" Except");
+                                queryParamID++;
                                 
-                                var newIsOptional = newrow.insertCell(2)
-                                var newIsOptionalInput = createOptionalCheckbox("$queryParamOpt", queryParamID)
-                                newIsOptional.appendChild(newIsOptionalInput);
-                                queryParamID++
-                                
-                                var deleteBtn = newrow.insertCell(3);
-                                deleteBtn.appendChild(createDeleteBtn());
+                                var actionBtns = newrow.insertCell(2);
+                                actionBtns.appendChild(createDeleteBtn());
                             }
                             
-                            function createNewInput(fieldType, fieldID) {
+                            function createTextInput(fieldType, fieldID) {
                                 var inputField = document.createElement("input");
                                 inputField.name = fieldType + fieldID;
                                 inputField.type = "text";
                                 return inputField;
                             }
                             
-                             function createOptionalCheckbox(fieldType, fieldID) {
+                            function createCheckbox(fieldType, fieldID) {
                                 var inputField = document.createElement("input");
                                 inputField.name = fieldType + fieldID;
                                 inputField.type = "checkbox";
-                                inputField.text = "Optional";
                                 return inputField;
                             }
                             
@@ -444,30 +471,55 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                 deleteBtn.setAttribute('onclick', 'this.parentNode.parentNode.remove()');
                                 return deleteBtn;
                             }
+                            
+                            function setRoutingUrlStates(url) {
+                                parsedUrl.innerText = preVerifyURL(url);
+                                var isDisabled = parsedUrl.innerText.startsWith("{");
+                                
+                                allowPassthrough.disabled = isDisabled;
+                                var disableChapters = !isDisabled && allowPassthrough.checked
+                                
+                                SaveNewCalls.disabled = disableChapters;
+                                SaveAddChapters.disabled = disableChapters;
+                            }
+                            
+                            function setIsDisabled(divObj, newState) {
+                                try {
+                                    divObj.disabled = newState;
+                                } catch (E) {}
+                                
+                                for (var x = 0; x < divObj.childNodes.length; x++) {
+                                    setIsDisabled(divObj.childNodes[x], newState);
+                                }
+                            }
                         """.trimIndent()
                     )
                 }
             }
+        }
+
+        body {
+            setupStyle()
 
             getForm(action = RoutePaths.ALL.path) {
-                button { +"Back to View Tapes" }
+                button { +"..View All tapes" }
             }
 
             br()
+            if (expectedTape && !haveTape)
+                p { +"No tape with the name \"${params["tape"]}\" was found." }
 
-            postForm(
-                action = RoutePaths.ACTION.path,
-                encType = FormEncType.multipartFormData
-            ) {
-                disableEnterKey
+            h1 { +(if (haveTape) "Tape Editor" else "New Tape") }
 
+            form(encType = FormEncType.multipartFormData) {
                 table {
                     tr {
-                        th { +"Sub directory" }
+                        hidden = true
+                        th { +"Directory" }
                         td {
                             div {
-                                textInput(name = "SubDirectory") {
-                                    id = "SubDirectory"
+                                textInput(name = "Directory") {
+                                    id = "Directory"
                                     placeholder = "/$currentPath"
                                     value = ""
                                     onKeyUp = """
@@ -508,79 +560,111 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
 
                     tr {
-                        th { +"Tape name" }
+                        th { +"Name" }
                         td {
+                            val tapeNameAction = if (expectedTapeName != null)
+                                "nameReset.hidden = tapeName.value == tapeName.placeholder;"
+                            else ""
+
                             div {
-                                textInput(name = "TapeName") {
-                                    id = "TapeName"
-                                    placeholder = randomVal.toString()
-                                    value = randomVal.toString()
+                                textInput(name = "name") {
+                                    id = "tapeName"
+                                    if (tape == null) {
+                                        placeholder = expectedTapeName ?: randomVal.toString()
+                                        value = expectedTapeName ?: randomVal.toString()
+                                    } else {
+                                        placeholder = tape.name
+                                        value = if (tape.usingCustomName) tape.name else ""
+                                    }
+                                    onKeyUp = tapeNameAction
                                 }
 
                                 text(" ")
+                                if (tape == null) {
+                                    button(type = ButtonType.button) {
+                                        onClick = "tapeName.value = $randomVal;$tapeNameAction"
+                                        +"Use generated number"
+                                    }
 
-                                button(type = ButtonType.button) {
-                                    onClick = "TapeName.value = \"$randomVal\""
-                                    +"Use generated number"
+                                    button(type = ButtonType.button) {
+                                        onClick = "tapeName.value = \"$randomValStr\";$tapeNameAction"
+                                        +"Use generated char string"
+                                    }
                                 }
 
-                                button(type = ButtonType.button) {
-                                    onClick = "TapeName.value = \"$randomValStr\""
-                                    +"Use generated char string"
+                                if (expectedTapeName != null)
+                                    button(type = ButtonType.button) {
+                                        id = "nameReset"
+                                        hidden = true
+                                        onClick = """
+                                            tapeName.value = tapeName.placeholder;
+                                            nameReset.hidden = true;
+                                        """.trimIndent()
+                                        +"Reset"
+                                    }
+                            }
+
+                            if (tape != null && tape.file?.exists() == true) {
+                                br()
+                                text("Tape located at: ")
+                                i {
+                                    text(tape.file?.toString() ?: "{ error }")
                                 }
                             }
 
-                            br()
                             div(classes = "infoText") {
+                                hidden = true
                                 +"Tape name. Example: 'General' becomes '/General.json'"
                             }
                         }
                     }
 
                     tr {
-                        th { +"Routing url" }
+                        th { +"Routing URL" }
                         td {
-                            div {
-                                textInput(name = "RoutingUrl") {
-                                    id = "RoutingUrl"
+                            textInput(name = "routingUrl") {
+                                id = "routingUrl"
+                                if (tape == null) {
                                     placeholder = "Example: http://google.com"
-                                    size = "${placeholder.length + 20}"
                                     value = ""
-                                    onKeyUp = "SaveRecordings.disabled = value.length == 0"
+                                } else {
+                                    placeholder = tape.routingUrl ?: ""
+                                    value = tape.routingUrl ?: ""
+                                }
+                                size = "${placeholder.length + 20}"
+
+                                onLoad = "setRoutingUrlStates(value)"
+                                onKeyUp = "setRoutingUrlStates(value)"
+                            }
+
+                            if (tape != null) {
+                                text(" ")
+                                button {
+                                    id = "urlValReset"
+                                    hidden = true
+                                    onClick = """
+                                        routingUrl.value = routingUrl.placeholder;
+                                        urlResetCheck();
+                                    """.trimIndent()
+                                    +"Reset"
                                 }
                             }
+
                             br()
+                            p {
+                                text("Parsed url: ")
+                                i {
+                                    a {
+                                        id = "parsedUrl"
+                                        if (tape != null && !tape.routingUrl.isNullOrBlank())
+                                            text(tape.routingUrl ?: "")
+                                        else text("{ empty }")
+                                    }
+                                }
+                            }
+
                             div(classes = "infoText") {
                                 +R.getProperty("tapeRoutingUrlInfo")
-                            }
-                        }
-                    }
-
-                    tr {
-                        th { +"Save options" }
-                        td {
-                            div {
-                                text("Allow new recordings by filters -")
-                                checkBoxInput(name = "SaveRecordings") {
-                                    id = "SaveRecordings"
-                                    disabled = true
-                                    value = "true"
-                                }
-                                div(classes = "infoText") {
-                                    text(R.getProperty("tapeSaveNewCallsInfo"))
-                                }
-                                div(classes = "infoText") {
-                                    text("Adding mocks are unaffected.")
-                                }
-                            }
-                            br()
-                            div {
-                                text("Save tape to file -")
-                                checkBoxInput(name = "hardtape") {}
-                                div(classes = "infoText") {
-                                    +"Checked: Creating this tape will also save the tape to file."
-//                                +R.getProperty("tapeRoutingUrlInfo")
-                                }
                             }
                         }
                     }
@@ -589,7 +673,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                         th { +"Request Attractors" }
                         td {
                             div(classes = "infoText") {
-                                +R.getProperty("tapeAttractorsInfo")
+                                +R.getProperty("tapeAttrInfo")
                             }
                             br()
                             table {
@@ -597,7 +681,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                     th { +"Path" }
                                     td {
                                         textInput(name = "RoutingPath") {
-                                            placeholder = "sub/path/here"
+                                            var path = ""
+                                            if (tape != null)
+                                                path = tape.attractors?.routingPath?.value ?: ""
+
+                                            placeholder = if (path.isBlank())
+                                                "sub/path/here" else path
+                                            value = path
                                         }
                                     }
                                 }
@@ -608,15 +698,21 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                         table {
                                             thead {
                                                 tr {
-                                                    th { +"Key" }
                                                     th { +"Value" }
-                                                    th { +"Optional" }
-                                                    th { +"" }
+                                                    th { +"Flags" }
+                                                    th { +"Actions" }
                                                 }
                                             }
                                             tbody {
                                                 // QueryTableBody
                                                 id = "FilterParamTable"
+
+                                                if (tape != null)
+                                                    tape.attractors?.queryParamMatchers
+                                                        ?.forEachIndexed { index, bit ->
+                                                            appendBit(bit, index)
+                                                        }
+
                                                 tr {
                                                     td {
                                                         button(type = ButtonType.button) {
@@ -627,6 +723,13 @@ class TapeRouting(path: String) : RoutingContract(path) {
                                                 }
                                             }
                                         }
+
+                                        div(classes = "infoText") {
+                                            br()
+                                            text(R.getProperty("tapeAttrFlagOpt"))
+                                            br()
+                                            text(R.getProperty("tapeAttrFlagExt"))
+                                        }
                                     }
                                 }
                             }
@@ -634,17 +737,95 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     }
 
                     tr {
-                        td()
+                        th { +"Chapters" }
                         td {
-                            button(name = "CreateTape", classes = "btn_50wide") {
-                                value = "SaveViewAllTapes"
-                                id = "SaveViewAllTapes"
-                                +"Save and goto View Tapes"
+                            div {
+                                text("Allow call pass-through ")
+                                checkBoxInput(name = "allowPassthrough") {
+                                    id = "allowPassthrough"
+                                    disabled = true
+                                    if (tape != null)
+                                        value = (tape.alwaysLive ?: false).toString()
+                                    onChange = """
+                                        setIsDisabled(SaveNewCalls, checked)
+                                        setIsDisabled(ChapterData, checked)
+                                        setIsDisabled(SaveAddChapters, checked)
+                                    """.trimIndent()
+                                }
+                                div(classes = "infoText") {
+                                    text(R.getProperty("tapeCallPassthroughInfo"))
+                                }
+                                br()
+
+                                text("Allow new recordings by filters -")
+                                checkBoxInput(name = "SaveNewCalls") {
+                                    id = "SaveNewCalls"
+                                    disabled = true
+                                    if (tape != null)
+                                        value = tape.isWritable.toString()
+                                }
+                                div(classes = "infoText") {
+                                    text(R.getProperty("tapeSaveNewCallsInfo"))
+                                    text("Adding mocks are unaffected.")
+                                }
                             }
-                            button(name = "CreateTape", classes = "btn_50wide") {
-                                value = "SaveAddChapters"
-                                id = "SaveAddChapters"
-                                +"Save and add Tape Chapters"
+
+                            div {
+                                id = "ChapterData"
+                                if (tape != null) {
+                                    br()
+                                    displayTapeChapters(tape)
+                                }
+                            }
+                        }
+                    }
+
+                    tr {
+                        th { +"Save Options" }
+                        td {
+                            div {
+                                id = "Saveoptions"
+
+                                if (tape != null) {
+                                    if (tape.file?.exists() != true) {
+                                        hiddenInput(name = "tape") { value = tape.name }
+                                        hiddenInput(name = "resumeEdit") { value = "true" }
+                                        postButton(name = "Action") {
+                                            formAction = RoutePaths.ACTION.path
+                                            value = "SaveToHardTape"
+                                            text("Save tape as a hard tape")
+                                        }
+                                        br()
+                                    }
+
+                                    postButton(name = "SaveTape", classes = "btn_50wide") {
+                                        formAction = RoutePaths.ACTION.path
+                                        id = "SaveTape"
+                                        // value = "SaveTape"
+                                        +"Save tape data"
+                                    }
+                                } else {
+                                    text("Save tape to file -")
+                                    checkBoxInput(name = "hardtape") {}
+                                    div(classes = "infoText") {
+                                        +R.getProperty("tapeSaveHardInfo")
+                                    }
+                                    br()
+
+                                    postButton(name = "CreateTape", classes = "btn_50wide") {
+                                        formAction = RoutePaths.ACTION.path
+                                        id = "SaveViewAllTapes"
+                                        value = "SaveViewAllTapes"
+                                        +"Save and goto View Tapes"
+                                    }
+
+                                    postButton(name = "CreateTape", classes = "btn_50wide") {
+                                        id = "SaveAddChapters"
+                                        type = ButtonType.button
+                                        onClick = "alert('Insert Create Chapter action')"
+                                        +"Save and add Tape Chapters"
+                                    }
+                                }
                             }
                         }
                     }
@@ -653,11 +834,164 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
     }
 
-    /**
-     * Page to edit all the chapters in the tape or other global tape settings
-     * todo; is this needed?
-     */
-    private fun HTML.getEditTapePage(params: Parameters) {
+    private fun DIV.displayTapeChapters(tape: BlankTape) {
+        if (tape.chapters.isEmpty()) {
+            getForm(action = RoutePaths.CREATE.path) {
+                hiddenInput(name = "tape") { value = tape.name }
+                hiddenInput(name = "chapter") { value = "" }
+                button {
+                    type = ButtonType.button
+                    onClick = "alert('Insert Create Chapter action')"
+                    +"Create new chapter"
+                }
+            }
+        } else {
+            table {
+                thead {
+                    tr {
+                        th { +"Name" }
+                        th { +"Pass-through" }
+                        th { +"Attractors" }
+                        th { +"Uses" }
+                        th { +"" }
+                    }
+                }
+                tbody {
+                    tape.chapters.forEach { mock ->
+                        addMockInfo(tape.name, mock)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun TBODY.addMockInfo(tape: String, mock: RecordedInteractions) {
+        tr {
+            td { +mock.name }
+            td { +(mock.alwaysLive ?: false).toString() }
+            td {
+                mock.attractors?.also { attr ->
+                    table {
+                        thead {
+                            tr {
+                                th { +"Routing" }
+                                th { +"Param" }
+                                th { +"Header" }
+                                th { +"Body" }
+                            }
+                        }
+                        tbody {
+                            tr {
+                                td { +(attr.routingPath?.value != null).toString() }
+                                td {
+                                    +(attr.queryParamMatchers
+                                        ?.count { it.value != null }).toString()
+                                }
+                                td {
+                                    +(attr.queryHeaderMatchers
+                                        ?.count { it.value != null }).toString()
+                                }
+                                td {
+                                    +(attr.queryBodyMatchers
+                                        ?.count { it.value != null }).toString()
+                                }
+                            }
+                        }
+                    }
+                } ?: text("{ none }")
+            }
+            td {
+                text("Enabled")
+                checkBoxInput {
+                    id = mock.name + "_usesEnabled"
+                    checked = MockUseStates.isEnabled(mock.mockUses)
+                }
+                br()
+
+                numberInput {
+                    id = mock.name + "_usesValue"
+                    min = MockUseStates.ALWAYS.state.toString()
+                    max = Int.MAX_VALUE.toString()
+                    value = (if (mock.mockUses == MockUseStates.DISABLE.state)
+                        MockUseStates.ALWAYS.state else mock.mockUses).toString()
+                }
+                div(classes = "infoText") {
+                    +"Setting the value as '-1' will make it always enabled"
+//                    text(R.getProperty("tapeSaveNewCallsInfo"))
+                }
+            }
+            td {
+                getForm(action = RoutePaths.EDIT.path) {
+                    hiddenInput(name = "tape") { value = tape }
+                    hiddenInput(name = "chapter") { value = mock.name }
+                    button {
+                        type = ButtonType.button
+                        onClick = "alert('Insert Edit Chapter action')"
+                        +"Edit"
+                    }
+                }
+
+                getForm(action = RoutePaths.DELETE.path) {
+                    hiddenInput(name = "tape") { value = tape }
+                    hiddenInput(name = "chapter") { value = mock.name }
+                    button {
+                        type = ButtonType.button
+                        onClick = "alert('Insert Delete Chapter action')"
+                        +"Delete"
+                    }
+                }
+            }
+        }
+        // name
+        // isLive
+        // Attractors (count)
+        // Uses: text
+        // - text
+        // : -1 = always
+        // : -2 = disabled
+        // : 0 =  disabled (limited)
+        // : 1+ = value
+        //
+    }
+
+    private fun TBODY.appendBit(bit: RequestAttractorBit, count: Int) {
+        tr {
+            id = bit.hashCode().toString()
+            td {
+                textInput(name = "${queryParamValue}_load_$count") {
+                    placeholder = bit.hardValue
+                    value = bit.hardValue
+                }
+
+                // todo; reset value button
+            }
+
+            td {
+                checkBoxInput(name = "${queryParamOpt}_load_$count") {
+                    checked = bit.optional ?: false
+                }
+                text(" Optional")
+                br()
+
+                checkBoxInput(name = "${queryParamExcept}_load_$count") {
+                    checked = bit.except ?: false
+                }
+                text(" Except")
+            }
+
+            td {
+                button {
+                    onClick = "this.parentNode.parentNode.remove()"
+                    +"Delete"
+                }
+
+                button {
+                    onClick = "this.parentNode.parentNode.remove()"
+                    disabled = true
+                    +"Clone"
+                }
+            }
+        }
     }
 
     /**
@@ -688,12 +1022,16 @@ class TapeRouting(path: String) : RoutingContract(path) {
         }
 
         body {
-            h1 {
-                text(
-                    "This page is intentionally left blank. " +
-                            "Waiting for the \"Edit Chapter\" html page"
-                )
+            getForm(action = RoutePaths.ALL.path) {
+                button { +"..View All tapes" }
             }
+
+            getForm(action = RoutePaths.EDIT.path) {
+                hiddenInput(name = "tape") { value = activeTape.name }
+                button { +"View Active tape" }
+            }
+
+            br()
         }
     }
 }

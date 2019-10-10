@@ -152,7 +152,7 @@ class RequestAttractors {
             }
 
         // nothing can possibly match, so give up here
-        if (matchScanner.all { it.value.isEmpty() })
+        if (matchScanner.all { it.hardValue.isBlank() })
             return AttractorMatches()
 
         val reqCount = matchScanner.count { it.required }
@@ -167,14 +167,14 @@ class RequestAttractors {
                 var matchRto = 0.0
 
                 if (match.hasMatch) {
-                    if (!x.except) {
+                    if (x.except.isTrue().not()) {
                         matchVal = 1
                         matchRto =
                             (if (match.hasMatch) x.regex.pattern.length else 0) /
                                     source.length.toDouble()
                     }
                 } else {
-                    if (x.except) {
+                    if (x.except.isTrue()) {
                         matchVal = 1
                         matchRto = 1.0
                     }

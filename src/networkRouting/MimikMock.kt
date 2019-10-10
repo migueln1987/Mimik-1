@@ -148,7 +148,7 @@ class MimikMock(path: String) : RoutingContract(path) {
         // Method will have a body and filter isn't allowing bodies
         if (HttpMethod.requiresRequestBody(mockParams["method"] ?: "") &&
             (attractors.queryBodyMatchers.isNullOrEmpty().isTrue() ||
-                    attractors.queryBodyMatchers?.all { it.value.isBlank() }.isTrue())
+                    attractors.queryBodyMatchers?.all { it.hardValue.isBlank() }.isTrue())
         ) // add the default "accept all bodies" to calls requiring a body
             attractors.queryBodyMatchers = listOf(RequestAttractorBit(".*"))
 

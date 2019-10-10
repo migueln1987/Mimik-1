@@ -46,7 +46,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             if (!tapeName.isNullOrBlank())
                 tape.tapeName = tapeName
             tape.attractors = attractors
-            tape.routingUrl = routingURL
+            if (!routingURL.isNullOrBlank())
+                tape.routingUrl = routingURL?.ensurePrefix("http", "http://")
+
             tape.mode = if (allowLiveRecordings == true)
                 TapeMode.READ_WRITE else TapeMode.READ_ONLY
             tape.file = File(
