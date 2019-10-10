@@ -13,7 +13,8 @@ group = "com.fiserv.mimik"
 version = "0.0.1"
 
 application {
-    mainClassName = "io.ktor.server.netty.EngineMain"
+    mainClassName = "$group.ApplicationKt"
+    //"io.ktor.server.netty.EngineMain"
 }
 
 repositories {
