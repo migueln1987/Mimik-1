@@ -1,0 +1,868 @@
+package networkRouting.editorPages
+
+import helpers.RandomHost
+import helpers.appendLines
+import helpers.attractors.RequestAttractorBit
+import helpers.attractors.RequestAttractors
+import helpers.eachHasNext
+import helpers.lastIndexRange
+import helpers.substring
+import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import mimikMockHelpers.RequestTapedata
+import mimikMockHelpers.ResponseTapedata
+import mimikMockHelpers.Tapedata
+import tapeItems.BlankTape
+
+abstract class EditorModule {
+    val tapeCatalog by lazy { TapeCatalog.Instance }
+    val subDirectoryDefault = "[ Default Directory ]"
+    val subDirectoryCustom = "[ Custom Directory ]"
+
+    val filterKey = "filter"
+    val loadFlag = "_load_"
+    val randomHost = RandomHost()
+
+    @Suppress("unused")
+    enum class js(private val init: String) {
+        disableEnter_func(
+            """
+                function disableEnter(field) {
+                    field.onkeydown = function() {return event.key != 'Enter';};
+                }
+                """
+        ),
+
+        preVerifyURL_func(
+            """
+                function preVerifyURL(url) {
+                    if (url == null || url.length == 0)
+                        return "{ empty }";
+                    var regex = /^((?:[a-z]{3,9}:\/\/)?(?:(?:(?:\d{1,3}\.){3}\d{1,3})|(?:[\w.-]+\.(?:[a-z]{2,10}))))/i;
+                    var match = url.match(regex);
+                    if (match == null)
+                        return "{ no match }"; else return match[0];
+                }
+                """
+        ),
+
+        prettyJson(
+            """
+                function prettyJson(uglyText) {
+                    if (uglyText.trim().length < 1) return uglyText;
+                    try {
+                        var obj = JSON.parse(uglyText);
+                        return JSON.stringify(obj, undefined, 4);
+                    }
+                    catch(err) {
+                        return uglyText;
+                    }
+                }
+
+                function beautifyField(field) {
+                    field.value = prettyJson(field.value);
+                    field.style.height = (field.scrollHeight - 4) + 'px';
+                }
+                """
+        ),
+
+        setIsDisabled_func(
+            """
+                function setIsDisabled(divObj, newState) {
+                    try {
+                        divObj.disabled = newState;
+                    } catch (E) {}
+    
+                    for (var x = 0; x < divObj.childNodes.length; x++) {
+                        setIsDisabled(divObj.childNodes[x], newState);
+                    }
+                }
+                """
+        ),
+
+        formatParentFieldWidth_func(
+            """
+                function formatParentFieldWidth(field) {
+                    field.style.width = "100%";
+    
+                    var isEditing = false;
+                    function adjustFullWidth() {
+                        field.onmousedown = function() { isEditing = true; }
+                        field.onmouseup = function() { isEditing = false; }
+                        field.onmousemove = function() {
+                            if (isEditing) {
+                                field.parentElement.width = field.clientWidth;
+                            }
+                        }
+                    }
+                    adjustFullWidth();
+                    new ResizeObserver(adjustFullWidth).observe(field);
+                }
+                """
+        ),
+
+        createTextInput_func(
+            """
+                function createTextInput(fieldType, fieldID, expandable) {
+                    expandable = expandable || false;
+    
+                    var inputField = inputField = document.createElement("input");
+                    if (expandable) {
+                        inputField = document.createElement("textarea");
+                        inputField.onkeypress = function() {
+                            if (event.key == 'Enter') {
+                                var pre = inputField.value.substring(0, inputField.selectionStart);
+                                var post = inputField.value.substring(inputField.selectionStart, inputField.textLength);
+                                inputField.value = pre + "\n" + post;
+                                inputField.style.height = inputField.scrollHeight + 'px';
+                                event.preventDefault();
+                            }
+                        };
+                    }
+                    inputField.name = fieldType + fieldID;
+                    inputField.id = inputField.name;
+                    return inputField;
+                }
+                """
+        ),
+
+        createCheckbox_func(
+            """
+                function createCheckbox(fieldType, fieldID) {
+                    var inputField = document.createElement("input");
+                    inputField.name = fieldType + fieldID;
+                    inputField.type = "checkbox";
+                    return inputField;
+                }
+                """
+        ),
+
+        /**
+         * Created a delete button, which when clicked,
+         * will call "remove()" on the passed in node
+         */
+        createDeleteBtn_func(
+            """
+                function createDeleteBtn(node) {
+                    var deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.innerText = "Delete";
+                    deleteBtn.onclick = function() { node.remove(); };
+                    return deleteBtn;
+                }
+                """
+        ),
+
+        createBtn_func(
+            """
+                function createBtn(name) {
+                    name = name || "";
+                    var newBtn = document.createElement("button");
+                    newBtn.type = "button";
+                    newBtn.innerText = name;
+                    return newBtn;
+                }
+                """
+        ),
+
+        toggleDisp_func(
+            """
+                function toggleView(caller, toToggle) {
+                    if (!toToggle.classList.contains("hideableContent")) {
+                        toToggle.classList.add("hideableContent");
+                        caller.classList.remove("active");
+                    } else {
+                        caller.classList.toggle("active");
+                        toToggle.style.overflow = "hidden";
+                        if (toToggle.style.maxHeight){
+                            toToggle.style.display = "none";
+                            toToggle.style.maxHeight = null;
+                        } else {
+                            toToggle.style.display = "contents";
+                            toToggle.style.width = "100%"
+                            toToggle.style.height = "100%"
+                            toToggle.style.maxHeight = (toToggle.scrollHeight + 100) + "px";
+                            var watcher = setInterval(function() {
+                                if (toToggle.clientHeight == toToggle.scrollHeight) {
+                                    toToggle.style.overflow = "visible";
+                                    clearInterval(watcher);
+                                }
+                             }, 100);
+                        }
+                    }
+                }
+                """
+        ),
+
+        setupToggButton_func(
+            """
+                function setupTogggButtonTarget(target) {
+                    setTimeout(function waitWrapper() {
+                        var elem = document.getElementById(target);
+                        if (elem == null) setTimeout(waitWrapper, 10);
+                        else if (!elem.classList.contains("hideableContent"))
+                            elem.classList.add("hideableContent");
+                    }, 10);
+                }
+                """
+        ),
+
+        submitNameCheck(
+            """
+                function submitCheck() {
+                    setName.value = setName.value.trim();
+                    if (setName.value == "")
+                        setName.value = setName.placeholder;
+                }
+                """
+        );
+
+        companion object {
+            /**
+             * Returns a string containing all the values in [js]
+             */
+            val all: String
+                get() {
+                    val result = StringBuilder()
+                    values().asList().eachHasNext(
+                        { result.append(it.value) },
+                        { result.append('\n') }
+                    )
+                    return result.toString()
+                }
+        }
+
+        val value: String
+            get() = init.trimIndent()
+    }
+
+    fun FlowOrMetaDataContent.setupStyle() {
+        style {
+            unsafe {
+                raw(
+                    """
+                    table {
+                        font: 1em Arial;
+                        border: 1px solid black;
+                        width: 100%;
+                    }
+
+                    th {
+                        background-color: #ccc;
+                        width: auto;
+                    }
+                    td {
+                        background-color: #eee;
+                    }
+                    th, td {
+                        text-align: left;
+                        padding: 0.4em 0.4em;
+                    }
+
+                    .btn_50wide {
+                        width: 50%
+                    }
+                    .tb_25wide {
+                        width: 25%
+                    }
+                    .center{ text-align: center; }
+                    .infoText {
+                        font-size: 14px;
+                        color: #555
+                    }
+                    
+                    /* Button style that is used to open and close the collapsible content */
+                    .collapsible {
+                        background-color: #999;
+                        color: white;
+                        cursor: pointer;
+                        padding: 8px 10px;
+                        margin-bottom: 4px;
+                        width: 100%;
+                        text-align: left;
+                        font-size: 15px;
+                    }
+                    
+                    .collapsible:after {
+                        content: '\002B';
+                        color: white;
+                        font-weight: bold;
+                        float: right;
+                        margin-left: 5px;
+                    }
+                    
+                    /* Background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+                    .active, .collapsible:hover {
+                        background-color: #888;
+                    }
+                    .active:after {
+                        content: "\2212";
+                    }
+                    
+                    /* Style the collapsible content. Note: "hidden" by default */
+                    .hideableContent {
+                        padding: 6px;
+                        max-height: 0;
+                        display: none;
+                        overflow: hidden;
+                        background-color: #f4f4f4;
+                        transition: max-height 0.4s ease-out;
+                    }
+                    """.trimIndent()
+                        .appendLines(tooltipStyle)
+                )
+            }
+        }
+    }
+
+    private val tooltipStyle: String
+        get() = """
+            .tooltip {
+                position: relative;
+                display: inline-block;
+                border-bottom: 1px dotted #ccc;
+                color: #006080;
+            }
+            
+            .tooltip .tooltiptext {
+                visibility: hidden;
+                position: absolute;
+                width: 30em;
+                max-width: max-content;
+                background-color: #555;
+                color: #fff;
+                text-align: center;
+                padding: 0.5em;
+                border-radius: 6px;
+                z-index: 1;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+            
+            .tooltip:hover .tooltiptext {
+                visibility: visible;
+                opacity: 1;
+            }
+            
+            .tooltip-right {
+                top: -5px;
+                left: 125%;  
+            }
+            
+            .tooltip-right::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                right: 100%;
+                margin-top: -5px;
+                border-width: 5px;
+                border-style: solid;
+                border-color: transparent #555 transparent transparent;
+            }
+            
+            .tooltip-bottom {
+                top: 135%;
+                left: 50%;  
+                margin-left: -60px;
+            }
+            
+            .tooltip-bottom::after {
+                content: "";
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                margin-left: -5px;
+                border-width: 5px;
+                border-style: solid;
+                border-color: transparent transparent #555 transparent;
+            }
+            
+            .tooltip-top {
+                bottom: 125%;
+                left: 50%;  
+                margin-left: -60px;
+            }
+            
+            .tooltip-top::after {
+                content: "";
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                margin-left: -5px;
+                border-width: 5px;
+                border-style: solid;
+                border-color: #555 transparent transparent transparent;
+            }
+            
+            .tooltip-left {
+                top: -5px;
+                bottom:auto;
+                right: 128%;  
+            }
+            
+            .tooltip-left::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 100%;
+                margin-top: -5px;
+                border-width: 5px;
+                border-style: solid;
+                border-color: transparent transparent transparent #555;
+            }
+            """.trimIndent()
+
+    val CommonAttributeGroupFacade.disableEnterKey: Unit
+        get() {
+            onKeyDown = "return event.key != 'Enter';"
+        }
+
+    fun Map<String, String>.saveToTape(): BlankTape {
+        var isNewTape = true
+        val nowTape = tapeCatalog.tapes.firstOrNull { it.name == get("name_pre") }
+            ?.also { isNewTape = false }
+
+        val modTape = BlankTape.reBuild(nowTape) { tape ->
+            // subDirectory = get("Directory")?.trim()
+            val hostValue = get("hostValue")?.toIntOrNull() ?: RandomHost().value
+            tape.tapeName = get("TapeName")?.trim() ?: hostValue.toString()
+            tape.routingURL = get("RoutingUrl")?.trim()
+            tape.allowLiveRecordings = get("SaveNewCalls") == "on"
+
+            tape.attractors = RequestAttractors { attr ->
+                get("filterPath")?.trim()?.also { path ->
+                    if (path.isNotEmpty())
+                        attr.routingPath?.value = path
+                }
+
+                if (keys.any { it.startsWith(filterKey) }) {
+                    attr.queryParamMatchers = filterFindData("Parameter")
+                    attr.queryHeaderMatchers = filterFindData("Header")
+                    attr.queryBodyMatchers = filterFindData("Body")
+                }
+            }
+        }
+
+        if (isNewTape) {
+            tapeCatalog.tapes.add(modTape)
+            if (get("hardtape") == "on") modTape.saveFile()
+        }
+
+        return modTape
+    }
+
+    private fun Map<String, String>.filterFindData(queryName: String): List<RequestAttractorBit>? {
+        val mKey = tableQueryMatcher(queryName)
+
+        val values = asSequence()
+            .filter { it.value.isNotBlank() }
+            .filter { it.key.startsWith(mKey.rowValueName) }
+            .associateBy(
+                {
+                    val keyRange = it.key.lastIndexRange { "($loadFlag)?\\d+" }
+                    it.key.substring(keyRange, "")
+                },
+                { it.value }
+            ).filter { it.key.isNotEmpty() }
+
+        val optionals = asSequence()
+            .filter { it.key.startsWith(mKey.rowOptName) }
+            .associateBy(
+                { it.key.removePrefix(mKey.rowOptName) },
+                { it.value }
+            )
+
+        val excepts = asSequence()
+            .filter { it.key.startsWith(mKey.rowExceptName) }
+            .associateBy(
+                { it.key.removePrefix(mKey.rowExceptName) },
+                { it.value }
+            )
+
+        val results = values.keys.map { key ->
+            RequestAttractorBit {
+                it.value = values.getValue(key)
+                it.optional = optionals.getOrDefault(key, "") == "on"
+                it.except = excepts.getOrDefault(key, "") == "on"
+            }
+        }
+        return if (results.isEmpty()) null else results
+    }
+
+    data class tableQueryMatcher(
+        /**
+         * What name of matcher this is representing.
+         * ex: Parameter, Header, or Body
+         */
+        var matcherName: String = "",
+        /**
+         * Uses a expandable field instead of a single line
+         */
+        var valueIsBody: Boolean = false
+    ) {
+        val nameShort
+            get() = matcherName.take(2).toUpperCase()
+
+        val tableId
+            get() = "fitler${nameShort}_Table"
+        val rowID
+            get() = "filter${nameShort}_ID"
+        val rowValueName
+            get() = "filter${nameShort}_Value"
+        val rowOptName
+            get() = "filter${nameShort}_Opt"
+        val rowExceptName
+            get() = "filter${nameShort}_Except"
+    }
+
+    fun FlowOrPhrasingContent.makeToggleButton(
+        target: String,
+        isExpanded: Boolean = false
+    ) {
+        script { unsafe { +"setupTogggButtonTarget('$target');" } }
+
+        button(
+            type = ButtonType.button,
+            classes = "collapsible".let {
+                if (isExpanded)
+                    "$it active" else it
+            }
+        ) {
+            onClick = "toggleView(this, $target);"
+            +"Toggle view"
+        }
+        br()
+    }
+
+    /**
+     * Adds a row based on the input [tableInfo].
+     * Attractor info from [bit] is pre-pended if able to.
+     */
+    fun TABLE.addMatcherRow(
+        bit: List<RequestAttractorBit>?,
+        tableInfo: (tableQueryMatcher) -> Unit
+    ) {
+        val info = tableQueryMatcher().also(tableInfo)
+
+        val colContent = "col_${info.tableId}"
+        tr {
+            th { +info.matcherName }
+            td {
+                makeToggleButton(colContent)
+                div {
+                    id = colContent
+                    addMatcherRowData(bit, info)
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds a table to this row which allows editing of the [bit] data
+     * If [bit] has data, then it is also added
+     */
+    fun FlowContent.addMatcherRowData(
+        bit: List<RequestAttractorBit>?,
+        info: tableQueryMatcher
+    ) {
+        table {
+            id = info.tableId
+
+            script {
+                unsafe {
+                    +"""
+                    var ${info.rowID} = 0;
+                    function addNew${info.nameShort}Filter(expandableField) {
+                        var newrow = ${info.tableId}.insertRow(${info.tableId}.rows.length-1);
+
+                        var filterValue = newrow.insertCell(0);
+                        var valueInput = createTextInput("${info.rowValueName}", ${info.rowID}, ${info.valueIsBody});
+                        formatParentFieldWidth(valueInput);
+                        filterValue.append(valueInput);
+
+                        var filterFlags = newrow.insertCell(1);
+                        var isOptionalInput = createCheckbox("${info.rowOptName}", ${info.rowID});
+                        filterFlags.append(isOptionalInput);
+                        filterFlags.append(" Optional");
+                        filterFlags.append(document.createElement("br"));
+
+                        var isExceptInput = createCheckbox("${info.rowExceptName}", ${info.rowID});
+                        filterFlags.append(isExceptInput);
+                        filterFlags.append(" Except");
+                        ${info.rowID}++;
+
+                        var actionBtns = newrow.insertCell(2);
+                        actionBtns.append(createDeleteBtn(newrow));
+
+                        if (expandableField) {
+                            actionBtns.append(document.createElement("br"));
+                            actionBtns.append(document.createElement("br"));
+                            var formatBtn = createBtn("Beautify Body");
+                            formatBtn.onclick = function() { beautifyField(valueInput); };
+                            actionBtns.append(formatBtn);
+                        }
+                    }
+                    """.trimIndent()
+                        .appendLines(
+                            js.formatParentFieldWidth_func.value
+                        )
+                }
+            }
+
+            thead {
+                tr {
+                    th { +"Value" }
+                    th { +"Flags" }
+                    th { +"Actions" }
+                }
+            }
+            tbody {
+                bit?.forEachIndexed { index, bit ->
+                    appendBit(bit, index, info)
+                }
+
+                tr {
+                    td {
+                        colSpan = "3"
+                        button(type = ButtonType.button) {
+                            onClick = "addNew${info.nameShort}Filter(${info.valueIsBody});"
+                            +"Add new Filter"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun TBODY.appendBit(bit: RequestAttractorBit, count: Int, info: tableQueryMatcher) {
+        tr {
+            id = bit.hashCode().toString()
+            val fieldName = "${info.rowValueName}${TapeEditor.loadFlag}$count"
+
+            td {
+                if (info.valueIsBody)
+                    textArea {
+                        name = fieldName
+                        id = name
+                        placeholder = bit.hardValue
+                        +bit.hardValue
+                    }
+                else
+                    textInput {
+                        name = fieldName
+                        id = name
+                        disableEnterKey
+                        placeholder = bit.hardValue
+                        value = bit.hardValue
+                    }
+
+                script {
+                    unsafe {
+                        +"formatParentFieldWidth($fieldName);".let {
+                            if (info.valueIsBody)
+                                it + "beautifyField($fieldName);" else it
+                        }
+                    }
+                }
+                // todo; reset value button
+            }
+
+            td {
+                checkBoxInput(name = "${info.rowOptName}${TapeEditor.loadFlag}$count") {
+                    checked = bit.optional ?: false
+                }
+                text(" Optional")
+                br()
+
+                checkBoxInput(name = "${info.rowExceptName}${TapeEditor.loadFlag}$count") {
+                    checked = bit.except ?: false
+                }
+                text(" Except")
+            }
+
+            td {
+                button {
+                    onClick = "this.parentNode.parentNode.remove();"
+                    +"Delete"
+                }
+
+                text(" ")
+
+                button {
+                    disabled = true
+                    +"Clone"
+                }
+
+                if (info.valueIsBody) {
+                    br()
+                    br()
+                    button(type = ButtonType.button) {
+                        onClick = "beautifyField($fieldName);"
+                        +"Beautify Body"
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds a br then a div containing formatted info text.
+     * If [property] isn't a string property, then it's passed as-is.
+     * [formatArgs] are added to the resulting string before displaying.
+     */
+    fun FlowOrPhrasingContent.infoText(
+        property: String,
+        formatArgs: Array<Any> = arrayOf(),
+        divArgs: (DIV) -> Unit = {}
+    ) {
+        val display = (R.getProperty(property) ?: property)
+            .format(*formatArgs)
+
+        if (this is FlowContent)
+            div(classes = "infoText") {
+                divArgs.invoke(this)
+                +display
+            }
+        else
+            br {
+                div(classes = "infoText") {
+                    divArgs.invoke(this)
+                    +display
+                }
+            }
+    }
+
+    enum class TooltipPositions(val value: String) {
+        Top("tooltip-top"),
+        Bottom("tooltip-bottom"),
+        Left("tooltip-left"),
+        Right("tooltip-right")
+    }
+
+    fun FlowContent.tooltipText(
+        textProperty: String,
+        infoProperty: String,
+        position: TooltipPositions = TooltipPositions.Top
+    ) {
+        val tipVal = (R.getProperty(textProperty) ?: textProperty).trim()
+        val splitLines = tipVal.split('\n')
+
+        div(classes = "tooltip") {
+            splitLines.eachHasNext({ +it.trim() }, { br() })
+            toolTip(infoProperty, position)
+        }
+    }
+
+    fun FlowContent.toolTip(
+        property: String,
+        position: TooltipPositions = TooltipPositions.Top
+    ) {
+        val display = R.getProperty(property) ?: property
+        val spanClasses = "tooltiptext ${position.value}"
+
+        val splitLines = display.split('\n')
+        div(classes = spanClasses) {
+            splitLines.eachHasNext({ +it.trim() }, { br() })
+        }
+    }
+
+    fun FlowContent.displayInteractionData(data: Tapedata?) {
+        div {
+            table {
+                thead {
+                    tr {
+                        th { +"Specific" }
+                        th { +"Headers" }
+                        th { +"Body" }
+                    }
+                }
+                tbody {
+                    tr {
+                        tapeDataRow(data)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun TR.tapeDataRow(data: Tapedata?) {
+        td {
+            div {
+                style = """
+                        resize: none;
+                        overflow: scroll;
+                    """.trimIndent()
+
+                when (data) {
+                    is RequestTapedata -> {
+                        text("Method: \n${data.method}")
+                        text("Url: ${data.url}")
+                    }
+                    is ResponseTapedata ->
+                        text("Code: \n${data.code}")
+
+                    else -> text("{ no data }")
+                }
+            }
+        }
+
+        td {
+            div {
+                id = "resizingTapeData"
+                style = """
+                    margin-bottom: 1em;
+                    resize: vertical;
+                    overflow: auto;
+                    min-height: 5em;
+                """.trimIndent()
+
+                val headers = data?.headers
+                table {
+                    thead {
+                        tr {
+                            th { +"Key" }
+                            th { +"Value" }
+                        }
+                    }
+                    tbody {
+                        if (headers == null) {
+                            tr {
+                                td {
+                                    colSpan = "2"
+                                    +"{ no data }"
+                                }
+                            }
+                        } else
+                            headers.toMultimap().forEach { t, u ->
+                                u.forEach {
+                                    tr {
+                                        td { +t }
+                                        td { +it }
+                                    }
+                                }
+                            }
+                    }
+                }
+            }
+        }
+
+        td {
+            style = "vertical-align: top;"
+            textArea {
+                id = when (data) {
+                    is RequestTapedata -> "requestBody"
+                    is ResponseTapedata -> "responseBody"
+                    else -> ""
+                }
+
+                style = """
+                    margin-bottom: 1em;
+                    resize: vertical;
+                    width: 100%;
+                    min-height: 5em;
+                """.trimIndent()
+                readonly = true
+                +(data?.body ?: "")
+            }
+        }
+    }
+}

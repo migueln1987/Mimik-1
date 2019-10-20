@@ -5,6 +5,7 @@ import com.beust.klaxon.Parser
 import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
 import io.ktor.request.contentType
 import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
@@ -68,6 +69,9 @@ val StringValues.toHeaders: Headers
             }
         }.build()
     }
+
+val StringValues.toParameters: Parameters
+    get() = Parameters.build { appendAll(this@toParameters) }
 
 val Map<String, String>.toHeaders: Headers
     get() {

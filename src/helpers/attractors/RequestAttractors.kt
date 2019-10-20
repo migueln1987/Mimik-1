@@ -119,22 +119,40 @@ class RequestAttractors {
         if (routingPath == null && data.routingPath != null)
             routingPath = data.routingPath?.clone()
 
-        data.queryParamMatchers?.also { newData ->
-            queryParamMatchers = (queryParamMatchers ?: listOf())
-                .toMutableList()
-                .apply {
-                    val filteredData = newData.filterNot { contains(it) }
-                    addAll(filteredData)
-                }
+        queryParamMatchers = matchAppender {
+            from = data.queryParamMatchers
+            to = queryParamMatchers
         }
 
-        data.queryBodyMatchers?.also { newData ->
-            queryBodyMatchers = (queryBodyMatchers ?: listOf())
-                .toMutableList()
-                .apply {
-                    val filteredData = newData.filterNot { contains(it) }
-                    addAll(filteredData)
-                }
+        queryHeaderMatchers = matchAppender {
+            from = data.queryHeaderMatchers
+            to = queryHeaderMatchers
+        }
+
+        queryBodyMatchers = matchAppender {
+            from = data.queryBodyMatchers
+            to = queryBodyMatchers
+        }
+    }
+
+    data class matcherPair(
+        var from: List<RequestAttractorBit>? = null,
+        var to: List<RequestAttractorBit>? = null
+    )
+
+    private fun matchAppender(matchers: matcherPair.() -> Unit): List<RequestAttractorBit>? {
+        matcherPair().apply {
+            matchers.invoke(this)
+
+            from?.also { newData ->
+                to = (to ?: listOf())
+                    .toMutableList()
+                    .apply {
+                        addAll(newData.filterNot { contains(it) })
+                    }
+            }
+
+            return to
         }
     }
 
