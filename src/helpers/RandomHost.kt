@@ -1,28 +1,24 @@
 package helpers
 
-import java.util.Random
+import java.util.UUID
+import java.util.UUID.nameUUIDFromBytes
 import kotlin.experimental.and
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.random.Random
 
 /**
  * A class which generates a random number, and persist the last generated number
  */
-class RandomHost {
-    private val random = Random()
+class RandomHost(init: Int? = null) {
+    private val random = Random.Default
     private val charPool: List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
 
     var value = nextRandom()
         private set
 
-    fun nextRandom(bound: Int? = null): Int {
-        value = if (bound == 0)
-            random.nextInt()
-        else
-            bound?.let { random.nextInt(abs(bound)) } ?: random.nextInt()
-
-        if (value < 0) value = abs(value)
-        return value
+    init {
+        value = init?.let { abs(it) } ?: nextRandom()
     }
 
     val valueAsChars: String
@@ -42,4 +38,20 @@ class RandomHost {
                 .map { charPool[it] } // get char value
                 .joinToString("")
         }
+
+    val valueToUUID: UUID
+        get() = nameUUIDFromBytes(valueAsChars.toByteArray())
+
+    val valueAsUUID
+        get() = valueToUUID.toString()
+
+    fun nextRandom(bound: Int? = null): Int {
+        value = if (bound == 0)
+            random.nextInt()
+        else
+            bound?.let { random.nextInt(abs(bound)) } ?: random.nextInt()
+
+        if (value < 0) value = abs(value)
+        return value
+    }
 }

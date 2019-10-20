@@ -27,34 +27,76 @@ import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
 class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
-    class Builder(config: (Builder) -> Unit = {}) {
+    class Builder(val reBuild: BlankTape? = null, config: (Builder) -> Unit = {}) {
         var tapeName: String? = null
+            set(value) {
+                field = value
+                if (reBuild != null)
+                    reBuild.tapeName = value
+            }
+
         var routingURL: String? = null
+            set(value) {
+                field = value
+                if (reBuild != null)
+                    reBuild.routingUrl = value
+            }
+
         var attractors: RequestAttractors? = null
+            set(value) {
+                field = value
+                if (reBuild != null) {
+                    reBuild.attractors
+                        ?.also { it.append(value) }
+                        ?: also { reBuild.attractors = value }
+                }
+            }
+
         /**
          * Allows this tape to accept new recordings
          *
          * Default: true
          */
         var allowLiveRecordings: Boolean? = true
+            set(value) {
+                field = value
+                if (reBuild != null) {
+                    reBuild.mode = if (value == true)
+                        TapeMode.READ_WRITE else TapeMode.READ_ONLY
+                }
+            }
 
         init {
             config.invoke(this)
         }
 
-        fun build() = BlankTape { tape ->
-            if (!tapeName.isNullOrBlank())
-                tape.tapeName = tapeName
-            tape.attractors = attractors
-            if (!routingURL.isNullOrBlank())
-                tape.routingUrl = routingURL?.ensurePrefix("http", "http://")
+        /**
+         * If [reBuild] is not null, then builder values will be applied to it, else a new tape will be made
+         */
+        fun build(): BlankTape {
+            val returnTape = if (reBuild != null) {
+                reBuild.file = File(
+                    VCRConfig.getConfig.tapeRoot.get(),
+                    reBuild.name.toJsonName
+                )
+                reBuild
+            } else {
+                BlankTape { tape ->
+                    tape.tapeName = tapeName
+                    tape.attractors = attractors
+                    tape.mode = if (allowLiveRecordings == true)
+                        TapeMode.READ_WRITE else TapeMode.READ_ONLY
+                    tape.file = File(
+                        VCRConfig.getConfig.tapeRoot.get(),
+                        tape.name.toJsonName
+                    )
+                }
+            }
 
-            tape.mode = if (allowLiveRecordings == true)
-                TapeMode.READ_WRITE else TapeMode.READ_ONLY
-            tape.file = File(
-                VCRConfig.getConfig.tapeRoot.get(),
-                tape.name.toJsonName
-            )
+            if (!routingURL.isNullOrBlank())
+                returnTape.routingUrl = routingURL?.ensurePrefix("http", "http://")
+
+            return returnTape
         }
 
         private val String.toJsonName: String
@@ -93,6 +135,12 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             override fun newBuilder() = TODO()
             override fun toYaml() = TODO()
         }
+
+        /**
+         * Will attempt to create a new builder from a non-null [reBuild], else a new tape will be made
+         */
+        fun reBuild(reBuild: BlankTape? = null, config: (Builder) -> Unit = {}) =
+            Builder(reBuild, config).build()
     }
 
     var tapeName: String? = null

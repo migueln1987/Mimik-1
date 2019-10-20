@@ -1,6 +1,5 @@
 package networkRouting
 
-import TapeCatalog
 import helpers.anyTrue
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
@@ -29,8 +28,6 @@ import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock(path: String) : RoutingContract(path) {
-
-    private val tapeCatalog by lazy { TapeCatalog.Instance }
 
     private enum class RoutePaths(val path: String) {
         MOCK("");

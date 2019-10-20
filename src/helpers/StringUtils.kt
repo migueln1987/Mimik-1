@@ -1,6 +1,7 @@
 package helpers
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 
 /**
  * If this string starts with the given [prefix], returns a copy of this string
@@ -43,6 +44,32 @@ fun String.ensurePrefix(prefix: String, value: String) =
     if (startsWith(prefix)) this else value + this
 
 /**
+ * Returns the last instance range of the matching [predicate].
+ *
+ * If no match is found, [(0..0)] is returned.
+ */
+fun String.lastIndexRange(predicate: (String) -> String): IntRange {
+    val regex = predicate.invoke(this).toRegex()
+    val matches = regex.findAll(this)
+    if (matches.none()) return (0..0)
+    return matches.last().range
+}
+
+/**
+ * Returns a substring specified by the given [range] of indices.
+ *
+ * If [range]'s last value is less than or equal to 0, [default] is returned.
+ */
+fun String.substring(range: IntRange, default: String) =
+    if (range.last <= 0) default else substring(range)
+
+/**
+ * Adds each [strings] to [this], with a new line between each value and the source string.
+ */
+fun String.appendLines(vararg strings: String) =
+    strings.fold(this) { acc, t -> "$acc\n$t" }
+
+/**
  * Returns `true` if the contents of this string is equal to the word "true", ignoring case, and `false` otherwise.
  *
  * If the value is null, [default] is returned instead, which is initially 'false'
@@ -66,6 +93,25 @@ val String?.isJSONValidMsg: String
         ""
     } catch (ex: Exception) {
         ex.toString()
+    }
+
+/**
+ * Converts the source [String] into a indent-formatted string
+ */
+val String?.beautifyJson: String
+    get() {
+        val gson = GsonBuilder().setPrettyPrinting().create()
+        if (this.isNullOrBlank()) return ""
+
+        return try {
+            gson.let {
+                it.fromJson(this, Any::class.java)
+                    ?.let { toObj -> it.toJson(toObj) }
+                    ?: this
+            }
+        } catch (e: java.lang.Exception) {
+            ""
+        }
     }
 
 /**

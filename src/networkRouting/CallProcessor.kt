@@ -16,8 +16,6 @@ import io.ktor.routing.route
 
 class CallProcessor(path: String) : RoutingContract(path) {
 
-    private val tapeCatalog by lazy { TapeCatalog.Instance }
-
     override fun init(route: Routing) {
         route.route(path) {
             get { call.action() }
