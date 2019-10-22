@@ -56,8 +56,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     .readAllParts().asSequence()
                     .filterIsInstance<PartData.FormItem>()
                     .filterNot { it.name.isNullOrBlank() }
-                    .map { it.name!! to it.value }
-                    .toMap()
+                    .associate { it.name!! to it.value }
 
                 call.processData(values)
             } else
@@ -169,6 +168,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 saveChap.also {
                     it.chapterName = data["name"]
                 }
+
+                EditorModule.randomHost.nextRandom()
 
                 respondRedirect {
                     val afterAction = data["afterAction"]

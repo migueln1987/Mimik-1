@@ -1,6 +1,5 @@
 package networkRouting.editorPages
 
-import helpers.RandomHost
 import helpers.isTrue
 import io.ktor.http.Parameters
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
@@ -11,52 +10,30 @@ object ChapterEditor : EditorModule() {
      * Page to edit individual chapters in a tape
      */
     fun HTML.getChapterPage(params: Parameters) {
-        val activeTape = tapeCatalog.tapes
-            .firstOrNull { it.name == params["tape"] }
-
-        val activeChapter = activeTape?.chapters
-            ?.firstOrNull { it.name == params["chapter"] }
-
-        val newTape = activeTape == null
-        val newChapter = activeChapter == null
-
-        val expectedTapeName = params["tape"] ?: RandomHost().value.toString()
-        val expectedChapterName = params["chapter"]
-            ?.let { if (it.isBlank()) null else it }
+        val pData = params.toActiveEdit
 
         head {
-            script { unsafe { +js.all } }
+            script { unsafe { +JS.all } }
         }
 
         body {
             setupStyle()
-
-            getForm(action = TapeRouting.RoutePaths.ALL.path) {
-                button { +"...View All tapes" }
-                if (!newTape) {
-                    +" "
-                    hiddenInput(name = "tape") { value = expectedTapeName }
-                    button {
-                        formAction = TapeRouting.RoutePaths.EDIT.path
-                        +"..to Parent tape"
-                    }
-                }
-            }
+            BreadcrumbNav(pData)
 
             br()
-            if (newTape)
+            if (pData.loadTape_Failed)
                 p {
-                    +"No tape with the name \"${params["tape"]}\" was found."
+                    +"No tape with the name \"${pData.expectedTapeName}\" was found."
                     br()
                 }
 
-            if (newChapter && !expectedChapterName.isNullOrBlank())
+            if (pData.loadChap_Failed)
                 p {
-                    +"No chapter with the name \"${params["chapter"]}\" was found."
+                    +"No chapter with the name \"${pData.expectedChapName}\" was found."
                     br()
                 }
 
-            h1 { +(if (newChapter) "New Chapter" else "Chapter Editor") }
+            h1 { +(if (pData.newChapter) "New Chapter" else "Chapter Editor") }
 
             form(encType = FormEncType.multipartFormData) {
                 table {
@@ -67,7 +44,7 @@ object ChapterEditor : EditorModule() {
                             +"Name"
                         }
                         td {
-                            val nameAction = if (expectedChapterName != null)
+                            val nameAction = if (pData.expectedChapName != null)
                                 "nameReset.hidden = setName.value == setName.placeholder;"
                             else ""
                             val chapNameAction = "setName.value = '%s';%s"
@@ -76,19 +53,14 @@ object ChapterEditor : EditorModule() {
                                 textInput(name = "name") {
                                     disableEnterKey
                                     id = "setName"
-                                    if (activeChapter == null) {
-                                        placeholder = expectedChapterName ?: randomHost.valueAsUUID
-                                        value = expectedChapterName ?: randomHost.valueAsUUID
-                                    } else {
-                                        placeholder = activeChapter.name
-                                        value = activeChapter.name
-                                    }
+                                    placeholder = pData.hardChapName(randomHost.valueAsUUID)
+                                    value = placeholder
                                     size = "${randomHost.valueAsUUID.length + 10}"
                                     onKeyUp = nameAction
                                 }
 
                                 text(" ")
-                                if (activeChapter == null) {
+                                if (pData.newChapter) {
                                     button(type = ButtonType.button) {
                                         onClick = chapNameAction.format(
                                             randomHost.value,
@@ -114,7 +86,7 @@ object ChapterEditor : EditorModule() {
                                     }
                                 }
 
-                                if (expectedChapterName != null)
+                                if (pData.expectedChapName != null)
                                     button(type = ButtonType.button) {
                                         id = "nameReset"
                                         hidden = true
@@ -148,7 +120,7 @@ object ChapterEditor : EditorModule() {
                                             textInput(name = "filterPath") {
                                                 disableEnterKey
                                                 val path =
-                                                    activeChapter?.attractors?.routingPath?.value
+                                                    pData.chapter?.attractors?.routingPath?.value
                                                         ?: ""
 
                                                 placeholder = if (path.isBlank())
@@ -158,17 +130,19 @@ object ChapterEditor : EditorModule() {
                                         }
                                     }
 
-                                    addMatcherRow(activeChapter?.attractors?.queryParamMatchers) {
-                                        it.matcherName = "Parameter"
-                                    }
+                                    pData.chapter?.attractors?.also { attr ->
+                                        addMatcherRow(attr.queryParamMatchers) {
+                                            it.matcherName = "Parameter"
+                                        }
 
-                                    addMatcherRow(activeChapter?.attractors?.queryHeaderMatchers) {
-                                        it.matcherName = "Header"
-                                    }
+                                        addMatcherRow(attr.queryHeaderMatchers) {
+                                            it.matcherName = "Header"
+                                        }
 
-                                    addMatcherRow(activeChapter?.attractors?.queryBodyMatchers) {
-                                        it.matcherName = "Body"
-                                        it.valueIsBody = true
+                                        addMatcherRow(attr.queryBodyMatchers) {
+                                            it.matcherName = "Body"
+                                            it.valueIsBody = true
+                                        }
                                     }
                                 }
 
@@ -185,7 +159,7 @@ object ChapterEditor : EditorModule() {
                             text("Enabled - ")
                             checkBoxInput(name = "usesEnabled") {
                                 checked = MockUseStates.isEnabled(
-                                    activeChapter?.mockUses
+                                    pData.chapter?.mockUses
                                         ?: MockUseStates.ALWAYS.state
                                 )
                             }
@@ -199,9 +173,9 @@ object ChapterEditor : EditorModule() {
                             numberInput {
                                 min = MockUseStates.ALWAYS.state.toString()
                                 max = Int.MAX_VALUE.toString()
-                                value = when (activeChapter?.mockUses) {
+                                value = when (val uses = pData.chapter?.mockUses) {
                                     null -> MockUseStates.ALWAYS.state
-                                    else -> activeChapter.mockUses
+                                    else -> uses
                                 }.toString()
                             }
 
@@ -212,7 +186,7 @@ object ChapterEditor : EditorModule() {
                                 "chapLiveInfo"
                             )
                             checkBoxInput(name = "useLive") {
-                                checked = activeChapter?.alwaysLive.isTrue()
+                                checked = pData.chapter?.alwaysLive.isTrue()
                                 onInput = """
                                         alert("todo; enable/ disable Response data + clear Response data")
                                     """.trimIndent()
@@ -244,7 +218,7 @@ object ChapterEditor : EditorModule() {
                                         tr {
                                             td {
                                                 style = "padding: 0.4em 2em;"
-                                                if (activeChapter?.requestData != null) {
+                                                if (pData.chapter?.requestData != null) {
                                                     button(type = ButtonType.button) {
                                                         onClick = "requestInput.value = '';"
                                                         +"Clear Request"
@@ -259,7 +233,7 @@ object ChapterEditor : EditorModule() {
 
                                                 +" "
                                                 button(type = ButtonType.button) {
-                                                    if (activeChapter?.requestData == null) {
+                                                    if (pData.chapter?.requestData == null) {
                                                         onClick =
                                                             "alert('Insert {create New Request}')"
                                                         +"Create"
@@ -275,10 +249,7 @@ object ChapterEditor : EditorModule() {
                                 }
 
                                 br()
-                                if (activeChapter?.requestData == null)
-                                    +"{ no data }"
-                                else
-                                    displayInteractionData(activeChapter.requestData)
+                                displayInteractionData(pData.chapter?.requestData)
                             }
                         }
                     }
@@ -310,11 +281,11 @@ object ChapterEditor : EditorModule() {
                                                 )
                                                 br()
                                                 checkBoxInput(name = "responseAwait") {
-                                                    checked = activeChapter?.awaitResponse ?: true
-                                                    if (activeChapter?.awaitResponse == null)
+                                                    checked = pData.chapter?.awaitResponse.isTrue()
+                                                    if (pData.chapter?.awaitResponse == null)
                                                         disabled = true
                                                     onClick = """
-                                                        if (checked && ${activeChapter?.awaitResponse.isTrue()})
+                                                        if (checked && ${pData.chapter?.awaitResponse.isTrue()})
                                                             if (confirm('${R.getProperty("chapAwaitConfirm")}')) 
                                                                 return true;
                                                             else
@@ -323,7 +294,7 @@ object ChapterEditor : EditorModule() {
                                                 }
                                             }
 
-                                            if (activeChapter?.responseData != null) {
+                                            if (pData.chapter?.responseData != null) {
                                                 td {
                                                     button(type = ButtonType.button) {
                                                         onClick = "requestInput.value = '';"
@@ -341,7 +312,7 @@ object ChapterEditor : EditorModule() {
 
                                             td {
                                                 button(type = ButtonType.button) {
-                                                    if (activeChapter?.requestData == null) {
+                                                    if (pData.chapter?.requestData == null) {
                                                         onClick =
                                                             "alert('Insert {create New Response}')"
                                                         +"Create"
@@ -357,10 +328,7 @@ object ChapterEditor : EditorModule() {
                                 }
 
                                 br()
-                                if (activeChapter?.responseData == null)
-                                    +"{ no data }"
-                                else
-                                    displayInteractionData(activeChapter.responseData)
+                                displayInteractionData(pData.chapter?.responseData)
                             }
                         }
                     }
@@ -368,14 +336,9 @@ object ChapterEditor : EditorModule() {
                     tr {
                         th { +"Save Options" }
                         td {
-                            hiddenInput(name = "name_pre") {
-                                value = expectedChapterName ?: ""
-                            }
-                            hiddenInput(name = "tape") { value = expectedTapeName }
-                            hiddenInput(name = "afterAction") {
-                                id = name
-                                value = ""
-                            }
+                            hiddenInput(name = "name_pre") { value = pData.hardChapName("") }
+                            hiddenInput(name = "tape") { value = pData.hardTapeName("") }
+                            hiddenInput(name = "afterAction") { id = name }
 
                             div {
                                 postButton(name = "Action") {
