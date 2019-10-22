@@ -72,7 +72,7 @@ class TapeCatalog : OkReplayInterceptor() {
         val validChapters = tapes.asSequence()
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
-            .associateBy({ it }, { it.attractors })
+            .associateWith { it.attractors }
 
         val foundChapter = RequestAttractors.findBest(
             validChapters,

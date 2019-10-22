@@ -7,10 +7,13 @@ import helpers.attractors.RequestAttractors
 import helpers.eachHasNext
 import helpers.lastIndexRange
 import helpers.substring
+import io.ktor.http.Parameters
 import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
 import mimikMockHelpers.Tapedata
+import networkRouting.editorPages.ChapterEditor.toActiveEdit
 import tapeItems.BlankTape
 
 abstract class EditorModule {
@@ -18,13 +21,16 @@ abstract class EditorModule {
     val subDirectoryDefault = "[ Default Directory ]"
     val subDirectoryCustom = "[ Custom Directory ]"
 
-    val filterKey = "filter"
+    private val filterKey = "filter"
     val loadFlag = "_load_"
-    val randomHost = RandomHost()
 
-    @Suppress("unused")
-    enum class js(private val init: String) {
-        disableEnter_func(
+    companion object {
+        val randomHost = RandomHost()
+    }
+
+    @Suppress("unused", "EnumEntryName")
+    enum class JS(private val init: String) {
+        DisableEnter_func(
             """
                 function disableEnter(field) {
                     field.onkeydown = function() {return event.key != 'Enter';};
@@ -32,7 +38,7 @@ abstract class EditorModule {
                 """
         ),
 
-        preVerifyURL_func(
+        PreVerifyURL_func(
             """
                 function preVerifyURL(url) {
                     if (url == null || url.length == 0)
@@ -45,7 +51,7 @@ abstract class EditorModule {
                 """
         ),
 
-        prettyJson(
+        PrettyJson(
             """
                 function prettyJson(uglyText) {
                     if (uglyText.trim().length < 1) return uglyText;
@@ -65,7 +71,7 @@ abstract class EditorModule {
                 """
         ),
 
-        setIsDisabled_func(
+        SetIsDisabled_func(
             """
                 function setIsDisabled(divObj, newState) {
                     try {
@@ -79,7 +85,7 @@ abstract class EditorModule {
                 """
         ),
 
-        formatParentFieldWidth_func(
+        FormatParentFieldWidth_func(
             """
                 function formatParentFieldWidth(field) {
                     field.style.width = "100%";
@@ -100,7 +106,7 @@ abstract class EditorModule {
                 """
         ),
 
-        createTextInput_func(
+        CreateTextInput_func(
             """
                 function createTextInput(fieldType, fieldID, expandable) {
                     expandable = expandable || false;
@@ -125,7 +131,7 @@ abstract class EditorModule {
                 """
         ),
 
-        createCheckbox_func(
+        CreateCheckbox_func(
             """
                 function createCheckbox(fieldType, fieldID) {
                     var inputField = document.createElement("input");
@@ -140,7 +146,7 @@ abstract class EditorModule {
          * Created a delete button, which when clicked,
          * will call "remove()" on the passed in node
          */
-        createDeleteBtn_func(
+        CreateDeleteBtn_func(
             """
                 function createDeleteBtn(node) {
                     var deleteBtn = document.createElement("button");
@@ -152,7 +158,7 @@ abstract class EditorModule {
                 """
         ),
 
-        createBtn_func(
+        CreateBtn_func(
             """
                 function createBtn(name) {
                     name = name || "";
@@ -164,7 +170,7 @@ abstract class EditorModule {
                 """
         ),
 
-        toggleDisp_func(
+        ToggleDisp_func(
             """
                 function toggleView(caller, toToggle) {
                     if (!toToggle.classList.contains("hideableContent")) {
@@ -193,7 +199,7 @@ abstract class EditorModule {
                 """
         ),
 
-        setupToggButton_func(
+        SetupToggButton_func(
             """
                 function setupTogggButtonTarget(target) {
                     setTimeout(function waitWrapper() {
@@ -206,7 +212,7 @@ abstract class EditorModule {
                 """
         ),
 
-        submitNameCheck(
+        SubmitNameCheck(
             """
                 function submitCheck() {
                     setName.value = setName.value.trim();
@@ -218,7 +224,7 @@ abstract class EditorModule {
 
         companion object {
             /**
-             * Returns a string containing all the values in [js]
+             * Returns a string containing all the values in [JS]
              */
             val all: String
                 get() {
@@ -269,50 +275,138 @@ abstract class EditorModule {
                         font-size: 14px;
                         color: #555
                     }
-                    
-                    /* Button style that is used to open and close the collapsible content */
-                    .collapsible {
-                        background-color: #999;
-                        color: white;
-                        cursor: pointer;
-                        padding: 8px 10px;
-                        margin-bottom: 4px;
-                        width: 100%;
-                        text-align: left;
-                        font-size: 15px;
-                    }
-                    
-                    .collapsible:after {
-                        content: '\002B';
-                        color: white;
-                        font-weight: bold;
-                        float: right;
-                        margin-left: 5px;
-                    }
-                    
-                    /* Background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
-                    .active, .collapsible:hover {
-                        background-color: #888;
-                    }
-                    .active:after {
-                        content: "\2212";
-                    }
-                    
-                    /* Style the collapsible content. Note: "hidden" by default */
-                    .hideableContent {
-                        padding: 6px;
-                        max-height: 0;
-                        display: none;
-                        overflow: hidden;
-                        background-color: #f4f4f4;
-                        transition: max-height 0.4s ease-out;
-                    }
                     """.trimIndent()
-                        .appendLines(tooltipStyle)
+                        .appendLines(
+                            breadcrumbStyle,
+                            collapsibleStyle,
+                            tooltipStyle
+                        )
                 )
             }
         }
     }
+
+    private val breadcrumbStyle: String
+        get() = """
+            .breadcrumb {
+                padding: 10px;
+                background-color: #eee;
+                overflow: hidden;
+            }
+            
+            .breadcrumb div {
+                font-size: 18px;
+            }
+            
+            .breadcrumb div+div:before {
+                content: "/";
+            }
+            
+            .subnav {
+                float: left;
+                overflow: hidden;
+            }
+            
+            .navHeader {
+                color: #0275d8;
+                text-decoration: none;
+            }
+            
+            .navHeader:hover {
+                color: white;
+                cursor: pointer;
+                text-decoration: underline;
+            }
+            
+            .caret-down:after {
+                content: "\25be";
+                line-height: 1;
+                font-style: normal;
+                text-rendering: auto;
+            }
+            
+            .subnav .navHeader {
+                font-size: 16px;  
+                border: none;
+                outline: none;
+                background-color: inherit;
+                font-family: inherit;
+                margin: 0;
+                padding: 4px;
+            }
+            
+            .navHeader:hover, .subnav-content *:hover {
+                background-color: darkslategray;
+            }
+            
+            .subnav-content {
+                display: none;
+                position: absolute;
+                left: 5em;
+                background-color: slategray;
+                width: auto;
+                z-index: 1;
+            }
+            
+            .subnav-content * {
+                cursor: pointer;
+                float: left;
+                color: white;
+                padding: 8px;
+                padding-right: 10em;
+                text-decoration: none;
+                display: inline-flex;
+                background-color: slategrey;
+            }
+            
+            .subnav:hover .subnav-content {
+                display: grid;
+                line-height: 1em;
+                max-height: 10.5em;
+                overflow: scroll;
+            }
+        """.trimIndent()
+
+    private val collapsibleStyle: String
+        get() = """
+             /* Button style that is used to open and close the collapsible content */
+            .collapsible {
+                background-color: #999;
+                color: white;
+                cursor: pointer;
+                padding: 8px 10px;
+                margin-bottom: 4px;
+                width: 100%;
+                text-align: left;
+                font-size: 15px;
+            }
+                
+            .collapsible:after {
+                content: '\002B';
+                color: white;
+                font-weight: bold;
+                float: right;
+                margin-left: 5px;
+            }
+            
+            /* Background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+            .active, .collapsible:hover {
+                background-color: #888;
+            }
+            .active:after {
+                content: "\2212";
+            }
+            
+            /* Style the collapsible content. Note: "hidden" by default */
+            .hideableContent {
+                padding: 6px;
+                max-height: 0;
+                display: none;
+                overflow: hidden;
+                background-color: #f4f4f4;
+                transition: max-height 0.4s ease-out;
+            }
+            """.trimIndent()
 
     private val tooltipStyle: String
         get() = """
@@ -451,7 +545,7 @@ abstract class EditorModule {
     }
 
     private fun Map<String, String>.filterFindData(queryName: String): List<RequestAttractorBit>? {
-        val mKey = tableQueryMatcher(queryName)
+        val mKey = TableQueryMatcher(queryName)
 
         val values = asSequence()
             .filter { it.value.isNotBlank() }
@@ -488,7 +582,7 @@ abstract class EditorModule {
         return if (results.isEmpty()) null else results
     }
 
-    data class tableQueryMatcher(
+    data class TableQueryMatcher(
         /**
          * What name of matcher this is representing.
          * ex: Parameter, Header, or Body
@@ -502,16 +596,18 @@ abstract class EditorModule {
         val nameShort
             get() = matcherName.take(2).toUpperCase()
 
+        private val filterKey = "filter"
+
         val tableId
-            get() = "fitler${nameShort}_Table"
+            get() = "$filterKey${nameShort}_Table"
         val rowID
-            get() = "filter${nameShort}_ID"
+            get() = "$filterKey${nameShort}_ID"
         val rowValueName
-            get() = "filter${nameShort}_Value"
+            get() = "$filterKey${nameShort}_Value"
         val rowOptName
-            get() = "filter${nameShort}_Opt"
+            get() = "$filterKey${nameShort}_Opt"
         val rowExceptName
-            get() = "filter${nameShort}_Except"
+            get() = "$filterKey${nameShort}_Except"
     }
 
     fun FlowOrPhrasingContent.makeToggleButton(
@@ -539,9 +635,9 @@ abstract class EditorModule {
      */
     fun TABLE.addMatcherRow(
         bit: List<RequestAttractorBit>?,
-        tableInfo: (tableQueryMatcher) -> Unit
+        tableInfo: (TableQueryMatcher) -> Unit
     ) {
-        val info = tableQueryMatcher().also(tableInfo)
+        val info = TableQueryMatcher().also(tableInfo)
 
         val colContent = "col_${info.tableId}"
         tr {
@@ -562,7 +658,7 @@ abstract class EditorModule {
      */
     fun FlowContent.addMatcherRowData(
         bit: List<RequestAttractorBit>?,
-        info: tableQueryMatcher
+        info: TableQueryMatcher
     ) {
         table {
             id = info.tableId
@@ -603,7 +699,7 @@ abstract class EditorModule {
                     }
                     """.trimIndent()
                         .appendLines(
-                            js.formatParentFieldWidth_func.value
+                            JS.FormatParentFieldWidth_func.value
                         )
                 }
             }
@@ -633,7 +729,7 @@ abstract class EditorModule {
         }
     }
 
-    fun TBODY.appendBit(bit: RequestAttractorBit, count: Int, info: tableQueryMatcher) {
+    fun TBODY.appendBit(bit: RequestAttractorBit, count: Int, info: TableQueryMatcher) {
         tr {
             id = bit.hashCode().toString()
             val fieldName = "${info.rowValueName}${TapeEditor.loadFlag}$count"
@@ -731,6 +827,7 @@ abstract class EditorModule {
             }
     }
 
+    @Suppress("unused")
     enum class TooltipPositions(val value: String) {
         Top("tooltip-top"),
         Bottom("tooltip-bottom"),
@@ -765,7 +862,15 @@ abstract class EditorModule {
         }
     }
 
+    /**
+     * Displays the input [data], or displays "{ no data }" if it's null
+     */
     fun FlowContent.displayInteractionData(data: Tapedata?) {
+        if (data == null) {
+            +"{ no data }"
+            return
+        }
+
         div {
             table {
                 thead {
@@ -832,7 +937,7 @@ abstract class EditorModule {
                                 }
                             }
                         } else
-                            headers.toMultimap().forEach { t, u ->
+                            headers.toMultimap().forEach { (t, u) ->
                                 u.forEach {
                                     tr {
                                         td { +t }
@@ -862,6 +967,154 @@ abstract class EditorModule {
                 """.trimIndent()
                 readonly = true
                 +(data?.body ?: "")
+            }
+        }
+    }
+
+    class activeData(val params: Parameters) {
+        private val tapeCatalog by lazy { TapeCatalog.Instance }
+
+        var tape: BlankTape? = null
+        var chapter: RecordedInteractions? = null
+
+        /**
+         * tape is null
+         */
+        val newTape
+            get() = tape == null
+
+        /**
+         * chapter is null
+         */
+        val newChapter
+            get() = chapter == null
+
+        /**
+         * Parameter data (trimmed) for 'tape', else null
+         */
+        val expectedTapeName
+            get() = params["tape"]?.let { if (it.isBlank()) null else it.trim() }
+
+        /**
+         * Expected tape name, or a generated name (optional [default])
+         */
+        fun hardTapeName(default: String = RandomHost().value.toString()) =
+            expectedTapeName ?: default
+
+        /**
+         * Parameter data (trimmed) for 'chapter', else null
+         */
+        val expectedChapName
+            get() = params["chapter"]?.let { if (it.isBlank()) null else it.trim() }
+
+        /**
+         * Expected chapter name, or a generated name (optional [default])
+         */
+        fun hardChapName(default: String = RandomHost().valueAsUUID) =
+            expectedChapName ?: default
+
+        /**
+         * Params passed in a tape name, but no tape was found by that name
+         */
+        val loadTape_Failed
+            get() = newTape && !expectedTapeName.isNullOrBlank()
+
+        /**
+         * Params passed in a tape name, but no tape was found by that name
+         */
+        val loadChap_Failed
+            get() = newChapter && !expectedChapName.isNullOrBlank()
+
+        init {
+            tape = tapeCatalog.tapes
+                .firstOrNull { it.name == params["tape"] }
+            chapter = tape?.chapters
+                ?.firstOrNull { it.name == params["chapter"] }
+        }
+    }
+
+    /**
+     * Retrieves data from the [Parameters] for the current Tape/ Chapter
+     */
+    val Parameters.toActiveEdit
+        get() = activeData(this)
+
+    fun BODY.BreadcrumbNav(params: Parameters = Parameters.Empty) =
+        BreadcrumbNav(params.toActiveEdit)
+
+    fun BODY.BreadcrumbNav(data: activeData) {
+        div(classes = "breadcrumb") {
+            getForm(action = TapeRouting.RoutePaths.ALL.path) {
+                hiddenInput(name = "tape") { id = name }
+                hiddenInput(name = "chapter") {
+                    id = name
+                    disabled = true
+                }
+
+                div(classes = "subnav") {
+                    button(classes = "navHeader") { +"All Tapes" }
+                    if (tapeCatalog.tapes.isNotEmpty())
+                        div(classes = "subnav-content") {
+                            style = "left: 1em;"
+                            tapeCatalog.tapes.forEach {
+                                button {
+                                    formAction = TapeRouting.RoutePaths.EDIT.path
+                                    onClick = "tape.value = '${it.name}';"
+                                    +it.name
+                                }
+                            }
+                        }
+                }
+
+                if (!data.newTape) {
+                    div(classes = "subnav") {
+                        button(classes = "navHeader") {
+                            formAction = TapeRouting.RoutePaths.EDIT.path
+                            onClick = "tape.value = '${data.hardTapeName()}';"
+                            +"Tape"
+                        }
+
+                        data.tape?.chapters?.also { chap ->
+                            div(classes = "subnav-content") {
+                                style = "left: 5.7em;"
+                                chap.forEach {
+                                    button {
+                                        formAction = TapeRouting.RoutePaths.EDIT.path
+                                        onClick = """
+                                            tape.value = '${data.hardTapeName()}';
+                                            chapter.disabled = false;
+                                            chapter.value = '${it.name}';
+                                        """.trimIndent()
+                                        +it.name
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                data.chapter?.also { ch ->
+                    div(classes = "subnav") {
+                        button(classes = "navHeader", type = ButtonType.button) {
+                            +ch.name
+                        }
+                    }
+                }
+            }
+
+            // Append a `down caret` to headers which have children
+            script {
+                unsafe {
+                    +"""
+                        Array.from(document.getElementsByClassName('navHeader')).forEach(
+                            function(item) {
+                                var next = item.nextElementSibling;
+                                if(next != null && next.classList.contains('subnav-content'))
+                                    item.classList.add('caret-down');
+                            }
+                        );
+                """.trimIndent()
+                }
             }
         }
     }

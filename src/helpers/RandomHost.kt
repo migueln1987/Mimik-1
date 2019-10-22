@@ -46,10 +46,10 @@ class RandomHost(init: Int? = null) {
         get() = valueToUUID.toString()
 
     fun nextRandom(bound: Int? = null): Int {
-        value = if (bound == 0)
-            random.nextInt()
-        else
-            bound?.let { random.nextInt(abs(bound)) } ?: random.nextInt()
+        value = when (bound) {
+            null, 0 -> random.nextInt()
+            else -> random.nextInt(abs(bound))
+        }
 
         if (value < 0) value = abs(value)
         return value

@@ -416,7 +416,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         it.mockUses in (1..Int.MAX_VALUE)
                 }
             }
-            .associateBy({ it }, { it.attractors })
+            .associateWith { it.attractors }
 
         if (filteredChapters.isEmpty()) return QueryResponse {
             status = HttpStatusCode.NotFound
