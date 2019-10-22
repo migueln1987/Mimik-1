@@ -130,7 +130,7 @@ class MockTests {
                 setBody(testBody)
             }
 
-            handleRequest(HttpMethod.Post, "/mail") {}
+            handleRequest(HttpMethod.Post, "/mail")
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.OK, it.status())
@@ -344,7 +344,7 @@ class MockTests {
             Assert.assertTrue(mock?.alwaysLive ?: false)
             Assert.assertNull(mock?.responseData)
 
-            handleRequest(HttpMethod.Post, "/mail") {}
+            handleRequest(HttpMethod.Post, "/mail")
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.BadGateway, it.status())
@@ -371,7 +371,7 @@ class MockTests {
             Assert.assertTrue(mock.alwaysLive ?: false)
             Assert.assertNull(mock.responseData)
 
-            handleRequest(HttpMethod.Post, "/mail") {}
+            handleRequest(HttpMethod.Post, "/mail")
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.OK, it.status())
@@ -455,7 +455,7 @@ class MockTests {
             requireNotNull(tape)
             Assert.assertTrue(tape.alwaysLive ?: false)
 
-            handleRequest(HttpMethod.Post, "/mail") {}
+            handleRequest(HttpMethod.Post, "/mail")
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.OK, it.status())

@@ -2,8 +2,7 @@
 
 package com.fiserv.mimik
 
-import networkRouting.MimikMock
-import networkRouting.editorPages.TapeRouting
+import TapeCatalog
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCallPipeline
 import io.ktor.application.call
@@ -20,6 +19,8 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import networkRouting.CallProcessor
+import networkRouting.MimikMock
+import networkRouting.editorPages.TapeRouting
 import networkRouting.port
 import org.slf4j.event.Level
 import tapeItems.BlankTape

@@ -19,7 +19,6 @@ import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.put
 import io.ktor.routing.route
-import java.lang.Exception
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.ResponseTapedata

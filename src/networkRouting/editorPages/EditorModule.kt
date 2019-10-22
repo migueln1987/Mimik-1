@@ -1,5 +1,7 @@
 package networkRouting.editorPages
 
+import R
+import TapeCatalog
 import helpers.RandomHost
 import helpers.appendLines
 import helpers.attractors.RequestAttractorBit
@@ -13,7 +15,6 @@ import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
 import mimikMockHelpers.Tapedata
-import networkRouting.editorPages.ChapterEditor.toActiveEdit
 import tapeItems.BlankTape
 
 abstract class EditorModule {
@@ -1075,6 +1076,7 @@ abstract class EditorModule {
                         }
 
                         data.tape?.chapters?.also { chap ->
+                            if (chap.isEmpty()) return@also
                             div(classes = "subnav-content") {
                                 style = "left: 5.7em;"
                                 chap.forEach {

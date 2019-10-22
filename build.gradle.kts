@@ -20,7 +20,7 @@ application {
 repositories {
     mavenLocal()
     maven("http://jcenter.bintray.com")
-    maven("https://kotlin.bintray.com/ktor")
+    maven("http://kotlin.bintray.com/ktor")
 }
 
 dependencies {
@@ -28,6 +28,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty:$ktor_version")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("io.github.microutils:kotlin-logging:1.7.6")
 
     implementation("io.ktor:ktor-client-cio:$ktor_version")
     implementation("io.ktor:ktor-client-core-jvm:$ktor_version")
@@ -39,12 +40,12 @@ dependencies {
     implementation("io.ktor:ktor-locations:$ktor_version")
     implementation("io.ktor:ktor-server-core:$ktor_version")
 
-    implementation("com.airbnb.okreplay:okreplay:1.4.0")
-    implementation("com.beust:klaxon:5.0.1")
+    implementation("com.airbnb.okreplay:okreplay:1.5.0")
+    implementation("com.beust:klaxon:5.2")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
     testImplementation("io.mockk:mockk:1.9.3")
 
-    ktlint("com.github.shyiko:ktlint:0.29.0")
+    ktlint("com.pinterest:ktlint:0.35.0")
 }
 
 kotlin {
@@ -60,8 +61,8 @@ tasks {
         group = "verification"
         description = "Check Kotlin code style."
         classpath = ktlint
-        main = "com.github.shyiko.ktlint.Main"
-        args("--android", "src/**/*.kt", "--verbose")
+        main = "com.pinterest.ktlint.Main"
+        args("src/**/*.kt", "--verbose")
     }
 
     named<Task>("check") {
@@ -72,7 +73,7 @@ tasks {
         group = "formatting"
         description = "Fix Kotlin code style deviations."
         classpath = ktlint
-        main = "com.github.shyiko.ktlint.Main"
-        args("--android", "-F", "src/**/*.kt")
+        main = "com.pinterest.ktlint.Main"
+        args("-F", "src/**/*.kt")
     }
 }
