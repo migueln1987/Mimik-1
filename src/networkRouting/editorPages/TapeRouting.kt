@@ -1,5 +1,6 @@
 package networkRouting.editorPages
 
+import helpers.isTrue
 import helpers.toParameters
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -173,6 +174,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 saveChap.also {
                     it.chapterName = data["name"]
                 }
+
+                if (foundTape.file?.exists().isTrue())
+                    foundTape.saveFile()
 
                 EditorModule.randomHost.nextRandom()
 
