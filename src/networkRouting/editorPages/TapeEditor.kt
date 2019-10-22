@@ -1,5 +1,7 @@
 package networkRouting.editorPages
 
+import R
+import VCRConfig
 import helpers.appendLines
 import helpers.attractors.RequestAttractors
 import helpers.getFolders
@@ -417,9 +419,11 @@ object TapeEditor : EditorModule() {
                         th { +"Save Options" }
                         td {
                             div {
-                                id = "Saveoptions"
-
                                 if (!pData.newTape) {
+                                    hiddenInput(name = "name_pre") {
+                                        value = pData.hardTapeName("")
+                                    }
+
                                     if (pData.tape?.file?.exists().isTrue().not()) {
                                         hiddenInput(name = "tape") { value = pData.hardTapeName() }
                                         hiddenInput(name = "resumeEdit") { value = "true" }
@@ -431,35 +435,33 @@ object TapeEditor : EditorModule() {
                                         }
 
                                         infoText(
-                                            " - Saves this tape to the '/$currentPath' directory"
+                                            "tapeSaveAsHard",
+                                            arrayOf(currentPath)
                                         )
-
-                                        br()
-                                        br()
-                                    }
-
-                                    hiddenInput(name = "name_pre") {
-                                        value = pData.hardTapeName("")
-                                    }
-                                    postButton(name = "Action") {
-                                        formAction = TapeRouting.RoutePaths.ACTION.path
-                                        value = "SaveTape"
-                                        onClick = "submitCheck();"
-                                        +"Save tape data"
                                     }
                                 } else {
                                     text("Save tape to file -")
-                                    checkBoxInput(name = "hardtape") {}
+                                    checkBoxInput(name = "hardtape")
                                     infoText("tapeSaveHardInfo")
-                                    br()
+                                }
 
-                                    postButton(name = "CreateTape") {
-                                        formAction = TapeRouting.RoutePaths.ACTION.path
-                                        id = "SaveViewAllTapes"
-                                        value = "SaveViewAllTapes"
-                                        onClick = "submitCheck();"
-                                        +"Save and goto View Tapes"
-                                    }
+                                br()
+                                postButton(name = "Action") {
+                                    formAction = TapeRouting.RoutePaths.ACTION.path
+                                    value = "SaveTape"
+                                    onClick = "submitCheck();"
+                                    +"Save tape data"
+                                }
+
+                                br()
+                                br()
+
+                                postButton(name = "CreateTape") {
+                                    formAction = TapeRouting.RoutePaths.ACTION.path
+                                    id = "SaveViewAllTapes"
+                                    value = "SaveViewAllTapes"
+                                    onClick = "submitCheck();"
+                                    +"Save and goto View Tapes"
                                 }
                             }
                         }

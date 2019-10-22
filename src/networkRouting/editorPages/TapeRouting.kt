@@ -6,16 +6,21 @@ import io.ktor.application.call
 import io.ktor.html.respondHtml
 import io.ktor.http.content.PartData
 import io.ktor.http.content.readAllParts
-import io.ktor.request.* // ktlint-disable no-wildcard-imports
+import io.ktor.request.isMultipart
+import io.ktor.request.receiveMultipart
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
-import io.ktor.routing.* // ktlint-disable no-wildcard-imports
+import io.ktor.routing.Route
+import io.ktor.routing.Routing
+import io.ktor.routing.get
+import io.ktor.routing.post
+import io.ktor.routing.route
 import io.ktor.util.filter
 import networkRouting.RoutingContract
-import networkRouting.editorPages.DeleteModule.deleteActions
 import networkRouting.editorPages.ChapterEditor.getChapterPage
-import networkRouting.editorPages.TapeEditor.getTapePage
+import networkRouting.editorPages.DeleteModule.deleteActions
 import networkRouting.editorPages.TapeEditor.getAllTapesPage
+import networkRouting.editorPages.TapeEditor.getTapePage
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")

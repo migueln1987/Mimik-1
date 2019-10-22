@@ -20,7 +20,7 @@ class HttpTapeTests {
                 }
             }
 
-            handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName") {}
+            handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName")
                 .apply {
                     response {
                         val hasTape = TapeCatalog.Instance.tapes

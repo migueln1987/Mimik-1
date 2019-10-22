@@ -1,7 +1,6 @@
 package tapeItems
 
 import VCRConfig
-import mimikMockHelpers.RecordedInteractions
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -13,6 +12,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
+import mimikMockHelpers.RecordedInteractions
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType
