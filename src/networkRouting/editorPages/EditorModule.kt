@@ -291,8 +291,13 @@ abstract class EditorModule {
         get() = """
             .breadcrumb {
                 padding: 10px;
+                position: sticky;
+                top: 10px;
+                width: calc(100% - 30px);
                 background-color: #eee;
                 overflow: hidden;
+                border: 1px solid black;
+                border-radius: 5px;
             }
             
             .breadcrumb div {
@@ -342,7 +347,7 @@ abstract class EditorModule {
             
             .subnav-content {
                 display: none;
-                position: absolute;
+                position: fixed;
                 left: 5em;
                 background-color: slategray;
                 width: auto;
