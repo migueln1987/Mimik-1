@@ -2,6 +2,7 @@ package networkRouting.editorPages
 
 import R
 import VCRConfig
+import com.google.gson.Gson
 import helpers.*
 import helpers.attractors.RequestAttractors
 import io.ktor.http.Parameters
@@ -39,12 +40,17 @@ object TapeEditor : EditorModule() {
             tapeCatalog.tapes.forEach { t ->
                 table {
                     tr {
-                        th(classes = "center") { +t.name }
+                        th(classes = "center") {
+                            a {
+                                href = "edit?tape=${t.name}"
+                                +t.name
+                            }
+                        }
 
                         td {
                             if (t.file?.exists().isTrue()) {
                                 p { +"File path: ${t.file?.path}" }
-                                p { +"File size: ${t.file?.length()} bytes" }
+                                p { +"File size: ${t.file?.fileSize()}" }
                             } else {
                                 postForm(
                                     action = TapeRouting.RoutePaths.ACTION.path,
@@ -263,6 +269,13 @@ object TapeEditor : EditorModule() {
 
                             infoText("Tape name. Example: 'General' becomes '/General.json'") {
                                 it.hidden = true
+                            }
+
+                            pData.tape?.also {
+                                br()
+                                +"Size: %s".format(
+                                    Gson().toJsonTree(it).fileSize()
+                                )
                             }
                         }
                     }
@@ -620,7 +633,12 @@ object TapeEditor : EditorModule() {
 
     private fun TBODY.addChapterRow(tape: String, mock: RecordedInteractions) {
         tr {
-            td { +mock.name }
+            td {
+                a {
+                    href = "edit?tape=$tape&chapter=${mock.name}"
+                    +mock.name
+                }
+            }
 
             td { +(mock.alwaysLive ?: false).toString() }
 

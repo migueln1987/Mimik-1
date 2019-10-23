@@ -1,10 +1,8 @@
 package networkRouting.editorPages
 
 import R
-import helpers.infoText
-import helpers.isTrue
-import helpers.makeToggleButton
-import helpers.tooltipText
+import com.google.gson.Gson
+import helpers.*
 import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
@@ -100,6 +98,13 @@ object ChapterEditor : EditorModule() {
                                         """.trimIndent()
                                         +"Reset"
                                     }
+                            }
+
+                            pData.chapter?.also {
+                                br()
+                                +"Size: %s".format(
+                                    Gson().toJsonTree(it).fileSize()
+                                )
                             }
                         }
                     }

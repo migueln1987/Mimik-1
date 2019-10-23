@@ -308,7 +308,7 @@ abstract class EditorModule {
                 font-size: 18px;
             }
             
-            .breadcrumb div+div:before {
+            .breadcrumb .subnav+.subnav:before {
                 content: "/";
             }
             
