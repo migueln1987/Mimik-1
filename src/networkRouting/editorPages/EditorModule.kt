@@ -1,16 +1,11 @@
 package networkRouting.editorPages
 
-import R
 import TapeCatalog
-import helpers.RandomHost
-import helpers.appendLines
+import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
-import helpers.eachHasNext
-import helpers.lastIndexRange
-import helpers.substring
 import io.ktor.http.Parameters
-import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import kotlinx.html.*
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
@@ -252,6 +247,15 @@ abstract class EditorModule {
                         border: 1px solid black;
                         width: 100%;
                     }
+                    
+                    button {
+                        cursor: pointer;
+                    }
+                    
+                    .inputButton {
+                        border: 1px solid #ccc;
+                        border-radius: 4px;
+                    }
 
                     th {
                         background-color: #ccc;
@@ -304,7 +308,7 @@ abstract class EditorModule {
                 font-size: 18px;
             }
             
-            .breadcrumb div+div:before {
+            .breadcrumb .subnav+.subnav:before {
                 content: "/";
             }
             
@@ -369,7 +373,7 @@ abstract class EditorModule {
                 display: grid;
                 line-height: 1em;
                 max-height: 10.5em;
-                overflow: scroll;
+                overflow-y: auto;
             }
         """.trimIndent()
 
@@ -545,7 +549,8 @@ abstract class EditorModule {
         if (isNewTape) {
             tapeCatalog.tapes.add(modTape)
             if (get("hardtape") == "on") modTape.saveFile()
-        }
+        } else
+            modTape.saveFile()
 
         return modTape
     }
@@ -614,25 +619,6 @@ abstract class EditorModule {
             get() = "$filterKey${nameShort}_Opt"
         val rowExceptName
             get() = "$filterKey${nameShort}_Except"
-    }
-
-    fun FlowOrPhrasingContent.makeToggleButton(
-        target: String,
-        isExpanded: Boolean = false
-    ) {
-        script { unsafe { +"setupTogggButtonTarget('$target');" } }
-
-        button(
-            type = ButtonType.button,
-            classes = "collapsible".let {
-                if (isExpanded)
-                    "$it active" else it
-            }
-        ) {
-            onClick = "toggleView(this, $target);"
-            +"Toggle view"
-        }
-        br()
     }
 
     /**
@@ -803,68 +789,6 @@ abstract class EditorModule {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Adds a br then a div containing formatted info text.
-     * If [property] isn't a string property, then it's passed as-is.
-     * [formatArgs] are added to the resulting string before displaying.
-     */
-    fun FlowOrPhrasingContent.infoText(
-        property: String,
-        formatArgs: Array<Any> = arrayOf(),
-        divArgs: (DIV) -> Unit = {}
-    ) {
-        val display = (R.getProperty(property) ?: property)
-            .format(*formatArgs)
-
-        if (this is FlowContent)
-            div(classes = "infoText") {
-                divArgs.invoke(this)
-                +display
-            }
-        else
-            br {
-                div(classes = "infoText") {
-                    divArgs.invoke(this)
-                    +display
-                }
-            }
-    }
-
-    @Suppress("unused")
-    enum class TooltipPositions(val value: String) {
-        Top("tooltip-top"),
-        Bottom("tooltip-bottom"),
-        Left("tooltip-left"),
-        Right("tooltip-right")
-    }
-
-    fun FlowContent.tooltipText(
-        textProperty: String,
-        infoProperty: String,
-        position: TooltipPositions = TooltipPositions.Top
-    ) {
-        val tipVal = (R.getProperty(textProperty) ?: textProperty).trim()
-        val splitLines = tipVal.split('\n')
-
-        div(classes = "tooltip") {
-            splitLines.eachHasNext({ +it.trim() }, { br() })
-            toolTip(infoProperty, position)
-        }
-    }
-
-    fun FlowContent.toolTip(
-        property: String,
-        position: TooltipPositions = TooltipPositions.Top
-    ) {
-        val display = R.getProperty(property) ?: property
-        val spanClasses = "tooltiptext ${position.value}"
-
-        val splitLines = display.split('\n')
-        div(classes = spanClasses) {
-            splitLines.eachHasNext({ +it.trim() }, { br() })
         }
     }
 

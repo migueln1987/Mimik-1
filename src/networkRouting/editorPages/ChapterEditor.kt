@@ -1,9 +1,10 @@
 package networkRouting.editorPages
 
 import R
-import helpers.isTrue
+import com.google.gson.Gson
+import helpers.*
 import io.ktor.http.Parameters
-import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 
 object ChapterEditor : EditorModule() {
@@ -97,6 +98,13 @@ object ChapterEditor : EditorModule() {
                                         """.trimIndent()
                                         +"Reset"
                                     }
+                            }
+
+                            pData.chapter?.also {
+                                br()
+                                +"Size: %s".format(
+                                    Gson().toJsonTree(it).fileSize()
+                                )
                             }
                         }
                     }

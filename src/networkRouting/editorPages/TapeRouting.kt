@@ -11,11 +11,7 @@ import io.ktor.request.isMultipart
 import io.ktor.request.receiveMultipart
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
-import io.ktor.routing.Route
-import io.ktor.routing.Routing
-import io.ktor.routing.get
-import io.ktor.routing.post
-import io.ktor.routing.route
+import io.ktor.routing.*
 import io.ktor.util.filter
 import networkRouting.RoutingContract
 import networkRouting.editorPages.ChapterEditor.getChapterPage

@@ -2,4 +2,4 @@ root = true
 
 # noinspection EditorConfigKeyCorrectness
 [*.{kt,kts}]
-disabled_rules=import-ordering
+disabled_rules=import-ordering,no-wildcard-imports
