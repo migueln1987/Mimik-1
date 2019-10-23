@@ -4,7 +4,7 @@ import helpers.anyTrue
 import helpers.isTrue
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
-import mimikMockHelpers.RequestTapedata
+import mimikMockHelpers.Requestdata
 import okhttp3.internal.http.HttpMethod
 
 class RequestAttractors {
@@ -17,7 +17,7 @@ class RequestAttractors {
         config.invoke(this)
     }
 
-    constructor(request: RequestTapedata?) {
+    constructor(request: Requestdata?) {
         request?.httpUrl?.also { url ->
             routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
             if (routingPath?.value?.isEmpty().isTrue())

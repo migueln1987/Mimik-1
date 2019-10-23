@@ -22,7 +22,6 @@ object ChapterEditor : EditorModule() {
             setupStyle()
             BreadcrumbNav(pData)
 
-            br()
             if (pData.loadTape_Failed)
                 p {
                     +"No tape with the name \"${pData.expectedTapeName}\" was found."
@@ -129,8 +128,7 @@ object ChapterEditor : EditorModule() {
                                             textInput(name = "filterPath") {
                                                 disableEnterKey
                                                 val path =
-                                                    pData.chapter?.attractors?.routingPath?.value
-                                                        ?: ""
+                                                    pData.chapter?.attractors?.routingPath?.value.orEmpty()
 
                                                 placeholder = if (path.isBlank())
                                                     "sub/path/here" else path
@@ -205,7 +203,11 @@ object ChapterEditor : EditorModule() {
 
                     tr {
                         th {
-                            text("Request")
+                            a {
+                                if (!pData.newChapter)
+                                    href = pData.hrefEdit(hNetwork = "request")
+                                +"Request"
+                            }
                             infoText("(optional, not used for incoming calls)")
                         }
                         td {
@@ -264,7 +266,13 @@ object ChapterEditor : EditorModule() {
                     }
 
                     tr {
-                        th { +"Response" }
+                        th {
+                            a {
+                                if (!pData.newChapter)
+                                    href = pData.hrefEdit(hNetwork = "response")
+                                +"Response"
+                            }
+                        }
                         td {
                             makeToggleButton("responseDataDiv")
 

@@ -154,7 +154,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         get() = if (field == null) TapeMode.READ_WRITE else field
 
     val httpRoutingUrl: HttpUrl?
-        get() = HttpUrl.parse(routingUrl ?: "")
+        get() = HttpUrl.parse(routingUrl.orEmpty())
 
     /**
      * routingUrl has data, but HttpUrl is unable to parse it

@@ -16,6 +16,7 @@ import io.ktor.util.filter
 import networkRouting.RoutingContract
 import networkRouting.editorPages.ChapterEditor.getChapterPage
 import networkRouting.editorPages.DeleteModule.deleteActions
+import networkRouting.editorPages.TapeDataEditor.dataEditor
 import networkRouting.editorPages.TapeEditor.getAllTapesPage
 import networkRouting.editorPages.TapeEditor.getTapePage
 import tapeItems.BlankTape
@@ -74,11 +75,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 }
 
                 val limitSet: MutableSet<String> = mutableSetOf()
+                val keys = listOf(
+                    "tape", "chapter", "network"
+                )
                 val limitParams = call.parameters
                     .filter { s, _ ->
-                        when (val ss = s.toLowerCase()) {
-                            "tape", "chapter" -> limitSet.add(ss)
-                            else -> false
+                        s.toLowerCase().let { pKey ->
+                            val hasKey = keys.contains(pKey)
+                            hasKey && limitSet.add(pKey)
                         }
                     }.toParameters
 
@@ -93,7 +97,10 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 call.respondHtml {
                     if (limitParams.contains("tape")) {
                         if (limitParams.contains("chapter")) {
-                            getChapterPage(limitParams)
+                            if (limitParams.contains("network"))
+                                dataEditor(limitParams)
+                            else
+                                getChapterPage(limitParams)
                         } else
                             getTapePage(limitParams)
                     }
@@ -149,7 +156,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 respondRedirect {
                     path(TapeRouting.RoutePaths.EDIT.asSubPath)
                     parameters.apply {
-                        append("tape", data["TapeName"] ?: "")
+                        append("tape", data["TapeName"].orEmpty())
                     }
                 }
             }
@@ -201,7 +208,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     if (foundTape != null && data["resumeEdit"] == "true") {
                         path(TapeRouting.RoutePaths.EDIT.asSubPath)
                         parameters.apply {
-                            append("tape", data["tape"] ?: "")
+                            append("tape", data["tape"].orEmpty())
                         }
                     } else path(TapeRouting.RoutePaths.ALL.asSubPath)
                 }

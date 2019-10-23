@@ -7,9 +7,9 @@ import helpers.attractors.RequestAttractors
 import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.RequestTapedata
-import mimikMockHelpers.ResponseTapedata
-import mimikMockHelpers.Tapedata
+import mimikMockHelpers.Requestdata
+import mimikMockHelpers.Responsedata
+import mimikMockHelpers.Networkdata
 import tapeItems.BlankTape
 
 abstract class EditorModule {
@@ -297,7 +297,7 @@ abstract class EditorModule {
                 padding: 10px;
                 position: sticky;
                 top: 10px;
-                width: calc(100% - 30px);
+                width: calc(100% - 22px);
                 background-color: #eee;
                 overflow: hidden;
                 border: 1px solid black;
@@ -350,12 +350,18 @@ abstract class EditorModule {
             }
             
             .subnav-content {
-                display: none;
                 position: fixed;
                 left: 5em;
-                background-color: slategray;
+                top: 42px;
                 width: auto;
+                background-color: slategray;
                 z-index: 1;
+                line-height: 1em;
+                max-height: 10.5em;
+                overflow-y: auto;
+                background-color: transparent;
+                border-top: 12px solid transparent;
+                display: none;
             }
             
             .subnav-content * {
@@ -367,13 +373,11 @@ abstract class EditorModule {
                 text-decoration: none;
                 display: inline-flex;
                 background-color: slategrey;
+                border-bottom: 1px solid;
             }
             
             .subnav:hover .subnav-content {
                 display: grid;
-                line-height: 1em;
-                max-height: 10.5em;
-                overflow-y: auto;
             }
         """.trimIndent()
 
@@ -795,7 +799,7 @@ abstract class EditorModule {
     /**
      * Displays the input [data], or displays "{ no data }" if it's null
      */
-    fun FlowContent.displayInteractionData(data: Tapedata?) {
+    fun FlowContent.displayInteractionData(data: Networkdata?) {
         if (data == null) {
             +"{ no data }"
             return
@@ -819,7 +823,7 @@ abstract class EditorModule {
         }
     }
 
-    private fun TR.tapeDataRow(data: Tapedata?) {
+    private fun TR.tapeDataRow(data: Networkdata?) {
         td {
             div {
                 style = """
@@ -828,11 +832,11 @@ abstract class EditorModule {
                     """.trimIndent()
 
                 when (data) {
-                    is RequestTapedata -> {
+                    is Requestdata -> {
                         text("Method: \n${data.method}")
                         text("Url: ${data.url}")
                     }
-                    is ResponseTapedata ->
+                    is Responsedata ->
                         text("Code: \n${data.code}")
 
                     else -> text("{ no data }")
@@ -884,8 +888,8 @@ abstract class EditorModule {
             style = "vertical-align: top;"
             textArea {
                 id = when (data) {
-                    is RequestTapedata -> "requestBody"
-                    is ResponseTapedata -> "responseBody"
+                    is Requestdata -> "requestBody"
+                    is Responsedata -> "responseBody"
                     else -> ""
                 }
 
@@ -896,16 +900,17 @@ abstract class EditorModule {
                     min-height: 5em;
                 """.trimIndent()
                 readonly = true
-                +(data?.body ?: "")
+                +data?.body.orEmpty()
             }
         }
     }
 
-    class activeData(val params: Parameters) {
+    class ActiveData(private val params: Parameters) {
         private val tapeCatalog by lazy { TapeCatalog.Instance }
 
         var tape: BlankTape? = null
         var chapter: RecordedInteractions? = null
+        var networkData: Networkdata? = null
 
         /**
          * tape is null
@@ -919,11 +924,21 @@ abstract class EditorModule {
         val newChapter
             get() = chapter == null
 
+        val newNetworkData
+            get() = networkData == null
+
+        val networkIsRequest
+            get() = networkData is Requestdata
+
+        val networkIsResponse
+            get() = networkData is Responsedata
+
         /**
          * Parameter data (trimmed) for 'tape', else null
          */
         val expectedTapeName
-            get() = params["tape"]?.let { if (it.isBlank()) null else it.trim() }
+            get() = params["tape"]?.trim()
+                ?.let { if (it.isBlank()) null else it }
 
         /**
          * Expected tape name, or a generated name (optional [default])
@@ -935,7 +950,8 @@ abstract class EditorModule {
          * Parameter data (trimmed) for 'chapter', else null
          */
         val expectedChapName
-            get() = params["chapter"]?.let { if (it.isBlank()) null else it.trim() }
+            get() = params["chapter"]?.trim()
+                ?.let { if (it.isBlank()) null else it }
 
         /**
          * Expected chapter name, or a generated name (optional [default])
@@ -943,23 +959,65 @@ abstract class EditorModule {
         fun hardChapName(default: String = RandomHost().valueAsUUID) =
             expectedChapName ?: default
 
+        val expectedNetworkType
+            get() = params["network"]?.trim().orEmpty()
+
         /**
          * Params passed in a tape name, but no tape was found by that name
          */
         val loadTape_Failed
-            get() = newTape && !expectedTapeName.isNullOrBlank()
+            get() = newTape && expectedTapeName != null
 
         /**
          * Params passed in a tape name, but no tape was found by that name
          */
         val loadChap_Failed
-            get() = newChapter && !expectedChapName.isNullOrBlank()
+            get() = newChapter && expectedChapName != null
+
+        fun hrefMake(
+            tape: String? = null,
+            chapter: String? = null,
+            network: String? = null
+        ): String {
+            val builder = StringBuilder().append("edit?")
+            if (tape != null)
+                builder.append("tape=%s".format(tape))
+            if (chapter != null)
+                builder.append("&chapter=%s".format(chapter))
+            if (network != null)
+                builder.append("&network=%s".format(network))
+            return builder.toString()
+        }
+
+        fun hrefEdit(
+            hTape: String? = null,
+            hChapter: String? = null,
+            hNetwork: String? = null
+        ): String {
+            val builder = StringBuilder().append("edit?")
+            if (hTape != null || !expectedTapeName.isNullOrEmpty())
+                builder.append("tape=%s".format(hTape ?: hardTapeName()))
+            else return builder.toString()
+
+            if (hChapter != null || !expectedChapName.isNullOrEmpty())
+                builder.append("&chapter=%s".format(hChapter ?: hardChapName()))
+            else return builder.toString()
+
+            if (hNetwork != null || expectedNetworkType.isNotBlank())
+                builder.append("&network=%s".format(hNetwork ?: expectedNetworkType))
+            return builder.toString()
+        }
 
         init {
             tape = tapeCatalog.tapes
                 .firstOrNull { it.name == params["tape"] }
             chapter = tape?.chapters
                 ?.firstOrNull { it.name == params["chapter"] }
+            networkData = when (params["network"]) {
+                "request" -> chapter?.requestData
+                "response" -> chapter?.responseData
+                else -> null
+            }
         }
     }
 
@@ -967,70 +1025,72 @@ abstract class EditorModule {
      * Retrieves data from the [Parameters] for the current Tape/ Chapter
      */
     val Parameters.toActiveEdit
-        get() = activeData(this)
+        get() = ActiveData(this)
 
     fun BODY.BreadcrumbNav(params: Parameters = Parameters.Empty) =
         BreadcrumbNav(params.toActiveEdit)
 
-    fun BODY.BreadcrumbNav(data: activeData) {
+    fun BODY.BreadcrumbNav(data: ActiveData) {
         div(classes = "breadcrumb") {
-            getForm(action = TapeRouting.RoutePaths.ALL.path) {
-                hiddenInput(name = "tape") { id = name }
-                hiddenInput(name = "chapter") {
-                    id = name
-                    disabled = true
+            div(classes = "subnav") {
+                a(classes = "navHeader") {
+                    href = data.hrefMake()
+                    +"All Tapes"
                 }
+                if (tapeCatalog.tapes.isNotEmpty())
+                    div(classes = "subnav-content") {
+                        style = "left: 1em;"
+                        tapeCatalog.tapes.forEach {
+                            a {
+                                href = data.hrefMake(tape = it.name)
+                                +it.name
+                            }
+                        }
+                    }
+            }
 
+            if (!data.newTape) {
                 div(classes = "subnav") {
-                    button(classes = "navHeader") { +"All Tapes" }
-                    if (tapeCatalog.tapes.isNotEmpty())
+                    a(classes = "navHeader") {
+                        href = data.hrefMake(tape = data.hardTapeName())
+                        +"Tape"
+                    }
+
+                    data.tape?.chapters?.also { chap ->
+                        if (chap.isEmpty()) return@also
                         div(classes = "subnav-content") {
-                            style = "left: 1em;"
-                            tapeCatalog.tapes.forEach {
-                                button {
-                                    formAction = TapeRouting.RoutePaths.EDIT.path
-                                    onClick = "tape.value = '${it.name}';"
+                            style = "left: 5.7em;"
+                            chap.forEach {
+                                a {
+                                    href = data.hrefMake(
+                                        tape = data.hardTapeName(),
+                                        chapter = it.name
+                                    )
                                     +it.name
                                 }
                             }
                         }
+                    }
                 }
+            }
 
-                if (!data.newTape) {
-                    div(classes = "subnav") {
-                        button(classes = "navHeader") {
-                            formAction = TapeRouting.RoutePaths.EDIT.path
-                            onClick = "tape.value = '${data.hardTapeName()}';"
-                            +"Tape"
-                        }
-
-                        data.tape?.chapters?.also { chap ->
-                            if (chap.isEmpty()) return@also
-                            div(classes = "subnav-content") {
-                                style = "left: 5.7em;"
-                                chap.forEach {
-                                    button {
-                                        formAction = TapeRouting.RoutePaths.EDIT.path
-                                        onClick = """
-                                            tape.value = '${data.hardTapeName()}';
-                                            chapter.disabled = false;
-                                            chapter.value = '${it.name}';
-                                        """.trimIndent()
-                                        +it.name
-                                    }
-                                }
-                            }
-                        }
+            data.chapter?.also { ch ->
+                div(classes = "subnav") {
+                    a(classes = "navHeader") {
+                        href = data.hrefMake(
+                            tape = data.hardTapeName(),
+                            chapter = data.hardChapName()
+                        )
+                        +ch.name
                     }
                 }
 
-                data.chapter?.also { ch ->
+                if (data.expectedNetworkType.isNotBlank())
                     div(classes = "subnav") {
-                        button(classes = "navHeader", type = ButtonType.button) {
-                            +ch.name
+                        a(classes = "navHeader") {
+                            +data.expectedNetworkType
                         }
                     }
-                }
             }
 
             // Append a `down caret` to headers which have children
@@ -1048,5 +1108,6 @@ abstract class EditorModule {
                 }
             }
         }
+        br()
     }
 }

@@ -3,7 +3,7 @@ package mimikMockHelpers
 import io.ktor.http.HttpHeaders
 import okhttp3.Headers
 
-abstract class Tapedata {
+abstract class Networkdata {
     var headers: Headers? = null
     val tapeHeaders: Headers
         get() {

@@ -34,7 +34,7 @@ fun TestApplicationCall.response(config: (TestApplicationResponse) -> Unit) =
  */
 fun assertContains(search: String?, input: String?) {
     if (search == null && input == null) return
-    Assert.assertTrue(input?.contains(search ?: "") == true)
+    Assert.assertTrue(input?.contains(search.orEmpty()) == true)
 }
 
 fun assertStartsWith(expected: String, actual: String?) =

@@ -6,7 +6,7 @@ import okhttp3.HttpUrl
 import okhttp3.internal.http.HttpMethod
 import java.nio.charset.Charset
 
-class RequestTapedata : Tapedata {
+class Requestdata : Networkdata {
 
     constructor(request: okreplay.Request) {
         method = request.method()
@@ -15,14 +15,14 @@ class RequestTapedata : Tapedata {
         body = request.tryGetBody()
     }
 
-    constructor(builder: (RequestTapedata) -> Unit = {}) {
+    constructor(builder: (Requestdata) -> Unit = {}) {
         builder.invoke(this)
 
         if (method != null && HttpMethod.requiresRequestBody(method) && body == null)
             body = ""
     }
 
-    fun clone(postClone: (RequestTapedata) -> Unit) = RequestTapedata {
+    fun clone(postClone: (Requestdata) -> Unit) = Requestdata {
         it.method = method
         it.url = url.toString()
         it.headers = tapeHeaders.newBuilder().build()
@@ -38,7 +38,7 @@ class RequestTapedata : Tapedata {
 
     var url: String? = ""
     val httpUrl: HttpUrl?
-        get() = HttpUrl.parse(url ?: "")
+        get() = HttpUrl.parse(url.orEmpty())
 
     val replayRequest: okreplay.Request
         get() {
@@ -55,7 +55,7 @@ class RequestTapedata : Tapedata {
 
                 override fun hasBody() = !body.isNullOrBlank()
                 override fun body() = bodyAsText().toByteArray()
-                override fun bodyAsText() = body ?: ""
+                override fun bodyAsText() = body.orEmpty()
 
                 override fun newBuilder() = TODO()
                 override fun toYaml() = TODO()

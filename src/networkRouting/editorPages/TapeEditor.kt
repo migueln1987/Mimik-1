@@ -17,7 +17,6 @@ object TapeEditor : EditorModule() {
             setupStyle()
             BreadcrumbNav()
 
-            br()
             getForm(action = TapeRouting.RoutePaths.CREATE.path) {
                 inputButton {
                     style = """
@@ -164,7 +163,6 @@ object TapeEditor : EditorModule() {
 
             BreadcrumbNav(pData)
 
-            br()
             if (pData.loadTape_Failed)
                 p { +"No tape with the name \"${pData.expectedTapeName}\" was found." }
 
@@ -291,8 +289,8 @@ object TapeEditor : EditorModule() {
                                     value = ""
                                 } else {
                                     pData.tape?.also {
-                                        placeholder = it.routingUrl ?: ""
-                                        value = it.routingUrl ?: ""
+                                        placeholder = it.routingUrl.orEmpty()
+                                        value = it.routingUrl.orEmpty()
                                     }
                                 }
                                 size = "${placeholder.length + 20}"
@@ -355,8 +353,7 @@ object TapeEditor : EditorModule() {
                                             textInput(name = "filterPath") {
                                                 disableEnterKey
                                                 val path =
-                                                    pData.tape?.attractors?.routingPath?.value
-                                                        ?: ""
+                                                    pData.tape?.attractors?.routingPath?.value.orEmpty()
 
                                                 placeholder = if (path.isBlank())
                                                     "sub/path/here" else path
@@ -423,7 +420,7 @@ object TapeEditor : EditorModule() {
 
                                 div {
                                     id = "ChapterData"
-                                    displayTapeChapters(pData.tape)
+                                    displayTapeChapters(pData)
                                 }
 
                                 if (pData.newTape) {
@@ -599,8 +596,8 @@ object TapeEditor : EditorModule() {
         }
     }
 
-    private fun FlowContent.displayTapeChapters(tape: BlankTape?) {
-        if (tape == null) return
+    private fun FlowContent.displayTapeChapters(data: ActiveData) {
+        val tape = data.tape ?: return
         br()
         hiddenInput(name = "tape") { value = tape.name }
         postForm(action = TapeRouting.RoutePaths.EDIT.path) {
@@ -623,7 +620,7 @@ object TapeEditor : EditorModule() {
             }
             tbody {
                 tape.chapters.forEach { mock ->
-                    addChapterRow(tape.name, mock)
+                    addChapterRow(data, mock)
                 }
             }
         }
@@ -631,19 +628,20 @@ object TapeEditor : EditorModule() {
         infoText("Uses: Setting the value as '-1' will make it non-limited")
     }
 
-    private fun TBODY.addChapterRow(tape: String, mock: RecordedInteractions) {
+    private fun TBODY.addChapterRow(data: ActiveData, chap: RecordedInteractions) {
+        val tape = data.hardTapeName()
         tr {
             td {
                 a {
-                    href = "edit?tape=$tape&chapter=${mock.name}"
-                    +mock.name
+                    href = data.hrefEdit(hChapter = chap.name)
+                    +chap.name
                 }
             }
 
-            td { +(mock.alwaysLive ?: false).toString() }
+            td { +(chap.alwaysLive ?: false).toString() }
 
             td {
-                mock.attractors?.also { attr ->
+                chap.attractors?.also { attr ->
                     table {
                         thead {
                             tr {
@@ -677,24 +675,24 @@ object TapeEditor : EditorModule() {
             td {
                 text("Enabled: ")
                 checkBoxInput {
-                    id = mock.name + "_usesEnabled"
-                    checked = MockUseStates.isEnabled(mock.mockUses)
+                    id = chap.name + "_usesEnabled"
+                    checked = MockUseStates.isEnabled(chap.mockUses)
                 }
                 br()
 
                 numberInput {
-                    id = mock.name + "_usesValue"
+                    id = chap.name + "_usesValue"
                     min = MockUseStates.ALWAYS.state.toString()
                     max = Int.MAX_VALUE.toString()
-                    value = (if (mock.mockUses == MockUseStates.DISABLE.state)
-                        MockUseStates.ALWAYS.state else mock.mockUses).toString()
+                    value = (if (chap.mockUses == MockUseStates.DISABLE.state)
+                        MockUseStates.ALWAYS.state else chap.mockUses).toString()
                 }
             }
 
             td {
                 form {
                     hiddenInput(name = "tape") { value = tape }
-                    hiddenInput(name = "chapter") { value = mock.name }
+                    hiddenInput(name = "chapter") { value = chap.name }
 
                     getButton {
                         formAction = TapeRouting.RoutePaths.EDIT.path
