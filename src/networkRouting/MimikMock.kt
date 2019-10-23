@@ -1,14 +1,8 @@
 package networkRouting
 
-import helpers.anyTrue
+import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
-import helpers.isJSONValid
-import helpers.isJSONValidMsg
-import helpers.isTrue
-import helpers.removePrefix
-import helpers.toHeaders
-import helpers.valueOrNull
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers

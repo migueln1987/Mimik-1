@@ -2,12 +2,10 @@ package networkRouting.editorPages
 
 import R
 import VCRConfig
-import helpers.appendLines
+import helpers.*
 import helpers.attractors.RequestAttractors
-import helpers.getFolders
-import helpers.isTrue
 import io.ktor.http.Parameters
-import kotlinx.html.* // ktlint-disable no-wildcard-imports
+import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import tapeItems.BlankTape
@@ -18,8 +16,15 @@ object TapeEditor : EditorModule() {
             setupStyle()
             BreadcrumbNav()
 
+            br()
             getForm(action = TapeRouting.RoutePaths.CREATE.path) {
-                button { +"Create new tape" }
+                inputButton {
+                    style = """
+                        width: 20em;
+                        height: 4em;
+                    """.trimIndent()
+                    +"Create new tape"
+                }
             }
             br()
 
@@ -46,7 +51,8 @@ object TapeEditor : EditorModule() {
                                     encType = FormEncType.multipartFormData
                                 ) {
                                     hiddenInput(name = "tape") { value = t.name }
-                                    button(name = "Action") {
+
+                                    inputButton(name = "Action") {
                                         value = "SaveToHardTape"
                                         +"Save tape as a hard tape"
                                     }
@@ -76,10 +82,13 @@ object TapeEditor : EditorModule() {
                             ) {
                                 hiddenInput(name = "tape") { value = t.name }
                                 p {
-                                    submitInput(name = "Action") { value = "Edit" }
+                                    inputButton(name = "Action") {
+                                        value = "Edit"
+                                        +value
+                                    }
                                 }
                                 p {
-                                    submitInput(name = "Action") {
+                                    inputButton(name = "Action") {
                                         onClick = """
                                             if (confirm(${R.getProperty("viewTapeRemoveInfo")}))
                                                 submit();
@@ -87,19 +96,21 @@ object TapeEditor : EditorModule() {
                                                 type="button";
                                         """.trimIndent()
                                         value = "Remove"
+                                        +value
                                     }
                                 }
 
                                 if (t.file?.exists() == true)
                                     p {
-                                        submitInput(name = "Action") {
+                                        inputButton(name = "Action") {
                                             onClick = """
-                                            if (confirm(${R.getProperty("deleteInfo").format("tape")}))
-                                                submit();
-                                            else
-                                                type = "button";
-                                        """.trimIndent()
+                                                if (confirm(${R.getProperty("deleteInfo").format("tape")}))
+                                                    submit();
+                                                else
+                                                    type = "button";
+                                            """.trimIndent()
                                             value = "Delete"
+                                            +value
                                         }
                                     }
                             }
@@ -217,13 +228,13 @@ object TapeEditor : EditorModule() {
 
                                 text(" ")
                                 if (pData.newTape) {
-                                    button(type = ButtonType.button) {
+                                    inputButton(type = ButtonType.button) {
                                         onClick =
                                             "setName.value = $randomVal;$tapeNameAction"
                                         +"Use generated number"
                                     }
 
-                                    button(type = ButtonType.button) {
+                                    inputButton(type = ButtonType.button) {
                                         onClick =
                                             "setName.value = \"$randomValStr\";$tapeNameAction"
                                         +"Use generated char string"
@@ -231,7 +242,7 @@ object TapeEditor : EditorModule() {
                                 }
 
                                 if (pData.expectedTapeName != null)
-                                    button(type = ButtonType.button) {
+                                    inputButton(type = ButtonType.button) {
                                         id = "nameReset"
                                         hidden = true
                                         onClick = """

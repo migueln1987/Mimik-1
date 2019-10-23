@@ -6,7 +6,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
-import helpers.* // ktlint-disable no-wildcard-imports
+import helpers.*
 import helpers.attractors.RequestAttractors
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -20,7 +20,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.ResponseBody
 import okhttp3.internal.http.HttpMethod
-import okreplay.* // ktlint-disable no-wildcard-imports
+import okreplay.*
 import java.io.File
 import java.io.Writer
 import java.nio.charset.Charset
@@ -75,6 +75,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
          */
         fun build(): BlankTape {
             val returnTape = if (reBuild != null) {
+                if (reBuild.file?.exists().isTrue())
+                    reBuild.file?.delete()
                 reBuild.file = File(
                     VCRConfig.getConfig.tapeRoot.get(),
                     reBuild.name.toJsonName
@@ -98,15 +100,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
             return returnTape
         }
-
-        private val String.toJsonName: String
-            get() = replace(" ", "_")
-                .replace("""/(\w)""".toRegex()) {
-                    it.groups[1]?.value?.toUpperCase() ?: it.value
-                }
-                .replace("/", "")
-                .replace(".", "-")
-                .plus(".json")
     }
 
     companion object {
@@ -442,6 +435,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         saveFile()
     }
 
+    /**
+     * Saves the data to file. A new file will be created if one doesn't exist
+     */
     fun saveFile() {
         val tree = gson.toJsonTree(this).asJsonObject
         val keepChapters = tree.getAsJsonArray("chapters")
@@ -461,6 +457,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             }
 
         tree.add("chapters", keepChapters)
+        if (file?.exists().isTrue() && (file?.nameWithoutExtension != tapeName))
+            file?.delete()
+
+        if (file == null)
+            file = File(
+                VCRConfig.getConfig.tapeRoot.get(),
+                name.toJsonName
+            )
 
         file?.also { outFile ->
             val canSaveFile = if (outFile.exists())

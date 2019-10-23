@@ -13,12 +13,7 @@ import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
 import mimikMockHelpers.RequestTapedata
 import mimikMockHelpers.ResponseTapedata
-import okhttp3.Headers
-import okhttp3.HttpUrl
-import okhttp3.MediaType
-import okhttp3.Protocol
-import okhttp3.RequestBody
-import okhttp3.ResponseBody
+import okhttp3.*
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
 import org.w3c.dom.NodeList
