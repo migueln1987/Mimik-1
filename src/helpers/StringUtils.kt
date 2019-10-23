@@ -21,14 +21,6 @@ fun String.removePrefix(prefix: String, ignoreCase: Boolean): String {
 fun String.uppercaseFirstLetter() = take(1).toUpperCase() + drop(1)
 
 /**
- * If this string does not start with the given [prefix],
- * then the string is returned with the prefix added.
- * Else the original string is returned.
- */
-fun String.ensurePrefix(prefix: String) =
-    if (startsWith(prefix)) this else prefix + this
-
-/**
  * If this string starts with the given [prefix] (in order of input), returns a copy of this string
  * with the prefix removed. Otherwise, returns this string.
  */
@@ -37,11 +29,19 @@ fun String.removePrefixs(vararg prefixs: CharSequence) =
 
 /**
  * If this string does not start with the given [prefix],
+ * then the string is returned with [value] (or [prefix])  added.
+ * Else the original string is returned.
+ */
+fun String.ensurePrefix(prefix: String, value: String? = null) =
+    if (startsWith(prefix)) this else (value ?: prefix) + this
+
+/**
+ * If this string does not end with the given [suffix],
  * then the string is returned with [value] added.
  * Else the original string is returned.
  */
-fun String.ensurePrefix(prefix: String, value: String) =
-    if (startsWith(prefix)) this else value + this
+fun String.ensureSufix(suffix: String, value: String? = null) =
+    if (endsWith(suffix)) this else this + (value ?: suffix)
 
 /**
  * Returns the last instance range of the matching [predicate].
@@ -94,6 +94,18 @@ val String?.isJSONValidMsg: String
     } catch (ex: Exception) {
         ex.toString()
     }
+
+/**
+ * Converts a [String] to a valid *.json string
+ */
+val String.toJsonName: String
+    get() = replace(" ", "_")
+        .replace("""/(\w)""".toRegex()) {
+            it.groups[1]?.value?.toUpperCase() ?: it.value
+        }
+        .replace("/", "")
+        .replace(".", "-")
+        .plus(".json")
 
 /**
  * Converts the source [String] into a indent-formatted string
