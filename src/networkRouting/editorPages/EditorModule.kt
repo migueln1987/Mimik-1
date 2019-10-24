@@ -220,10 +220,10 @@ abstract class EditorModule {
 
         SubmitNameCheck(
             """
-                function submitCheck() {
-                    setName.value = setName.value.trim();
-                    if (setName.value == "")
-                        setName.value = setName.placeholder;
+                function submitCheck(checkName) {
+                    checkName.value = checkName.value.trim();
+                    if (checkName.value == "")
+                        checkName.value = checkName.placeholder;
                 }
                 """
         );
@@ -306,7 +306,7 @@ abstract class EditorModule {
             .breadcrumb {
                 padding: 10px;
                 position: sticky;
-                top: 0;
+                top: 10px;
                 width: calc(100% - 22px);
                 background-color: #eee;
                 overflow: hidden;

@@ -17,7 +17,8 @@ object TapeEditor : EditorModule() {
             setupStyle()
             BreadcrumbNav()
 
-            getForm(action = TapeRouting.RoutePaths.CREATE.path) {
+            getForm(action = TapeRouting.RoutePaths.EDIT.path) {
+                hiddenInput(name = "tape")
                 inputButton {
                     style = """
                         width: 20em;
@@ -171,6 +172,8 @@ object TapeEditor : EditorModule() {
             }
 
             form(encType = FormEncType.multipartFormData) {
+                hiddenInput(name = "afterAction") { id = name }
+
                 table {
                     tr {
                         hidden = true
@@ -220,13 +223,13 @@ object TapeEditor : EditorModule() {
                         th { +"Name" }
                         td {
                             val tapeNameAction = if (pData.expectedTapeName != null)
-                                "nameReset.hidden = setName.value == setName.placeholder;"
+                                "nameReset.hidden = tapeName.value == tapeName.placeholder;"
                             else ""
 
                             div {
-                                textInput(name = "TapeName") {
+                                textInput(name = "tapeName") {
                                     disableEnterKey
-                                    id = "setName"
+                                    id = name
                                     placeholder = pData.hardTapeName(randomVal.toString())
                                     value = placeholder
                                     onKeyUp = tapeNameAction
@@ -236,13 +239,13 @@ object TapeEditor : EditorModule() {
                                 if (pData.newTape) {
                                     inputButton(type = ButtonType.button) {
                                         onClick =
-                                            "setName.value = $randomVal;$tapeNameAction"
+                                            "tapeName.value = $randomVal;$tapeNameAction"
                                         +"Use generated number"
                                     }
 
                                     inputButton(type = ButtonType.button) {
                                         onClick =
-                                            "setName.value = \"$randomValStr\";$tapeNameAction"
+                                            "tapeName.value = \"$randomValStr\";$tapeNameAction"
                                         +"Use generated char string"
                                     }
                                 }
@@ -252,7 +255,7 @@ object TapeEditor : EditorModule() {
                                         id = "nameReset"
                                         hidden = true
                                         onClick = """
-                                            setName.value = setName.placeholder;
+                                            tapeName.value = tapeName.placeholder;
                                             nameReset.hidden = true;
                                         """.trimIndent()
                                         +"Reset"
@@ -427,10 +430,11 @@ object TapeEditor : EditorModule() {
 
                                 if (pData.newTape) {
                                     br()
-                                    postButton(name = "CreateTape") {
+                                    postButton(name = "Action") {
                                         formAction = TapeRouting.RoutePaths.ACTION.path
                                         id = "SaveAddChapters"
-                                        value = "SaveAddChapters"
+                                        value = "SaveTape"
+                                        onClick = "afterAction.value = 'newChapter';"
                                         +"Save and add Tape Chapters"
                                     }
                                 }
@@ -472,18 +476,31 @@ object TapeEditor : EditorModule() {
                                 postButton(name = "Action") {
                                     formAction = TapeRouting.RoutePaths.ACTION.path
                                     value = "SaveTape"
-                                    onClick = "submitCheck();"
-                                    +"Save tape data"
+                                    onClick = "submitCheck(tapeName);"
+                                    +"Save"
                                 }
 
                                 br()
+
+                                postButton(name = "Action") {
+                                    formAction = TapeRouting.RoutePaths.ACTION.path
+                                    value = "SaveTape"
+                                    onClick = """
+                                        submitCheck(tapeName);
+                                        afterAction.value = 'addNew';
+                                    """.trimIndent()
+                                    +"Save and Add Another"
+                                }
                                 br()
 
-                                postButton(name = "CreateTape") {
+                                postButton(name = "Action") {
                                     formAction = TapeRouting.RoutePaths.ACTION.path
                                     id = "SaveViewAllTapes"
-                                    value = "SaveViewAllTapes"
-                                    onClick = "submitCheck();"
+                                    value = "SaveTape"
+                                    onClick = """
+                                        submitCheck(tapeName);
+                                        afterAction.value = 'allTapes';
+                                    """.trimIndent()
                                     +"Save and goto View Tapes"
                                 }
                             }

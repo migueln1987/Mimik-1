@@ -38,7 +38,6 @@ object ChapterEditor : EditorModule() {
 
             form(encType = FormEncType.multipartFormData) {
                 table {
-
                     tr {
                         th {
                             style = "width: 15%"
@@ -46,14 +45,14 @@ object ChapterEditor : EditorModule() {
                         }
                         td {
                             val nameAction = if (pData.expectedChapName != null)
-                                "nameReset.hidden = setName.value == setName.placeholder;"
+                                "nameReset.hidden = nameChap.value == nameChap.placeholder;"
                             else ""
-                            val chapNameAction = "setName.value = '%s';%s"
+                            val chapNameAction = "nameChap.value = '%s';%s"
 
                             div {
-                                textInput(name = "name") {
+                                textInput(name = "nameChap") {
                                     disableEnterKey
-                                    id = "setName"
+                                    id = name
                                     placeholder = pData.hardChapName(randomHost.valueAsUUID)
                                     value = placeholder
                                     size = "${randomHost.valueAsUUID.length + 10}"
@@ -361,7 +360,7 @@ object ChapterEditor : EditorModule() {
                                 postButton(name = "Action") {
                                     formAction = TapeRouting.RoutePaths.ACTION.path
                                     value = "SaveChapter"
-                                    onClick = "submitCheck(); afterAction.value = 'resume';"
+                                    onClick = "submitCheck(nameChap);"
                                     +"Save"
                                 }
                             }
@@ -371,7 +370,7 @@ object ChapterEditor : EditorModule() {
                                     postButton(name = "Action") {
                                         formAction = TapeRouting.RoutePaths.ACTION.path
                                         value = "SaveChapter"
-                                        onClick = "submitCheck(); afterAction.value = 'new';"
+                                        onClick = "submitCheck(nameChap); afterAction.value = 'newChapter';"
                                         +"Save and Add Another"
                                     }
                                 }
@@ -381,7 +380,7 @@ object ChapterEditor : EditorModule() {
                                 postButton(name = "Action") {
                                     formAction = TapeRouting.RoutePaths.ACTION.path
                                     value = "SaveChapter"
-                                    onClick = "submitCheck();"
+                                    onClick = "submitCheck(nameChap); afterAction.value = 'parentTape';"
                                     +"Save and goto Tape"
                                 }
                             }

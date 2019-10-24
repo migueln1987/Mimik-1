@@ -16,7 +16,7 @@ import io.ktor.util.filter
 import networkRouting.RoutingContract
 import networkRouting.editorPages.ChapterEditor.getChapterPage
 import networkRouting.editorPages.DeleteModule.deleteActions
-import networkRouting.editorPages.TapeDataEditor.dataEditor
+import networkRouting.editorPages.NetworkDataEditor.dataEditor
 import networkRouting.editorPages.TapeEditor.getAllTapesPage
 import networkRouting.editorPages.TapeEditor.getTapePage
 import tapeItems.BlankTape
@@ -28,8 +28,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
         ALL("all"),
         EDIT("edit"),
         DELETE("delete"),
-        ACTION("action"),
-        CREATE("create");
+        ACTION("action");
     }
 
     private val RoutePaths.asSubPath
@@ -41,7 +40,6 @@ class TapeRouting(path: String) : RoutingContract(path) {
             action
             edit
             delete
-            create
             get { call.respondRedirect(RoutePaths.ALL.asSubPath) }
         }
     }
@@ -94,6 +92,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     return@get
                 }
 
+                EditorModule.randomHost.nextRandom()
                 call.respondHtml {
                     if (limitParams.contains("tape")) {
                         if (limitParams.contains("chapter")) {
@@ -121,42 +120,24 @@ class TapeRouting(path: String) : RoutingContract(path) {
             }
         }
 
-    private val Route.create
-        get() = route(RoutePaths.CREATE.path) {
-            get { call.respondHtml { getTapePage(call.parameters) } }
-        }
-
     /**
      * Processes the POST "/Action" call
      */
     private suspend fun ApplicationCall.processData(data: Map<String, String>) {
-        when (data["CreateTape"]) {
-            "SaveAddChapters" -> {
-                val newTape = data.saveToTape()
-                respondRedirect {
-                    encodedPath = TapeRouting.RoutePaths.EDIT.asSubPath
-                    parameters.append("tape", newTape.name)
-                    parameters.append("chapter", "")
-                }
-                return
-            }
-
-            "SaveViewAllTapes" -> {
-                data.saveToTape()
-                respondRedirect(TapeRouting.RoutePaths.ALL.path)
-                return
-            }
-
-            else -> Unit
-        }
-
         when (data["Action"]) {
             "SaveTape" -> {
-                data.saveToTape()
+                val tape = data.saveToTape()
                 respondRedirect {
                     path(TapeRouting.RoutePaths.EDIT.asSubPath)
-                    parameters.apply {
-                        append("tape", data["TapeName"].orEmpty())
+
+                    parameters.append("tape", tape.name)
+                    when (data["afterAction"]) {
+                        "newChapter" -> parameters.append("chapter", "")
+                        "addNew" -> parameters["tape"] = ""
+                        "allTapes" -> {
+                            parameters.remove("tape")
+                            path(TapeRouting.RoutePaths.ALL.asSubPath)
+                        }
                     }
                 }
             }
@@ -164,7 +145,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
             "SaveChapter" -> {
                 val tapeName = data["tape"]
                 val foundTape = tapeCatalog.tapes
-                    .firstOrNull { it.name == data["tape"] }
+                    .firstOrNull { it.name == tapeName }
                     ?: let {
                         BlankTape.reBuild { it.tapeName = tapeName }
                             .also { tapeCatalog.tapes.add(it) }
@@ -175,13 +156,12 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     ?: let { foundTape.createNewInteraction() }
 
                 saveChap.also {
-                    it.chapterName = data["name"]
+                    it.chapterName = data["nameChap"]
+                    // todo; save Chapter data
                 }
 
                 if (foundTape.file?.exists().isTrue())
                     foundTape.saveFile()
-
-                EditorModule.randomHost.nextRandom()
 
                 respondRedirect {
                     val afterAction = data["afterAction"]
@@ -191,9 +171,10 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     else {
                         path(TapeRouting.RoutePaths.EDIT.asSubPath)
                         parameters.append("tape", foundTape.name)
+                        parameters.append("chapter", saveChap.name)
                         when (afterAction) {
-                            "resume" -> parameters.append("chapter", saveChap.name)
-                            "new" -> parameters.append("chapter", "")
+                            "newChapter" -> parameters["chapter"] = ""
+                            "parentTape" -> parameters.remove("chapter")
                         }
                     }
                 }
