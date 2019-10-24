@@ -166,7 +166,9 @@ object TapeEditor : EditorModule() {
             if (pData.loadTape_Failed)
                 p { +"No tape with the name \"${pData.expectedTapeName}\" was found." }
 
-            h1 { +(if (pData.newTape) "New Tape" else "Tape Editor") }
+            h1 {
+                +(if (pData.newTape) "New %s" else "%s Editor").format("Tape")
+            }
 
             form(encType = FormEncType.multipartFormData) {
                 table {
@@ -283,7 +285,7 @@ object TapeEditor : EditorModule() {
                         td {
                             textInput(name = "RoutingUrl") {
                                 disableEnterKey
-                                id = "RoutingUrl"
+                                id = name
                                 if (pData.newTape) {
                                     placeholder = "Example: http://google.com"
                                     value = ""

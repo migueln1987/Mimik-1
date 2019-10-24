@@ -10,6 +10,7 @@ import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import mimikMockHelpers.Networkdata
+import okhttp3.Headers
 import tapeItems.BlankTape
 
 abstract class EditorModule {
@@ -110,21 +111,30 @@ abstract class EditorModule {
                     var inputField = inputField = document.createElement("input");
                     if (expandable) {
                         inputField = document.createElement("textarea");
-                        inputField.onkeypress = function() {
-                            if (event.key == 'Enter') {
-                                var pre = inputField.value.substring(0, inputField.selectionStart);
-                                var post = inputField.value.substring(inputField.selectionStart, inputField.textLength);
-                                inputField.value = pre + "\n" + post;
-                                inputField.style.height = inputField.scrollHeight + 'px';
-                                event.preventDefault();
-                            }
-                        };
+                        inputField.onkeypress = keypressNewlineEnter(inputField);
                     }
                     inputField.name = fieldType + fieldID;
                     inputField.id = inputField.name;
                     return inputField;
                 }
                 """
+        ),
+
+        /**
+         * On the [field], hitting the 'Enter' key will add a new line
+         */
+        KeyPressNewlineEnter_func(
+            """
+            function keypressNewlineEnter(field) {
+                if (event.key == 'Enter') {
+                    var pre = field.value.substring(0, field.selectionStart);
+                    var post = field.value.substring(field.selectionStart, field.textLength);
+                    field.value = pre + "\n" + post;
+                    field.style.height = field.scrollHeight + 'px';
+                    event.preventDefault();
+                }
+            }
+            """.trimIndent()
         ),
 
         CreateCheckbox_func(
@@ -296,7 +306,7 @@ abstract class EditorModule {
             .breadcrumb {
                 padding: 10px;
                 position: sticky;
-                top: 10px;
+                top: 0;
                 width: calc(100% - 22px);
                 background-color: #eee;
                 overflow: hidden;
@@ -733,18 +743,19 @@ abstract class EditorModule {
             td {
                 if (info.valueIsBody)
                     textArea {
+                        disableEnterKey
                         name = fieldName
                         id = name
                         placeholder = bit.hardValue
-                        +bit.hardValue
+                        +placeholder
                     }
                 else
                     textInput {
+                        disableEnterKey
                         name = fieldName
                         id = name
-                        disableEnterKey
                         placeholder = bit.hardValue
-                        value = bit.hardValue
+                        +placeholder
                     }
 
                 script {
@@ -791,6 +802,99 @@ abstract class EditorModule {
                         onClick = "beautifyField($fieldName);"
                         +"Beautify Body"
                     }
+                }
+            }
+        }
+    }
+
+    fun FlowContent.addHeaderTable(headers: Headers?) {
+        table {
+            id = "headerTable"
+
+            script {
+                unsafe {
+                    +"""
+                    var headerID = 0;
+                    function addNewHeaderRow() {
+                        var newrow = headerTable.insertRow(headerTable.rows.length-1);
+
+                        var keyCol = newrow.insertCell(0);
+                        var keyInput = createTextInput("header_Key_", headerID);
+                        keyCol.append(keyInput);
+                        
+                        var valCol = newrow.insertCell(1);
+                        var valueInput = createTextInput("header_Value_", headerID);
+                        valCol.append(valueInput);
+                        
+                        var actionBtns = newrow.insertCell(2);
+                        actionBtns.append(createDeleteBtn(newrow));
+                        actionBtns.append(" ");
+                        var cloneBtn = createBtn("Clone");
+                        cloneBtn.disabled=true;
+                        actionBtns.append(cloneBtn);
+                    }
+                    """.trimIndent()
+                }
+            }
+
+            thead {
+                tr {
+                    th { +"Key" }
+                    th { +"Value" }
+                    th { +"Actions" }
+                }
+            }
+            tbody {
+                headers?.toMultimap()?.forEach { (t, u) ->
+                    u.forEach { appendheader(t to it) }
+                }
+
+                tr {
+                    td {
+                        colSpan = "3"
+                        button(type = ButtonType.button) {
+                            onClick = "addNewHeaderRow();"
+                            +"Add new Header"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun TBODY.appendheader(head: Pair<String, String>) {
+        id = head.hashCode().toString()
+
+        tr {
+            td {
+                textInput {
+                    disableEnterKey
+                    placeholder = head.first
+                    name = "header_Key_load_$placeholder"
+                    +placeholder
+                }
+            }
+
+            td {
+                textInput {
+                    disableEnterKey
+                    placeholder = head.second
+                    name = "header_Value_load_$placeholder"
+                    +placeholder
+                }
+            }
+
+            td {
+                button {
+                    onClick = "this.parentNode.parentNode.remove();"
+                    +"Delete"
+                }
+
+                text(" ")
+
+                button {
+                    disabled = true
+                    +"Clone"
                 }
             }
         }

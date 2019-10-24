@@ -29,9 +29,8 @@ class Requestdata : Networkdata {
         it.body = body
     }.also { postClone.invoke(it) }
 
-    override fun toString(): String {
-        return "%s: %s".format(method, url)
-    }
+    override fun toString() =
+        "%s: %s".format(method, url)
 
     var method: String? = null
         get() = field?.toUpperCase()
@@ -41,24 +40,22 @@ class Requestdata : Networkdata {
         get() = HttpUrl.parse(url.orEmpty())
 
     val replayRequest: okreplay.Request
-        get() {
-            return object : okreplay.Request {
-                override fun url() = httpUrl ?: HttpUrl.get("http://invalid.com")
-                override fun method() = method ?: "GET"
+        get() = object : okreplay.Request {
+            override fun url() = httpUrl ?: HttpUrl.get("http://invalid.com")
+            override fun method() = method ?: "GET"
 
-                override fun getEncoding() = ""
-                override fun getCharset() = Charset.forName("UTF-8")
+            override fun getEncoding() = ""
+            override fun getCharset() = Charset.forName("UTF-8")
 
-                override fun headers() = tapeHeaders
-                override fun header(name: String) = tapeHeaders[name]
-                override fun getContentType() = tapeHeaders[HttpHeaders.ContentType]
+            override fun headers() = tapeHeaders
+            override fun header(name: String) = tapeHeaders[name]
+            override fun getContentType() = tapeHeaders[HttpHeaders.ContentType]
 
-                override fun hasBody() = !body.isNullOrBlank()
-                override fun body() = bodyAsText().toByteArray()
-                override fun bodyAsText() = body.orEmpty()
+            override fun hasBody() = !body.isNullOrBlank()
+            override fun body() = bodyAsText().toByteArray()
+            override fun bodyAsText() = body.orEmpty()
 
-                override fun newBuilder() = TODO()
-                override fun toYaml() = TODO()
-            }
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
         }
 }
