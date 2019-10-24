@@ -164,18 +164,12 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     foundTape.saveFile()
 
                 respondRedirect {
-                    val afterAction = data["afterAction"]
-
-                    if (afterAction == null)
-                        path(TapeRouting.RoutePaths.ALL.asSubPath)
-                    else {
-                        path(TapeRouting.RoutePaths.EDIT.asSubPath)
-                        parameters.append("tape", foundTape.name)
-                        parameters.append("chapter", saveChap.name)
-                        when (afterAction) {
-                            "newChapter" -> parameters["chapter"] = ""
-                            "parentTape" -> parameters.remove("chapter")
-                        }
+                    path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                    parameters.append("tape", foundTape.name)
+                    parameters.append("chapter", saveChap.name)
+                    when (data["afterAction"]) {
+                        "newChapter" -> parameters["chapter"] = ""
+                        "parentTape" -> parameters.remove("chapter")
                     }
                 }
             }

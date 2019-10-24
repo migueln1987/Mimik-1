@@ -99,7 +99,7 @@ object TapeEditor : EditorModule() {
                                             if (confirm(${R.getProperty("viewTapeRemoveInfo")}))
                                                 submit();
                                             else
-                                                type="button";
+                                                type = "button";
                                         """.trimIndent()
                                         value = "Remove"
                                         +value
@@ -367,16 +367,16 @@ object TapeEditor : EditorModule() {
                                         }
                                     }
 
-                                    pData.tape?.attractors?.also { attr ->
-                                        addMatcherRow(attr.queryParamMatchers) {
+                                    pData.tape?.attractors.also { attr ->
+                                        addMatcherRow(attr?.queryParamMatchers) {
                                             it.matcherName = "Parameter"
                                         }
 
-                                        addMatcherRow(attr.queryHeaderMatchers) {
+                                        addMatcherRow(attr?.queryHeaderMatchers) {
                                             it.matcherName = "Header"
                                         }
 
-                                        addMatcherRow(attr.queryBodyMatchers) {
+                                        addMatcherRow(attr?.queryBodyMatchers) {
                                             it.matcherName = "Body"
                                             it.valueIsBody = true
                                         }
@@ -415,7 +415,6 @@ object TapeEditor : EditorModule() {
                                     value = pData.tape?.isWritable.isTrue().toString()
                                 }
                                 infoText("tapeSaveNewCallsInfo")
-                                infoText("Adding mocks are unaffected.")
 
                                 if (!pData.newTape) {
                                     br()
@@ -724,7 +723,7 @@ object TapeEditor : EditorModule() {
                     getButton {
                         formAction = TapeRouting.RoutePaths.DELETE.path
                         onClick = """
-                            if (confirm('${R.getProperty("deleteInfo").format("chapter")}'))
+                            if (confirm(${R.getProperty("deleteInfo").format("chapter")}))
                                 submit();
                             else
                                 type = "button";

@@ -44,19 +44,20 @@ fun FlowOrPhrasingContent.infoText(
     formatArgs: Array<Any> = arrayOf(),
     divArgs: (DIV) -> Unit = {}
 ) {
-    val display = (R.getProperty(property) ?: property)
+    val displayLines = (R.getProperty(property) ?: property)
         .format(*formatArgs)
+        .split('\n')
 
     if (this is FlowContent)
         div(classes = "infoText") {
             divArgs.invoke(this)
-            +display
+            displayLines.eachHasNext({ +it }, { br() })
         }
     else
         br {
             div(classes = "infoText") {
                 divArgs.invoke(this)
-                +display
+                displayLines.eachHasNext({ +it }, { br() })
             }
         }
 }
@@ -74,11 +75,11 @@ fun FlowContent.tooltipText(
     infoProperty: String,
     position: TooltipPositions = TooltipPositions.Top
 ) {
-    val tipVal = (R.getProperty(textProperty) ?: textProperty).trim()
-    val splitLines = tipVal.split('\n')
+    val splitLines = (R.getProperty(textProperty) ?: textProperty).trim()
+        .split('\n')
 
     div(classes = "tooltip") {
-        splitLines.eachHasNext({ +it.trim() }, { br() })
+        splitLines.eachHasNext({ +it }, { br() })
         toolTip(infoProperty, position)
     }
 }
@@ -87,11 +88,11 @@ fun FlowContent.toolTip(
     property: String,
     position: TooltipPositions = TooltipPositions.Top
 ) {
-    val display = R.getProperty(property) ?: property
     val spanClasses = "tooltiptext ${position.value}"
+    val splitLines = (R.getProperty(property) ?: property).trim()
+        .split('\n')
 
-    val splitLines = display.split('\n')
     div(classes = spanClasses) {
-        splitLines.eachHasNext({ +it.trim() }, { br() })
+        splitLines.eachHasNext({ +it }, { br() })
     }
 }

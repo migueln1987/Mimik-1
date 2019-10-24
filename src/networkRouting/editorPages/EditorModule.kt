@@ -563,7 +563,7 @@ abstract class EditorModule {
         if (isNewTape) {
             tapeCatalog.tapes.add(modTape)
             if (get("hardtape") == "on") modTape.saveFile()
-        } else
+        } else if (modTape.file?.exists().isTrue())
             modTape.saveFile()
 
         return modTape
