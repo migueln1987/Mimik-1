@@ -41,11 +41,18 @@ fun FlowOrPhrasingContent.makeToggleButton(
  */
 fun FlowOrPhrasingContent.infoText(
     property: String,
-    formatArgs: Array<Any> = arrayOf(),
+    formatArgs: Any = "",
     divArgs: (DIV) -> Unit = {}
 ) {
     val displayLines = (R.getProperty(property) ?: property)
-        .format(*formatArgs)
+        .run {
+            @Suppress("UnnecessaryVariable")
+            when (val args = formatArgs) {
+                is Array<*> -> format(*args)
+                is Collection<*> -> format(*args.toTypedArray())
+                else -> format(args)
+            }
+        }
         .split('\n')
 
     if (this is FlowContent)
@@ -75,7 +82,7 @@ fun FlowContent.tooltipText(
     infoProperty: String,
     position: TooltipPositions = TooltipPositions.Top
 ) {
-    val splitLines = (R.getProperty(textProperty) ?: textProperty).trim()
+    val splitLines = (R.getProperty(textProperty) ?: textProperty)
         .split('\n')
 
     div(classes = "tooltip") {
@@ -89,7 +96,7 @@ fun FlowContent.toolTip(
     position: TooltipPositions = TooltipPositions.Top
 ) {
     val spanClasses = "tooltiptext ${position.value}"
-    val splitLines = (R.getProperty(property) ?: property).trim()
+    val splitLines = (R.getProperty(property) ?: property)
         .split('\n')
 
     div(classes = spanClasses) {

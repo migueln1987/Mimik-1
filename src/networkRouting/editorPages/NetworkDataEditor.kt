@@ -44,7 +44,15 @@ object NetworkDataEditor : EditorModule() {
             val networkType = pData.expectedNetworkType.uppercaseFirstLetter()
             h1 { +(if (pData.newNetworkData) "New %s" else "%s Editor").format(networkType) }
 
-            form(encType = FormEncType.multipartFormData) {
+            form(
+                encType = FormEncType.multipartFormData,
+                action = TapeRouting.RoutePaths.ACTION.path
+            ) {
+                hiddenInput(name = "tape") { value = pData.hardTapeName() }
+                hiddenInput(name = "chapter") { value = pData.hardChapName() }
+                hiddenInput(name = "network") { value = pData.expectedNetworkType }
+                hiddenInput(name = "afterAction") { id = name }
+
                 table {
                     tr {
                         th {
@@ -106,7 +114,7 @@ object NetworkDataEditor : EditorModule() {
                             }
                         }
 
-                        "reqponse" -> {
+                        "response" -> {
                             val nData = pData.networkData as? Responsedata
                             tr {
                                 th { +"Code" }
@@ -114,23 +122,26 @@ object NetworkDataEditor : EditorModule() {
                                     select {
                                         name = "responseCode"
                                         id = name
+                                        onChange = """
+                                                responseCodeDes.selectedIndex = responseCode.selectedIndex;
+                                            """.trimIndent()
+
                                         HttpStatusCode.allStatusCodes.forEach {
                                             option {
-                                                if (nData?.code == it.value)
+                                                if ((nData?.code ?: 200) == it.value)
                                                     selected = true
-                                                +it.value
+                                                +it.value.toString()
                                             }
                                         }
-                                        onChange =
-                                            "responseCodeDes.selectedIndex = responseCode.selectedIndex;"
                                     }
 
                                     +" Description: "
 
                                     select {
-                                        style = "-webkit-appearance: searchfield;"
-                                        id = name
-                                        disabled = true
+                                        id = "responseCodeDes"
+                                        onChange = """
+                                                responseCode.selectedIndex = responseCodeDes.selectedIndex;
+                                            """.trimIndent()
                                         HttpStatusCode.allStatusCodes.forEach {
                                             option {
                                                 if (nData?.code == it.value)
@@ -163,9 +174,15 @@ object NetworkDataEditor : EditorModule() {
                                             name = "networkBody"
                                             id = name
                                             onKeyPress = "keypressNewlineEnter(networkBody);"
+                                            +pData.networkData?.body.orEmpty()
                                         }
                                         script {
-                                            unsafe { +"formatParentFieldWidth(networkBody);" }
+                                            unsafe {
+                                                +"""
+                                                    formatParentFieldWidth(networkBody);
+                                                    beautifyField(networkBody);
+                                                """.trimIndent()
+                                            }
                                         }
                                     }
 
@@ -183,9 +200,15 @@ object NetworkDataEditor : EditorModule() {
                     tr {
                         th { +"Save" }
                         td {
-                            button {
-
+                            postButton(name = "Action") {
+                                value = "SaveNetworkData"
                                 +"Save"
+                            }
+                            br()
+                            postButton(name = "Action") {
+                                value = "SaveNetworkData"
+                                onClick = "afterAction.value = 'viewChapter';"
+                                +"Save & goto Chapter"
                             }
                         }
                     }

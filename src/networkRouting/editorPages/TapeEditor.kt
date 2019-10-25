@@ -270,7 +270,9 @@ object TapeEditor : EditorModule() {
                                 }
                             }
 
-                            infoText("Tape name. Example: 'General' becomes '/General.json'") {
+                            infoText(
+                                "Tape name. Example: 'General' becomes '/General.json'"
+                            ) {
                                 it.hidden = true
                             }
 
@@ -299,7 +301,6 @@ object TapeEditor : EditorModule() {
                                     }
                                 }
                                 size = "${placeholder.length + 20}"
-
                                 onLoad = "setRoutingUrlStates(value)"
                                 onKeyUp = "setRoutingUrlStates(value)"
                             }
@@ -347,7 +348,7 @@ object TapeEditor : EditorModule() {
                                 id = "reqView"
                                 br()
 
-                                infoText("attrInfo", arrayOf("tape"))
+                                infoText("attrInfo", "tape")
                                 table {
                                     tr {
                                         th {
@@ -462,7 +463,7 @@ object TapeEditor : EditorModule() {
 
                                         infoText(
                                             "tapeSaveAsHard",
-                                            arrayOf(currentPath)
+                                            currentPath
                                         )
                                     }
                                 } else {
@@ -630,7 +631,7 @@ object TapeEditor : EditorModule() {
             thead {
                 tr {
                     th { +"Name" }
-                    th { +"Pass-through" }
+                    th { +"Live Result" }
                     th { +"Attractors" }
                     th { +"Uses" }
                     th { +"" }

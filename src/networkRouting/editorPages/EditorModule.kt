@@ -4,12 +4,13 @@ import TapeCatalog
 import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlinx.html.*
+import mimikMockHelpers.Networkdata
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
-import mimikMockHelpers.Networkdata
 import okhttp3.Headers
 import tapeItems.BlankTape
 
@@ -312,6 +313,7 @@ abstract class EditorModule {
                 overflow: hidden;
                 border: 1px solid black;
                 border-radius: 5px;
+                z-index: 1;
             }
             
             .breadcrumb div {
@@ -750,12 +752,11 @@ abstract class EditorModule {
                         +placeholder
                     }
                 else
-                    textInput {
+                    textInput(name = fieldName) {
                         disableEnterKey
-                        name = fieldName
                         id = name
                         placeholder = bit.hardValue
-                        +placeholder
+                        value = placeholder
                     }
 
                 script {
@@ -819,18 +820,19 @@ abstract class EditorModule {
                         var newrow = headerTable.insertRow(headerTable.rows.length-1);
 
                         var keyCol = newrow.insertCell(0);
-                        var keyInput = createTextInput("header_Key_", headerID);
+                        var keyInput = createTextInput("header_key_", headerID);
                         keyCol.append(keyInput);
                         
                         var valCol = newrow.insertCell(1);
-                        var valueInput = createTextInput("header_Value_", headerID);
+                        var valueInput = createTextInput("header_value_", headerID);
                         valCol.append(valueInput);
+                        headerID++;
                         
                         var actionBtns = newrow.insertCell(2);
                         actionBtns.append(createDeleteBtn(newrow));
                         actionBtns.append(" ");
                         var cloneBtn = createBtn("Clone");
-                        cloneBtn.disabled=true;
+                        cloneBtn.disabled = true;
                         actionBtns.append(cloneBtn);
                     }
                     """.trimIndent()
@@ -845,8 +847,12 @@ abstract class EditorModule {
                 }
             }
             tbody {
+                var headInc = 0
                 headers?.toMultimap()?.forEach { (t, u) ->
-                    u.forEach { appendheader(t to it) }
+                    u.forEach {
+                        appendheader(t to it, headInc)
+                        headInc++
+                    }
                 }
 
                 tr {
@@ -862,25 +868,21 @@ abstract class EditorModule {
         }
     }
 
-    fun TBODY.appendheader(head: Pair<String, String>) {
-        id = head.hashCode().toString()
-
+    fun TBODY.appendheader(head: Pair<String, String>, idStep: Int) {
         tr {
             td {
-                textInput {
+                textInput(name = "header_key_load_$idStep") {
                     disableEnterKey
                     placeholder = head.first
-                    name = "header_Key_load_$placeholder"
-                    +placeholder
+                    value = placeholder
                 }
             }
 
             td {
-                textInput {
+                textInput(name = "header_value_load_$idStep") {
                     disableEnterKey
                     placeholder = head.second
-                    name = "header_Value_load_$placeholder"
-                    +placeholder
+                    value = placeholder
                 }
             }
 
@@ -910,6 +912,11 @@ abstract class EditorModule {
         }
 
         div {
+            id = when (data) {
+                is Requestdata -> "requestDiv"
+                is Responsedata -> "responseDiv"
+                else -> ""
+            }
             table {
                 thead {
                     tr {
@@ -927,54 +934,57 @@ abstract class EditorModule {
         }
     }
 
-    private fun TR.tapeDataRow(data: Networkdata?) {
+    private fun TR.tapeDataRow(data: Networkdata) {
         td {
             div {
-                style = """
-                        resize: none;
-                        overflow: scroll;
-                    """.trimIndent()
-
                 when (data) {
                     is Requestdata -> {
                         text("Method: \n${data.method}")
-                        text("Url: ${data.url}")
+                        br()
+                        +"Url: %s".format(
+                            if (data.url.isNullOrBlank())
+                                "{ no data }" else data.url
+                        )
                     }
-                    is Responsedata ->
+                    is Responsedata -> {
                         text("Code: \n${data.code}")
-
+                        infoText(
+                            "- %s",
+                            HttpStatusCode.fromValue(data.code ?: 200).description
+                        )
+                    }
                     else -> text("{ no data }")
                 }
             }
         }
 
         td {
-            div {
-                id = "resizingTapeData"
-                style = """
+            val divID = "resizingTapeData_${data.hashCode()}"
+            val headers = data.headers
+
+            if (headers == null || headers.size() == 0) {
+                +"{ no data }"
+            } else {
+                div {
+                    id = divID
+                    style = """
                     margin-bottom: 1em;
                     resize: vertical;
                     overflow: auto;
                     min-height: 5em;
+                    background-color: #DDD;
                 """.trimIndent()
 
-                val headers = data?.headers
-                table {
-                    thead {
-                        tr {
-                            th { +"Key" }
-                            th { +"Value" }
-                        }
-                    }
-                    tbody {
-                        if (headers == null) {
+                    val tableID = "header_${data.hashCode()}"
+                    table {
+                        id = tableID
+                        thead {
                             tr {
-                                td {
-                                    colSpan = "2"
-                                    +"{ no data }"
-                                }
+                                th { +"Key" }
+                                th { +"Value" }
                             }
-                        } else
+                        }
+                        tbody {
                             headers.toMultimap().forEach { (t, u) ->
                                 u.forEach {
                                     tr {
@@ -983,6 +993,15 @@ abstract class EditorModule {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    script {
+                        unsafe {
+                            +"""
+                            $divID.style.maxHeight = ($tableID.scrollHeight + 14) + 'px';
+                        """.trimIndent()
+                        }
                     }
                 }
             }
@@ -990,22 +1009,31 @@ abstract class EditorModule {
 
         td {
             style = "vertical-align: top;"
-            textArea {
-                id = when (data) {
-                    is Requestdata -> "requestBody"
-                    is Responsedata -> "responseBody"
-                    else -> ""
-                }
+            val areaID = when (data) {
+                is Requestdata -> "requestBody"
+                is Responsedata -> "responseBody"
+                else -> ""
+            }
 
+            if (data.body == null)
+                +"{ no data }"
+
+            textArea {
+                id = areaID
+                readonly = true
                 style = """
                     margin-bottom: 1em;
                     resize: vertical;
                     width: 100%;
                     min-height: 5em;
+                    background-color: #EEE;
                 """.trimIndent()
                 readonly = true
-                +data?.body.orEmpty()
+                hidden = data.body == null
+                +data.body.orEmpty()
             }
+
+            script { unsafe { +"beautifyField($areaID);" } }
         }
     }
 

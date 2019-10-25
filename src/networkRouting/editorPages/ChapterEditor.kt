@@ -36,7 +36,17 @@ object ChapterEditor : EditorModule() {
 
             h1 { +(if (pData.newChapter) "New Chapter" else "Chapter Editor") }
 
-            form(encType = FormEncType.multipartFormData) {
+            form(
+                encType = FormEncType.multipartFormData,
+                action = TapeRouting.RoutePaths.ACTION.path
+            ) {
+                hiddenInput(name = "tape") { value = pData.hardTapeName() }
+                hiddenInput(name = "chapter") { value = pData.hardChapName() }
+                hiddenInput(name = "network") {
+                    id = name
+                    disabled = true
+                }
+
                 table {
                     tr {
                         th {
@@ -116,7 +126,7 @@ object ChapterEditor : EditorModule() {
                                 id = "reqView"
                                 br()
 
-                                infoText("attrInfo", arrayOf("chapter"))
+                                infoText("attrInfo", "chapter")
                                 table {
                                     tr {
                                         th {
@@ -136,16 +146,16 @@ object ChapterEditor : EditorModule() {
                                         }
                                     }
 
-                                    pData.chapter?.attractors?.also { attr ->
-                                        addMatcherRow(attr.queryParamMatchers) {
+                                    pData.chapter?.attractors.also { attr ->
+                                        addMatcherRow(attr?.queryParamMatchers) {
                                             it.matcherName = "Parameter"
                                         }
 
-                                        addMatcherRow(attr.queryHeaderMatchers) {
+                                        addMatcherRow(attr?.queryHeaderMatchers) {
                                             it.matcherName = "Header"
                                         }
 
-                                        addMatcherRow(attr.queryBodyMatchers) {
+                                        addMatcherRow(attr?.queryBodyMatchers) {
                                             it.matcherName = "Body"
                                             it.valueIsBody = true
                                         }
@@ -228,30 +238,31 @@ object ChapterEditor : EditorModule() {
                                         tr {
                                             td {
                                                 style = "padding: 0.4em 2em;"
-                                                if (pData.chapter?.requestData != null) {
-                                                    button(type = ButtonType.button) {
-                                                        onClick = "requestInput.value = '';"
-                                                        +"Clear Request"
-                                                    }
-
-                                                    +" "
-                                                    button(type = ButtonType.button) {
-                                                        onClick = "beautifyField(requestBody);"
-                                                        +"Beautify Body"
-                                                    }
+                                                getButton {
+                                                    formAction = TapeRouting.RoutePaths.EDIT.path
+                                                    onClick = """
+                                                        network.value = 'request';
+                                                        network.disabled = false;
+                                                    """.trimIndent()
+                                                    if (pData.chapter?.requestData == null)
+                                                        +"Create"
+                                                    else
+                                                        +"Edit"
                                                 }
 
-                                                +" "
-                                                button(type = ButtonType.button) {
-                                                    if (pData.chapter?.requestData == null) {
-                                                        onClick =
-                                                            "alert('Insert {create New Request}')"
-                                                        +"Create"
-                                                    } else {
-                                                        onClick =
-                                                            "alert('Insert {Edit Request}')"
-                                                        +"Edit"
-                                                    }
+                                                if (pData.chapter?.requestData != null) {
+//                                                    +" "
+//
+//                                                    button(type = ButtonType.button) {
+//                                                        onClick = "requestInput.value = '';"
+//                                                        +"Clear Request"
+//                                                    }
+//
+//                                                    +" "
+//                                                    button(type = ButtonType.button) {
+//                                                        onClick = "beautifyField(requestBody);"
+//                                                        +"Beautify Body"
+//                                                    }
                                                 }
                                             }
                                         }
@@ -301,43 +312,50 @@ object ChapterEditor : EditorModule() {
                                                     if (pData.chapter?.awaitResponse == null)
                                                         disabled = true
                                                     onClick = """
-                                                        if (checked && ${pData.chapter?.awaitResponse.isTrue()})
-                                                            if (confirm('${R.getProperty("chapAwaitConfirm")}')) 
+                                                        if (checked && ${pData.chapter?.awaitResponse.isFalse()})
+                                                            if (confirm(${R.getProperty("chapAwaitConfirm")})) {
+                                                                responseDiv.style.opacity = 0.5;
                                                                 return true;
-                                                            else
-                                                                return false;
+                                                            }
+                                                            else return false;
+                                                        else
+                                                            responseDiv.style.opacity = 1;
                                                     """.trimIndent()
                                                 }
                                             }
 
-                                            if (pData.chapter?.responseData != null) {
-                                                td {
-                                                    button(type = ButtonType.button) {
-                                                        onClick = "requestInput.value = '';"
-                                                        +"Clear Request"
-                                                    }
-                                                }
-
-                                                td {
-                                                    button(type = ButtonType.button) {
-                                                        onClick = "beautifyField(requestBody);"
-                                                        +"Beautify Body"
-                                                    }
+                                            td {
+                                                getButton {
+                                                    formAction = TapeRouting.RoutePaths.EDIT.path
+                                                    onClick = """
+                                                        network.value = 'response';
+                                                        network.disabled = false;
+                                                    """.trimIndent()
+                                                    if (pData.chapter?.responseData == null)
+                                                        +"Create"
+                                                    else
+                                                        +"Edit"
                                                 }
                                             }
 
-                                            td {
-                                                button(type = ButtonType.button) {
-                                                    if (pData.chapter?.requestData == null) {
-                                                        onClick =
-                                                            "alert('Insert {create New Response}')"
-                                                        +"Create"
-                                                    } else {
-                                                        onClick =
-                                                            "alert('Insert {Edit Response}')"
-                                                        +"Edit"
-                                                    }
-                                                }
+                                            if (pData.chapter?.responseData != null) {
+//                                                +" "
+//                                                td {
+//                                                    button(type = ButtonType.button) {
+//                                                        onClick = """
+//                                                            responseInput.value = '';
+//                                                        """.trimIndent()
+//                                                        +"Clear Response"
+//                                                    }
+//                                                }
+//
+//                                                td {
+//                                                    if (pData.chapter?.responseData?.body != null)
+//                                                        button(type = ButtonType.button) {
+//                                                            onClick = "beautifyField(responseBody);"
+//                                                            +"Beautify Body"
+//                                                        }
+//                                                }
                                             }
                                         }
                                     }
@@ -358,7 +376,6 @@ object ChapterEditor : EditorModule() {
 
                             div {
                                 postButton(name = "Action") {
-                                    formAction = TapeRouting.RoutePaths.ACTION.path
                                     value = "SaveChapter"
                                     onClick = "submitCheck(nameChap);"
                                     +"Save"
@@ -368,7 +385,6 @@ object ChapterEditor : EditorModule() {
                             div {
                                 p {
                                     postButton(name = "Action") {
-                                        formAction = TapeRouting.RoutePaths.ACTION.path
                                         value = "SaveChapter"
                                         onClick = "submitCheck(nameChap); afterAction.value = 'newChapter';"
                                         +"Save and Add Another"
@@ -378,7 +394,6 @@ object ChapterEditor : EditorModule() {
 
                             div {
                                 postButton(name = "Action") {
-                                    formAction = TapeRouting.RoutePaths.ACTION.path
                                     value = "SaveChapter"
                                     onClick = "submitCheck(nameChap); afterAction.value = 'parentTape';"
                                     +"Save and goto Tape"
