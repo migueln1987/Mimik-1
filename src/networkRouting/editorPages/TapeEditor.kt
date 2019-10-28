@@ -333,7 +333,8 @@ object TapeEditor : EditorModule() {
                                         +when (val url = pData.tape?.routingUrl?.trim()) {
                                             null -> "{ empty }"
                                             "" -> "" // isBlank()
-                                            else -> url
+                                            else -> if (url.isJSONValid)
+                                                url else "{ no match }"
                                         }
                                     }
                                 }

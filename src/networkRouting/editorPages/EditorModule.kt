@@ -547,9 +547,8 @@ abstract class EditorModule {
         val modTape = BlankTape.reBuild(nowTape) { tape ->
             // subDirectory = get("Directory")?.trim()
             val hostValue = get("hostValue")?.toIntOrNull() ?: RandomHost().value
-            tape.tapeName = get("TapeName")?.trim() ?: hostValue.toString()
+            tape.tapeName = get("tapeName")?.trim() ?: hostValue.toString()
             tape.routingURL = get("RoutingUrl")?.trim()
-            tape.allowLiveRecordings = get("SaveNewCalls") == "on"
 
             tape.attractors = RequestAttractors { attr ->
                 get("filterPath")?.trim()?.also { path ->
@@ -563,6 +562,9 @@ abstract class EditorModule {
                     attr.queryBodyMatchers = filterFindData("Body")
                 }
             }
+
+            tape.alwaysLive = tape.isValidURL && get("allowPassthrough") == "on"
+            tape.allowLiveRecordings = get("SaveNewCalls") == "on"
         }
 
         if (isNewTape) {
