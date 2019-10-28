@@ -443,7 +443,8 @@ object TapeEditor : EditorModule() {
                                         onClick = "afterAction.value = 'newChapter';"
                                         +"Save and add Tape Chapters"
                                     }
-                                }
+                                } else
+                                    div { id = "SaveAddChapters" }
                             }
                         }
                     }
