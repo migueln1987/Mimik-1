@@ -30,9 +30,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     class Builder(val reBuild: BlankTape? = null, config: (Builder) -> Unit = {}) {
         var tapeName: String? = null
             set(value) {
-                field = value
+                field = if (value?.isBlank().isTrue())
+                    null else value
                 if (reBuild != null)
-                    reBuild.tapeName = value
+                    reBuild.tapeName = field
             }
 
         var routingURL: String? = null
@@ -154,7 +155,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         get() = if (field == null) TapeMode.READ_WRITE else field
 
     val httpRoutingUrl: HttpUrl?
-        get() = HttpUrl.parse(routingUrl ?: "")
+        get() = HttpUrl.parse(routingUrl.orEmpty())
 
     /**
      * routingUrl has data, but HttpUrl is unable to parse it

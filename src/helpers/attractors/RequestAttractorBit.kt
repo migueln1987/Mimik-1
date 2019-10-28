@@ -9,7 +9,7 @@ class RequestAttractorBit {
     var value: String? = null
 
     var hardValue: String
-        get() = value ?: ""
+        get() = value.orEmpty()
         set(newValue) {
             value = newValue
         }

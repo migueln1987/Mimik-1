@@ -7,7 +7,7 @@ import io.ktor.http.HttpStatusCode
 import okhttp3.Protocol
 import java.nio.charset.Charset
 
-class ResponseTapedata : Tapedata {
+class Responsedata : Networkdata {
     constructor(response: okreplay.Response) {
         code = response.code()
         protocol = response.protocol()
@@ -15,7 +15,7 @@ class ResponseTapedata : Tapedata {
         body = response.tryGetBody()
     }
 
-    constructor(builder: (ResponseTapedata) -> Unit = {}) {
+    constructor(builder: (Responsedata) -> Unit = {}) {
         builder.invoke(this)
     }
 
@@ -49,7 +49,7 @@ class ResponseTapedata : Tapedata {
 
                 override fun hasBody() = !body.isNullOrBlank()
                 override fun body() = bodyAsText().toByteArray()
-                override fun bodyAsText() = body ?: ""
+                override fun bodyAsText() = body.orEmpty()
 
                 override fun newBuilder() = TODO()
                 override fun toYaml() = TODO()

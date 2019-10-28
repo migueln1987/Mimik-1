@@ -3,8 +3,8 @@ package unitTests.mockHelpers
 import io.ktor.http.HttpHeaders
 import io.mockk.every
 import io.mockk.spyk
-import mimikMockHelpers.RequestTapedata
-import mimikMockHelpers.ResponseTapedata
+import mimikMockHelpers.Requestdata
+import mimikMockHelpers.Responsedata
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import org.junit.Assert
@@ -20,7 +20,7 @@ class tapeDataTests {
         val headerData = Headers.of(HttpHeaders.ContentType, headerValue)
         val bodyData = "testBody"
 
-        val host = spyk(RequestTapedata()) {
+        val host = spyk(Requestdata()) {
             every { httpUrl } returns HttpUrl.parse(urlData)
             every { method } returns methodData
             every { tapeHeaders } returns headerData
@@ -48,7 +48,7 @@ class tapeDataTests {
         val headerData = Headers.of(HttpHeaders.ContentType, headerValue)
         val bodyData = "testBody"
 
-        val host = spyk(ResponseTapedata()) {
+        val host = spyk(Responsedata()) {
             every { code } returns codeData
             every { tapeHeaders } returns headerData
             every { body } returns bodyData

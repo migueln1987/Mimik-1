@@ -167,7 +167,7 @@ class TapeCatalog : OkReplayInterceptor() {
                     tape.saveFile()
                     tapes.add(tape)
                 }
-                callRequest.makeCatchResponse(hostTape.status) { hostTape.responseMsg ?: "" }
+                callRequest.makeCatchResponse(hostTape.status) { hostTape.responseMsg.orEmpty() }
             }
         }
     }

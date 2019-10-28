@@ -15,7 +15,7 @@ import io.ktor.routing.put
 import io.ktor.routing.route
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
-import mimikMockHelpers.ResponseTapedata
+import mimikMockHelpers.Responsedata
 import okhttp3.internal.http.HttpMethod
 import tapeItems.BlankTape
 
@@ -37,7 +37,7 @@ class MimikMock(path: String) : RoutingContract(path) {
             put {
                 call.processPutMock().apply {
                     println(responseMsg)
-                    call.respond(status, responseMsg ?: "")
+                    call.respond(status, responseMsg.orEmpty())
                 }
             }
         }
@@ -136,7 +136,7 @@ class MimikMock(path: String) : RoutingContract(path) {
         }
 
         // Method will have a body and filter isn't allowing bodies
-        if (HttpMethod.requiresRequestBody(mockParams["method"] ?: "") &&
+        if (HttpMethod.requiresRequestBody(mockParams["method"].orEmpty()) &&
             (attractors.queryBodyMatchers.isNullOrEmpty().isTrue() ||
                     attractors.queryBodyMatchers?.all { it.hardValue.isBlank() }.isTrue())
         ) // add the default "accept all bodies" to calls requiring a body
@@ -152,7 +152,7 @@ class MimikMock(path: String) : RoutingContract(path) {
 
             updateChapter.responseData = if (alwaysLive.isTrue() || (hasAwait && awaitResponse))
                 null
-            else ResponseTapedata { rData ->
+            else Responsedata { rData ->
                 rData.code = mockParams["response_code"]?.toIntOrNull()
 
                 rData.headers = mockParams

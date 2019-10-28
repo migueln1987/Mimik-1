@@ -2,6 +2,17 @@ package helpers
 
 import R
 import kotlinx.html.*
+import kotlin.math.abs
+
+/**
+ * Creates a line (2 "<[br]>") for each [lines] count
+ */
+fun FlowOrPhrasingContent.linebreak(lines: Int = 1, classes: String? = null, block: BR.() -> Unit = {}) {
+    repeat(lines) {
+        br(classes, block)
+        br(classes, block)
+    }
+}
 
 fun FlowOrInteractiveOrPhrasingContent.inputButton(
     formEncType: ButtonFormEncType? = null,
@@ -41,24 +52,29 @@ fun FlowOrPhrasingContent.makeToggleButton(
  */
 fun FlowOrPhrasingContent.infoText(
     property: String,
-    formatArgs: Array<Any> = arrayOf(),
+    formatArgs: Any = "",
     divArgs: (DIV) -> Unit = {}
 ) {
-    val display = (R.getProperty(property) ?: property)
-        .format(*formatArgs)
-
-    if (this is FlowContent)
-        div(classes = "infoText") {
-            divArgs.invoke(this)
-            +display
-        }
-    else
-        br {
-            div(classes = "infoText") {
-                divArgs.invoke(this)
-                +display
+    val displayLines = (R.getProperty(property) ?: property)
+        .run {
+            @Suppress("UnnecessaryVariable")
+            when (val args = formatArgs) {
+                is Array<*> -> format(*args)
+                is Collection<*> -> format(*args.toTypedArray())
+                else -> format(args)
             }
         }
+        .split('\n')
+
+    val divConfig: DIV.() -> Unit = {
+        divArgs.invoke(this)
+        displayLines.eachHasNext({ +it }, { br() })
+    }
+
+    if (this is FlowContent)
+        div(classes = "infoText", block = divConfig)
+    else
+        span { div(classes = "infoText", block = divConfig) }
 }
 
 @Suppress("unused")
@@ -69,29 +85,50 @@ enum class TooltipPositions(val value: String) {
     Right("tooltip-right")
 }
 
-fun FlowContent.tooltipText(
+/**
+ * Displays [textProperty], with a tooltip hover property that displays the content of [infoProperty]
+ */
+fun FlowOrPhrasingContent.tooltipText(
     textProperty: String,
     infoProperty: String,
-    position: TooltipPositions = TooltipPositions.Top
+    position: TooltipPositions = TooltipPositions.Top,
+    divArgs: (DIV) -> Unit = {}
 ) {
-    val tipVal = (R.getProperty(textProperty) ?: textProperty).trim()
-    val splitLines = tipVal.split('\n')
+    val splitLines = (R.getProperty(textProperty) ?: textProperty)
+        .split('\n')
 
-    div(classes = "tooltip") {
-        splitLines.eachHasNext({ +it.trim() }, { br() })
+    val divConfig: DIV.() -> Unit = {
+        divArgs.invoke(this)
+        splitLines.eachHasNext({ +it }, { br() })
         toolTip(infoProperty, position)
     }
+
+    if (this is FlowContent)
+        div(classes = "tooltip", block = divConfig)
+    else
+        span { div(classes = "tooltip", block = divConfig) }
 }
 
 fun FlowContent.toolTip(
     property: String,
     position: TooltipPositions = TooltipPositions.Top
 ) {
-    val display = R.getProperty(property) ?: property
     val spanClasses = "tooltiptext ${position.value}"
+    val splitLines = (R.getProperty(property) ?: property)
+        .split('\n')
 
-    val splitLines = display.split('\n')
     div(classes = spanClasses) {
-        splitLines.eachHasNext({ +it.trim() }, { br() })
+        val thisId = "tooltip_${abs(property.hashCode())}"
+        id = thisId
+        splitLines.eachHasNext({ +it }, { br() })
+        script {
+            unsafe {
+                +"""
+                    $thisId.style.marginLeft = -($thisId.clientWidth / 2) + 'px';
+                    if ($thisId.getBoundingClientRect().x < 0)
+	                    $thisId.style.marginLeft = -(($thisId.clientWidth / 2) + $thisId.getBoundingClientRect().x) + 'px';
+                """.trimIndent()
+            }
+        }
     }
 }

@@ -60,8 +60,8 @@ class RecordedInteractions {
             responseData = value?.toTapeData
         }
 
-    var requestData: RequestTapedata? = null
-    var responseData: ResponseTapedata? = null
+    var requestData: Requestdata? = null
+    var responseData: Responsedata? = null
 
     val hasRequestData: Boolean
         get() = requestData != null

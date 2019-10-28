@@ -4,12 +4,14 @@ import TapeCatalog
 import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlinx.html.*
+import mimikMockHelpers.Networkdata
 import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.RequestTapedata
-import mimikMockHelpers.ResponseTapedata
-import mimikMockHelpers.Tapedata
+import mimikMockHelpers.Requestdata
+import mimikMockHelpers.Responsedata
+import okhttp3.Headers
 import tapeItems.BlankTape
 
 abstract class EditorModule {
@@ -110,21 +112,30 @@ abstract class EditorModule {
                     var inputField = inputField = document.createElement("input");
                     if (expandable) {
                         inputField = document.createElement("textarea");
-                        inputField.onkeypress = function() {
-                            if (event.key == 'Enter') {
-                                var pre = inputField.value.substring(0, inputField.selectionStart);
-                                var post = inputField.value.substring(inputField.selectionStart, inputField.textLength);
-                                inputField.value = pre + "\n" + post;
-                                inputField.style.height = inputField.scrollHeight + 'px';
-                                event.preventDefault();
-                            }
-                        };
+                        inputField.onkeypress = keypressNewlineEnter(inputField);
                     }
                     inputField.name = fieldType + fieldID;
                     inputField.id = inputField.name;
                     return inputField;
                 }
                 """
+        ),
+
+        /**
+         * On the [field], hitting the 'Enter' key will add a new line
+         */
+        KeyPressNewlineEnter_func(
+            """
+            function keypressNewlineEnter(field) {
+                if (event.key == 'Enter') {
+                    var pre = field.value.substring(0, field.selectionStart);
+                    var post = field.value.substring(field.selectionStart, field.textLength);
+                    field.value = pre + "\n" + post;
+                    field.style.height = field.scrollHeight + 'px';
+                    event.preventDefault();
+                }
+            }
+            """.trimIndent()
         ),
 
         CreateCheckbox_func(
@@ -210,10 +221,10 @@ abstract class EditorModule {
 
         SubmitNameCheck(
             """
-                function submitCheck() {
-                    setName.value = setName.value.trim();
-                    if (setName.value == "")
-                        setName.value = setName.placeholder;
+                function submitCheck(checkName) {
+                    checkName.value = checkName.value.trim();
+                    if (checkName.value == "")
+                        checkName.value = checkName.placeholder;
                 }
                 """
         );
@@ -297,11 +308,12 @@ abstract class EditorModule {
                 padding: 10px;
                 position: sticky;
                 top: 10px;
-                width: calc(100% - 30px);
+                width: calc(100% - 22px);
                 background-color: #eee;
                 overflow: hidden;
                 border: 1px solid black;
                 border-radius: 5px;
+                z-index: 1;
             }
             
             .breadcrumb div {
@@ -350,12 +362,18 @@ abstract class EditorModule {
             }
             
             .subnav-content {
-                display: none;
                 position: fixed;
                 left: 5em;
-                background-color: slategray;
+                top: 42px;
                 width: auto;
+                background-color: slategray;
                 z-index: 1;
+                line-height: 1em;
+                max-height: 10.5em;
+                overflow-y: auto;
+                background-color: transparent;
+                border-top: 12px solid transparent;
+                display: none;
             }
             
             .subnav-content * {
@@ -367,13 +385,11 @@ abstract class EditorModule {
                 text-decoration: none;
                 display: inline-flex;
                 background-color: slategrey;
+                border-bottom: 1px solid;
             }
             
             .subnav:hover .subnav-content {
                 display: grid;
-                line-height: 1em;
-                max-height: 10.5em;
-                overflow-y: auto;
             }
         """.trimIndent()
 
@@ -425,6 +441,7 @@ abstract class EditorModule {
                 display: inline-block;
                 border-bottom: 1px dotted #ccc;
                 color: #006080;
+                cursor: default;
             }
             
             .tooltip .tooltiptext {
@@ -549,7 +566,7 @@ abstract class EditorModule {
         if (isNewTape) {
             tapeCatalog.tapes.add(modTape)
             if (get("hardtape") == "on") modTape.saveFile()
-        } else
+        } else if (modTape.file?.exists().isTrue())
             modTape.saveFile()
 
         return modTape
@@ -729,18 +746,18 @@ abstract class EditorModule {
             td {
                 if (info.valueIsBody)
                     textArea {
+                        disableEnterKey
                         name = fieldName
                         id = name
                         placeholder = bit.hardValue
-                        +bit.hardValue
+                        +placeholder
                     }
                 else
-                    textInput {
-                        name = fieldName
-                        id = name
+                    textInput(name = fieldName) {
                         disableEnterKey
+                        id = name
                         placeholder = bit.hardValue
-                        value = bit.hardValue
+                        value = placeholder
                     }
 
                 script {
@@ -781,8 +798,7 @@ abstract class EditorModule {
                 }
 
                 if (info.valueIsBody) {
-                    br()
-                    br()
+                    linebreak()
                     button(type = ButtonType.button) {
                         onClick = "beautifyField($fieldName);"
                         +"Beautify Body"
@@ -792,16 +808,115 @@ abstract class EditorModule {
         }
     }
 
+    fun FlowContent.addHeaderTable(headers: Headers?) {
+        table {
+            id = "headerTable"
+
+            script {
+                unsafe {
+                    +"""
+                    var headerID = 0;
+                    function addNewHeaderRow() {
+                        var newrow = headerTable.insertRow(headerTable.rows.length-1);
+
+                        var keyCol = newrow.insertCell(0);
+                        var keyInput = createTextInput("header_key_", headerID);
+                        keyCol.append(keyInput);
+                        
+                        var valCol = newrow.insertCell(1);
+                        var valueInput = createTextInput("header_value_", headerID);
+                        valCol.append(valueInput);
+                        headerID++;
+                        
+                        var actionBtns = newrow.insertCell(2);
+                        actionBtns.append(createDeleteBtn(newrow));
+                        actionBtns.append(" ");
+                        var cloneBtn = createBtn("Clone");
+                        cloneBtn.disabled = true;
+                        actionBtns.append(cloneBtn);
+                    }
+                    """.trimIndent()
+                }
+            }
+
+            thead {
+                tr {
+                    th { +"Key" }
+                    th { +"Value" }
+                    th { +"Actions" }
+                }
+            }
+            tbody {
+                var headInc = 0
+                headers?.toMultimap()?.forEach { (t, u) ->
+                    u.forEach {
+                        appendheader(t to it, headInc)
+                        headInc++
+                    }
+                }
+
+                tr {
+                    td {
+                        colSpan = "3"
+                        button(type = ButtonType.button) {
+                            onClick = "addNewHeaderRow();"
+                            +"Add new Header"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun TBODY.appendheader(head: Pair<String, String>, idStep: Int) {
+        tr {
+            td {
+                textInput(name = "header_key_load_$idStep") {
+                    disableEnterKey
+                    placeholder = head.first
+                    value = placeholder
+                }
+            }
+
+            td {
+                textInput(name = "header_value_load_$idStep") {
+                    disableEnterKey
+                    placeholder = head.second
+                    value = placeholder
+                }
+            }
+
+            td {
+                button {
+                    onClick = "this.parentNode.parentNode.remove();"
+                    +"Delete"
+                }
+
+                text(" ")
+
+                button {
+                    disabled = true
+                    +"Clone"
+                }
+            }
+        }
+    }
+
     /**
      * Displays the input [data], or displays "{ no data }" if it's null
      */
-    fun FlowContent.displayInteractionData(data: Tapedata?) {
+    fun FlowContent.displayInteractionData(data: Networkdata?) {
         if (data == null) {
             +"{ no data }"
             return
         }
 
         div {
+            id = when (data) {
+                is Requestdata -> "requestDiv"
+                is Responsedata -> "responseDiv"
+                else -> ""
+            }
             table {
                 thead {
                     tr {
@@ -819,54 +934,57 @@ abstract class EditorModule {
         }
     }
 
-    private fun TR.tapeDataRow(data: Tapedata?) {
+    private fun TR.tapeDataRow(data: Networkdata) {
         td {
             div {
-                style = """
-                        resize: none;
-                        overflow: scroll;
-                    """.trimIndent()
-
                 when (data) {
-                    is RequestTapedata -> {
+                    is Requestdata -> {
                         text("Method: \n${data.method}")
-                        text("Url: ${data.url}")
+                        br()
+                        +"Url: %s".format(
+                            if (data.url.isNullOrBlank())
+                                "{ no data }" else data.url
+                        )
                     }
-                    is ResponseTapedata ->
+                    is Responsedata -> {
                         text("Code: \n${data.code}")
-
+                        infoText(
+                            "Status - '%s'",
+                            HttpStatusCode.fromValue(data.code ?: 200).description
+                        )
+                    }
                     else -> text("{ no data }")
                 }
             }
         }
 
         td {
-            div {
-                id = "resizingTapeData"
-                style = """
+            val divID = "resizingTapeData_${data.hashCode()}"
+            val headers = data.headers
+
+            if (headers == null || headers.size() == 0) {
+                +"{ no data }"
+            } else {
+                div {
+                    id = divID
+                    style = """
                     margin-bottom: 1em;
                     resize: vertical;
                     overflow: auto;
                     min-height: 5em;
+                    background-color: #DDD;
                 """.trimIndent()
 
-                val headers = data?.headers
-                table {
-                    thead {
-                        tr {
-                            th { +"Key" }
-                            th { +"Value" }
-                        }
-                    }
-                    tbody {
-                        if (headers == null) {
+                    val tableID = "header_${data.hashCode()}"
+                    table {
+                        id = tableID
+                        thead {
                             tr {
-                                td {
-                                    colSpan = "2"
-                                    +"{ no data }"
-                                }
+                                th { +"Key" }
+                                th { +"Value" }
                             }
-                        } else
+                        }
+                        tbody {
                             headers.toMultimap().forEach { (t, u) ->
                                 u.forEach {
                                     tr {
@@ -875,6 +993,15 @@ abstract class EditorModule {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    script {
+                        unsafe {
+                            +"""
+                            $divID.style.maxHeight = ($tableID.scrollHeight + 14) + 'px';
+                        """.trimIndent()
+                        }
                     }
                 }
             }
@@ -882,30 +1009,40 @@ abstract class EditorModule {
 
         td {
             style = "vertical-align: top;"
-            textArea {
-                id = when (data) {
-                    is RequestTapedata -> "requestBody"
-                    is ResponseTapedata -> "responseBody"
-                    else -> ""
-                }
+            val areaID = when (data) {
+                is Requestdata -> "requestBody"
+                is Responsedata -> "responseBody"
+                else -> ""
+            }
 
+            if (data.body == null)
+                +"{ no data }"
+
+            textArea {
+                id = areaID
+                readonly = true
                 style = """
                     margin-bottom: 1em;
                     resize: vertical;
                     width: 100%;
                     min-height: 5em;
+                    background-color: #EEE;
                 """.trimIndent()
                 readonly = true
-                +(data?.body ?: "")
+                hidden = data.body == null
+                +data.body.orEmpty()
             }
+
+            script { unsafe { +"beautifyField($areaID);" } }
         }
     }
 
-    class activeData(val params: Parameters) {
+    class ActiveData(private val params: Parameters) {
         private val tapeCatalog by lazy { TapeCatalog.Instance }
 
         var tape: BlankTape? = null
         var chapter: RecordedInteractions? = null
+        var networkData: Networkdata? = null
 
         /**
          * tape is null
@@ -919,11 +1056,21 @@ abstract class EditorModule {
         val newChapter
             get() = chapter == null
 
+        val newNetworkData
+            get() = networkData == null
+
+        val networkIsRequest
+            get() = networkData is Requestdata
+
+        val networkIsResponse
+            get() = networkData is Responsedata
+
         /**
          * Parameter data (trimmed) for 'tape', else null
          */
         val expectedTapeName
-            get() = params["tape"]?.let { if (it.isBlank()) null else it.trim() }
+            get() = params["tape"]?.trim()
+                ?.let { if (it.isBlank()) null else it }
 
         /**
          * Expected tape name, or a generated name (optional [default])
@@ -935,7 +1082,8 @@ abstract class EditorModule {
          * Parameter data (trimmed) for 'chapter', else null
          */
         val expectedChapName
-            get() = params["chapter"]?.let { if (it.isBlank()) null else it.trim() }
+            get() = params["chapter"]?.trim()
+                ?.let { if (it.isBlank()) null else it }
 
         /**
          * Expected chapter name, or a generated name (optional [default])
@@ -943,23 +1091,65 @@ abstract class EditorModule {
         fun hardChapName(default: String = RandomHost().valueAsUUID) =
             expectedChapName ?: default
 
+        val expectedNetworkType
+            get() = params["network"]?.trim().orEmpty()
+
         /**
          * Params passed in a tape name, but no tape was found by that name
          */
         val loadTape_Failed
-            get() = newTape && !expectedTapeName.isNullOrBlank()
+            get() = newTape && expectedTapeName != null
 
         /**
          * Params passed in a tape name, but no tape was found by that name
          */
         val loadChap_Failed
-            get() = newChapter && !expectedChapName.isNullOrBlank()
+            get() = newChapter && expectedChapName != null
+
+        fun hrefMake(
+            tape: String? = null,
+            chapter: String? = null,
+            network: String? = null
+        ): String {
+            val builder = StringBuilder().append("edit?")
+            if (tape != null)
+                builder.append("tape=%s".format(tape))
+            if (chapter != null)
+                builder.append("&chapter=%s".format(chapter))
+            if (network != null)
+                builder.append("&network=%s".format(network))
+            return builder.toString()
+        }
+
+        fun hrefEdit(
+            hTape: String? = null,
+            hChapter: String? = null,
+            hNetwork: String? = null
+        ): String {
+            val builder = StringBuilder().append("edit?")
+            if (hTape != null || !expectedTapeName.isNullOrEmpty())
+                builder.append("tape=%s".format(hTape ?: hardTapeName()))
+            else return builder.toString()
+
+            if (hChapter != null || !expectedChapName.isNullOrEmpty())
+                builder.append("&chapter=%s".format(hChapter ?: hardChapName()))
+            else return builder.toString()
+
+            if (hNetwork != null || expectedNetworkType.isNotBlank())
+                builder.append("&network=%s".format(hNetwork ?: expectedNetworkType))
+            return builder.toString()
+        }
 
         init {
             tape = tapeCatalog.tapes
                 .firstOrNull { it.name == params["tape"] }
             chapter = tape?.chapters
                 ?.firstOrNull { it.name == params["chapter"] }
+            networkData = when (params["network"]) {
+                "request" -> chapter?.requestData
+                "response" -> chapter?.responseData
+                else -> null
+            }
         }
     }
 
@@ -967,70 +1157,72 @@ abstract class EditorModule {
      * Retrieves data from the [Parameters] for the current Tape/ Chapter
      */
     val Parameters.toActiveEdit
-        get() = activeData(this)
+        get() = ActiveData(this)
 
     fun BODY.BreadcrumbNav(params: Parameters = Parameters.Empty) =
         BreadcrumbNav(params.toActiveEdit)
 
-    fun BODY.BreadcrumbNav(data: activeData) {
+    fun BODY.BreadcrumbNav(data: ActiveData) {
         div(classes = "breadcrumb") {
-            getForm(action = TapeRouting.RoutePaths.ALL.path) {
-                hiddenInput(name = "tape") { id = name }
-                hiddenInput(name = "chapter") {
-                    id = name
-                    disabled = true
+            div(classes = "subnav") {
+                a(classes = "navHeader") {
+                    href = data.hrefMake()
+                    +"All Tapes"
                 }
+                if (tapeCatalog.tapes.isNotEmpty())
+                    div(classes = "subnav-content") {
+                        style = "left: 1em;"
+                        tapeCatalog.tapes.forEach {
+                            a {
+                                href = data.hrefMake(tape = it.name)
+                                +it.name
+                            }
+                        }
+                    }
+            }
 
+            if (!data.newTape) {
                 div(classes = "subnav") {
-                    button(classes = "navHeader") { +"All Tapes" }
-                    if (tapeCatalog.tapes.isNotEmpty())
+                    a(classes = "navHeader") {
+                        href = data.hrefMake(tape = data.hardTapeName())
+                        +"Tape"
+                    }
+
+                    data.tape?.chapters?.also { chap ->
+                        if (chap.isEmpty()) return@also
                         div(classes = "subnav-content") {
-                            style = "left: 1em;"
-                            tapeCatalog.tapes.forEach {
-                                button {
-                                    formAction = TapeRouting.RoutePaths.EDIT.path
-                                    onClick = "tape.value = '${it.name}';"
+                            style = "left: 5.7em;"
+                            chap.forEach {
+                                a {
+                                    href = data.hrefMake(
+                                        tape = data.hardTapeName(),
+                                        chapter = it.name
+                                    )
                                     +it.name
                                 }
                             }
                         }
+                    }
                 }
+            }
 
-                if (!data.newTape) {
-                    div(classes = "subnav") {
-                        button(classes = "navHeader") {
-                            formAction = TapeRouting.RoutePaths.EDIT.path
-                            onClick = "tape.value = '${data.hardTapeName()}';"
-                            +"Tape"
-                        }
-
-                        data.tape?.chapters?.also { chap ->
-                            if (chap.isEmpty()) return@also
-                            div(classes = "subnav-content") {
-                                style = "left: 5.7em;"
-                                chap.forEach {
-                                    button {
-                                        formAction = TapeRouting.RoutePaths.EDIT.path
-                                        onClick = """
-                                            tape.value = '${data.hardTapeName()}';
-                                            chapter.disabled = false;
-                                            chapter.value = '${it.name}';
-                                        """.trimIndent()
-                                        +it.name
-                                    }
-                                }
-                            }
-                        }
+            data.chapter?.also { ch ->
+                div(classes = "subnav") {
+                    a(classes = "navHeader") {
+                        href = data.hrefMake(
+                            tape = data.hardTapeName(),
+                            chapter = data.hardChapName()
+                        )
+                        +ch.name
                     }
                 }
 
-                data.chapter?.also { ch ->
+                if (data.expectedNetworkType.isNotBlank())
                     div(classes = "subnav") {
-                        button(classes = "navHeader", type = ButtonType.button) {
-                            +ch.name
+                        a(classes = "navHeader") {
+                            +data.expectedNetworkType
                         }
                     }
-                }
             }
 
             // Append a `down caret` to headers which have children
@@ -1048,5 +1240,6 @@ abstract class EditorModule {
                 }
             }
         }
+        br()
     }
 }

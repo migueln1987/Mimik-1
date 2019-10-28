@@ -11,8 +11,8 @@ import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
 import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
-import mimikMockHelpers.RequestTapedata
-import mimikMockHelpers.ResponseTapedata
+import mimikMockHelpers.Requestdata
+import mimikMockHelpers.Responsedata
 import okhttp3.*
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
@@ -30,7 +30,7 @@ val okhttp3.Response.toJson: String
             }
         } catch (_: Exception) {
             null
-        } ?: ""
+        }.orEmpty()
     }
 
 /**
@@ -48,7 +48,7 @@ fun RequestBody?.content(default: String = ""): String {
 
 fun ResponseBody?.content(default: String = ""): String {
     return try {
-        this?.string() ?: ""
+        this?.string().orEmpty()
     } catch (e: Exception) {
         ""
     }
@@ -155,7 +155,7 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
 
             override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
             override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
-            override fun bodyAsText() = bodyData ?: ""
+            override fun bodyAsText() = bodyData.orEmpty()
 
             override fun newBuilder() = TODO()
             override fun toYaml() = TODO()
@@ -163,9 +163,9 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
     }
 
 /**
- * Converts a [okhttp3.Request] to [RequestTapedata]
+ * Converts a [okhttp3.Request] to [Requestdata]
  */
-val okhttp3.Request.toTapeData: RequestTapedata
+val okhttp3.Request.toTapeData: Requestdata
     get() = this.toReplayRequest.toTapeData
 
 val okhttp3.Response.toReplayResponse: okreplay.Response
@@ -188,7 +188,7 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
 
             override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
             override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
-            override fun bodyAsText() = bodyData ?: ""
+            override fun bodyAsText() = bodyData.orEmpty()
 
             override fun newBuilder() = TODO()
             override fun toYaml() = TODO()
@@ -265,16 +265,16 @@ val okreplay.Request.toOkRequest: okhttp3.Request
     }
 
 /**
- * Converts the [okreplay.Request] to [RequestTapedata]
+ * Converts the [okreplay.Request] to [Requestdata]
  */
-val okreplay.Request.toTapeData: RequestTapedata
-    get() = RequestTapedata(this)
+val okreplay.Request.toTapeData: Requestdata
+    get() = Requestdata(this)
 
 /**
- * Converts the [okreplay.Response] to [ResponseTapedata]
+ * Converts the [okreplay.Response] to [Responsedata]
  */
-val okreplay.Response.toTapeData: ResponseTapedata
-    get() = ResponseTapedata(this)
+val okreplay.Response.toTapeData: Responsedata
+    get() = Responsedata(this)
 
 // ktor
 suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
@@ -301,7 +301,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         }
 
         // resolve what host would be taking to
-        if ((headerCache.get("Host") ?: "").startsWith("0.0.0.0"))
+        if ((headerCache.get("Host").orEmpty()).startsWith("0.0.0.0"))
             headerCache.set("Host", outboundHost)
 
         build.headers(headerCache.build())
@@ -311,7 +311,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
             if (HttpMethod.requiresRequestBody(request.httpMethod.value))
                 RequestBody.create(
                     MediaType.parse(request.contentType().toString()),
-                    requestBody ?: ""
+                    requestBody.orEmpty()
                 )
             else null
         )
@@ -322,7 +322,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
 /**
  * Returns if the response
  */
-val ResponseTapedata?.isImage: Boolean
+val Responsedata?.isImage: Boolean
     get() = if (this == null) false else
         tapeHeaders.get(HttpHeaders.ContentType)?.contains("image").isTrue()
 
