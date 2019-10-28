@@ -1228,7 +1228,7 @@ abstract class EditorModule {
                 div(classes = "subnav") {
                     a(classes = "navHeader") {
                         href = data.hrefMake(tape = data.hardTapeName())
-                        +"Tape"
+                        +"Tape (%s)".format(data.hardTapeName())
                     }
 
                     data.tape?.chapters?.also { chap ->

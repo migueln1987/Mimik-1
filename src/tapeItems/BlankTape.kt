@@ -87,12 +87,17 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
          */
         fun build(): BlankTape {
             val returnTape = if (reBuild != null) {
-                if (reBuild.file?.exists().isTrue())
+                var isHardTape = false
+                if (reBuild.file?.exists().isTrue()) {
+                    isHardTape = true
                     reBuild.file?.delete()
+                }
                 reBuild.file = File(
                     VCRConfig.getConfig.tapeRoot.get(),
                     reBuild.name.toJsonName
                 )
+                if (isHardTape)
+                    reBuild.saveFile()
                 reBuild
             } else {
                 BlankTape { tape ->
