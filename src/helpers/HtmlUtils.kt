@@ -3,6 +3,7 @@ package helpers
 import R
 import kotlinx.html.*
 import kotlin.math.abs
+import kotlin.random.Random
 
 /**
  * Creates a line (2 "<[br]>") for each [lines] count
@@ -118,7 +119,7 @@ fun FlowContent.toolTip(
         .split('\n')
 
     div(classes = spanClasses) {
-        val thisId = "tooltip_${abs(property.hashCode())}"
+        val thisId = "tooltip_${abs(property.hashCode() + Random.nextInt())}"
         id = thisId
         splitLines.eachHasNext({ +it }, { br() })
         script {

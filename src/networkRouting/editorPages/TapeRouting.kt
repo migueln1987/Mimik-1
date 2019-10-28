@@ -209,22 +209,12 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     .also { tapeCatalog.tapes.add(it) }
             }
 
-        val saveChap = foundTape.chapters
-            .firstOrNull { it.name == data["name_pre"] }
-            ?: let { foundTape.createNewInteraction() }
-
-        saveChap.also {
-            it.chapterName = data["nameChap"]
-            // todo; save Chapter data
-        }
-
-        if (foundTape.file?.exists().isTrue())
-            foundTape.saveFile()
+        val chap = data.saveChapter(foundTape)
 
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
             parameters.append("tape", foundTape.name)
-            parameters.append("chapter", saveChap.name)
+            parameters.append("chapter", chap.name)
             when (data["afterAction"]) {
                 "newChapter" -> parameters["chapter"] = ""
                 "parentTape" -> parameters.remove("chapter")

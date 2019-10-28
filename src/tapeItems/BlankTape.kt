@@ -43,6 +43,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     reBuild.routingUrl = value
             }
 
+        val isValidURL: Boolean
+            get() = routingURL.isJSONValid
+
         var attractors: RequestAttractors? = null
             set(value) {
                 field = value
@@ -67,6 +70,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 }
             }
 
+        var alwaysLive: Boolean? = false
+            set(value) {
+                field = value
+                if (reBuild != null) {
+                    reBuild.alwaysLive = value
+                }
+            }
+
         init {
             config.invoke(this)
         }
@@ -76,12 +87,17 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
          */
         fun build(): BlankTape {
             val returnTape = if (reBuild != null) {
-                if (reBuild.file?.exists().isTrue())
+                var isHardTape = false
+                if (reBuild.file?.exists().isTrue()) {
+                    isHardTape = true
                     reBuild.file?.delete()
+                }
                 reBuild.file = File(
                     VCRConfig.getConfig.tapeRoot.get(),
                     reBuild.name.toJsonName
                 )
+                if (isHardTape)
+                    reBuild.saveFile()
                 reBuild
             } else {
                 BlankTape { tape ->
@@ -89,6 +105,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     tape.attractors = attractors
                     tape.mode = if (allowLiveRecordings == true)
                         TapeMode.READ_WRITE else TapeMode.READ_ONLY
+                    tape.alwaysLive = alwaysLive
                     tape.file = File(
                         VCRConfig.getConfig.tapeRoot.get(),
                         tape.name.toJsonName

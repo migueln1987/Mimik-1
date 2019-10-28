@@ -1,6 +1,7 @@
 package networkRouting.editorPages
 
 import helpers.appendLines
+import helpers.isJSONValid
 import helpers.uppercaseFirstLetter
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -105,7 +106,8 @@ object NetworkDataEditor : EditorModule() {
                                                 +when (val url = nData?.url) {
                                                     null -> "{ empty }"
                                                     "" -> "" // isBlank()
-                                                    else -> url
+                                                    else -> if (url.isJSONValid)
+                                                        url else "{ no match }"
                                                 }
                                             }
                                         }

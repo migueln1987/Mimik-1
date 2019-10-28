@@ -333,7 +333,8 @@ object TapeEditor : EditorModule() {
                                         +when (val url = pData.tape?.routingUrl?.trim()) {
                                             null -> "{ empty }"
                                             "" -> "" // isBlank()
-                                            else -> url
+                                            else -> if (url.isJSONValid)
+                                                url else "{ no match }"
                                         }
                                     }
                                 }
@@ -407,7 +408,10 @@ object TapeEditor : EditorModule() {
                                     value = pData.tape?.alwaysLive.isTrue().toString()
                                     onChange = """
                                         setIsDisabled(SaveNewCalls, checked)
-                                        setIsDisabled(ChapterData, checked)
+                                        if (checked)
+                                            ChapterData.classList.add("opacity50");
+                                        else
+                                            ChapterData.classList.remove("opacity50");
                                         setIsDisabled(SaveAddChapters, checked)
                                     """.trimIndent()
                                 }

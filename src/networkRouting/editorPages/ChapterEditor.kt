@@ -47,6 +47,7 @@ object ChapterEditor : EditorModule() {
                     disabled = true
                 }
 
+                val isLive = pData.chapter?.alwaysLive.isTrue()
                 table {
                     tr {
                         th {
@@ -185,7 +186,7 @@ object ChapterEditor : EditorModule() {
                                 "Usages: ",
                                 "usageInfo"
                             )
-                            numberInput {
+                            numberInput(name = "usesCount") {
                                 min = MockUseStates.ALWAYS.state.toString()
                                 max = Int.MAX_VALUE.toString()
                                 value = when (val uses = pData.chapter?.mockUses) {
@@ -200,9 +201,15 @@ object ChapterEditor : EditorModule() {
                                 "chapLiveInfo"
                             )
                             checkBoxInput(name = "useLive") {
-                                checked = pData.chapter?.alwaysLive.isTrue()
-                                onInput = """
-                                        alert("todo; enable/ disable Response data + clear Response data")
+                                checked = isLive
+                                onClick = """
+                                        if (checked) {
+                                            requestDataDiv.classList.add('opacity50');
+                                            responseDataDiv.classList.add('opacity50');
+                                        } else {
+                                            requestDataDiv.classList.remove('opacity50');
+                                            responseDataDiv.classList.remove('opacity50');
+                                        }
                                     """.trimIndent()
                             }
                         }
@@ -220,7 +227,7 @@ object ChapterEditor : EditorModule() {
                         td {
                             makeToggleButton("requestDataDiv")
 
-                            div {
+                            div(classes = if (isLive) "opacity50" else "") {
                                 id = "requestDataDiv"
                                 table {
                                     style = "width: auto;"
@@ -235,7 +242,10 @@ object ChapterEditor : EditorModule() {
                                     tbody {
                                         tr {
                                             td {
-                                                style = "padding: 0.4em 2em;"
+                                                style = if (pData.chapter?.requestData == null)
+                                                    "padding: 0.4em 2em;"
+                                                else
+                                                    "padding: 0.2em 1em;"
                                                 getButton {
                                                     formAction = TapeRouting.RoutePaths.EDIT.path
                                                     onClick = """
@@ -247,21 +257,31 @@ object ChapterEditor : EditorModule() {
                                                     else
                                                         +"Edit"
                                                 }
+                                            }
 
-                                                if (pData.chapter?.requestData != null) {
-//                                                    +" "
-//
-//                                                    button(type = ButtonType.button) {
-//                                                        onClick = "requestInput.value = '';"
-//                                                        +"Clear Request"
-//                                                    }
-//
-//                                                    +" "
-//                                                    button(type = ButtonType.button) {
-//                                                        onClick = "beautifyField(requestBody);"
-//                                                        +"Beautify Body"
-//                                                    }
+                                            if (pData.chapter?.requestData != null) {
+                                                td {
+                                                    style = "text-align: center;"
+                                                    tooltipText(
+                                                        "Clear Request",
+                                                        "chapReqClear"
+                                                    )
+                                                    br()
+                                                    checkBoxInput(name = "clearRequest") {
+                                                        onClick = """
+                                                            if (checked)
+                                                                requestDiv.classList.add('opacity50');
+                                                            else
+                                                                requestDiv.classList.remove('opacity50');
+                                                        """.trimIndent()
+                                                    }
                                                 }
+
+//                                                +" "
+//                                                button(type = ButtonType.button) {
+//                                                    onClick = "beautifyField(requestBody);"
+//                                                    +"Beautify Body"
+//                                                }
                                             }
                                         }
                                     }
@@ -284,7 +304,7 @@ object ChapterEditor : EditorModule() {
                         td {
                             makeToggleButton("responseDataDiv")
 
-                            div {
+                            div(classes = if (isLive) "opacity50" else "") {
                                 id = "responseDataDiv"
                                 table {
                                     style = "width: auto;"
@@ -299,6 +319,21 @@ object ChapterEditor : EditorModule() {
                                     tbody {
                                         tr {
                                             td {
+                                                style = "padding: 0.2em 1em;"
+                                                getButton {
+                                                    formAction = TapeRouting.RoutePaths.EDIT.path
+                                                    onClick = """
+                                                        network.value = 'response';
+                                                        network.disabled = false;
+                                                    """.trimIndent()
+                                                    if (pData.chapter?.responseData == null)
+                                                        +"Create"
+                                                    else
+                                                        +"Edit"
+                                                }
+                                            }
+
+                                            td {
                                                 style = "text-align: center;"
                                                 tooltipText(
                                                     "Await status",
@@ -312,27 +347,12 @@ object ChapterEditor : EditorModule() {
                                                     onClick = """
                                                         if (checked && ${pData.chapter?.awaitResponse.isFalse()})
                                                             if (confirm(${R.getProperty("chapAwaitConfirm")})) {
-                                                                responseDiv.style.opacity = 0.5;
+                                                                responseDiv.classList.add('opacity50');
                                                                 return true;
-                                                            }
-                                                            else return false;
+                                                            } else return false;
                                                         else
-                                                            responseDiv.style.opacity = 1;
+                                                            responseDiv.classList.remove('opacity50');
                                                     """.trimIndent()
-                                                }
-                                            }
-
-                                            td {
-                                                getButton {
-                                                    formAction = TapeRouting.RoutePaths.EDIT.path
-                                                    onClick = """
-                                                        network.value = 'response';
-                                                        network.disabled = false;
-                                                    """.trimIndent()
-                                                    if (pData.chapter?.responseData == null)
-                                                        +"Create"
-                                                    else
-                                                        +"Edit"
                                                 }
                                             }
 

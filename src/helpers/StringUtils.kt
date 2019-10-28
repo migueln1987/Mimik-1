@@ -76,16 +76,22 @@ fun String.appendLines(vararg strings: String) =
  */
 fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default
 
+/**
+ * Returns [true] if the input is a valid json
+ */
 val String?.isJSONValid: Boolean
     get() = try {
         val adjustedString = this?.replace("\\n", "")
         Gson().fromJson(adjustedString, Any::class.java)
         true
     } catch (ex: Exception) {
-        println("= isJSONValid =\n $ex")
+//        println("= isJSONValid =\n $ex")
         false
     }
 
+/**
+ * Returns an empty string if the json is valid, or the error message
+ */
 val String?.isJSONValidMsg: String
     get() = try {
         val adjustedString = this?.replace("\\n", "")
