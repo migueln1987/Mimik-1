@@ -7,10 +7,7 @@ import helpers.attractors.RequestAttractors
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlinx.html.*
-import mimikMockHelpers.Networkdata
-import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.Requestdata
-import mimikMockHelpers.Responsedata
+import mimikMockHelpers.*
 import okhttp3.Headers
 import tapeItems.BlankTape
 
@@ -190,8 +187,7 @@ abstract class EditorModule {
                             toToggle.style.display = "none";
                             toToggle.style.maxHeight = null;
                         } else {
-                            toToggle.style.display = "contents";
-                            toToggle.style.width = "100%"
+                            toToggle.style.display = "inline-table";
                             toToggle.style.height = "100%"
                             toToggle.style.maxHeight = (toToggle.scrollHeight + 100) + "px";
                             var watcher = setInterval(function() {
@@ -291,6 +287,8 @@ abstract class EditorModule {
                         font-size: 14px;
                         color: #555
                     }
+                    
+                    .opacity50 { opacity: 0.5; }
                     """.trimIndent()
                         .appendLines(
                             breadcrumbStyle,
@@ -429,6 +427,7 @@ abstract class EditorModule {
                 max-height: 0;
                 display: none;
                 overflow: hidden;
+                width: -webkit-fill-available;
                 background-color: #f4f4f4;
                 transition: max-height 0.4s ease-out;
             }
@@ -537,6 +536,9 @@ abstract class EditorModule {
             onKeyDown = "return event.key != 'Enter';"
         }
 
+    /**
+     * Saves key/value data to a tape. Reusing tape is retrieved using "name_pre".
+     */
     fun Map<String, String>.saveToTape(): BlankTape {
         var isNewTape = true
         val nowTape = tapeCatalog.tapes.firstOrNull { it.name == get("name_pre") }
@@ -570,6 +572,45 @@ abstract class EditorModule {
             modTape.saveFile()
 
         return modTape
+    }
+
+    fun Map<String, String>.saveChapter(tape: BlankTape): RecordedInteractions {
+        val modChap = tape.chapters
+            .firstOrNull { it.name == get("name_pre") }
+            ?: let { tape.createNewInteraction() }
+
+        modChap.also { chap ->
+            chap.chapterName = get("nameChap")
+            chap.attractors = RequestAttractors { attr ->
+                get("filterPath")?.trim()?.also { path ->
+                    if (path.isNotEmpty())
+                        attr.routingPath?.value = path
+                }
+
+                if (keys.any { it.startsWith(filterKey) }) {
+                    attr.queryParamMatchers = filterFindData("Parameter")
+                    attr.queryHeaderMatchers = filterFindData("Header")
+                    attr.queryBodyMatchers = filterFindData("Body")
+                }
+            }
+
+            chap.mockUses = get("usesCount")?.toIntOrNull() ?: MockUseStates.ALWAYS.state
+            if (get("usesEnabled") != "on")
+                chap.mockUses = MockUseStates.asDisabled(chap.mockUses)
+
+            chap.alwaysLive = get("useLive") == "on"
+
+            if (get("clearRequest") == "on")
+                chap.requestData = null
+
+            if (get("responseAwait") == "on")
+                chap.responseData = null
+        }
+
+        if (tape.file?.exists().isTrue())
+            tape.saveFile()
+
+        return modChap
     }
 
     private fun Map<String, String>.filterFindData(queryName: String): List<RequestAttractorBit>? {

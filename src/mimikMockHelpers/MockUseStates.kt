@@ -41,6 +41,17 @@ class MockUseStates(val state: Int) {
          * Returns true if [value] is a type of limited state
          */
         fun isLimitedMock(value: Int) = value in (0..Int.MAX_VALUE)
+
+        /**
+         * Sets the [state] as a disabled version of itself, if applicable.
+         */
+        fun asDisabled(state: Int): Int {
+            return when (state) {
+                -1 -> DISABLE.state
+                in (1..Int.MAX_VALUE) -> DISABLEDLIMITED.state
+                else -> state
+            }
+        }
     }
 
     /**
