@@ -66,7 +66,6 @@ object TapeEditor : EditorModule() {
                             }
 
                             displayTapeRecInfo(t)
-
                             br()
 
                             p {
@@ -220,7 +219,10 @@ object TapeEditor : EditorModule() {
                     }
 
                     tr {
-                        th { +"Name" }
+                        th {
+                            style = "width: 20%"
+                            +"Name"
+                        }
                         td {
                             val tapeNameAction = if (pData.expectedTapeName != null)
                                 "nameReset.hidden = tapeName.value == tapeName.placeholder;"
@@ -286,7 +288,10 @@ object TapeEditor : EditorModule() {
                     }
 
                     tr {
-                        th { +"Routing URL" }
+                        th {
+                            +"Routing URL"
+                            tooltipText("?", "tapeRoutingUrlInfo")
+                        }
                         td {
                             textInput(name = "RoutingUrl") {
                                 disableEnterKey
@@ -333,9 +338,6 @@ object TapeEditor : EditorModule() {
                                     }
                                 }
                             }
-
-                            br()
-                            infoText("tapeRoutingUrlInfo")
                         }
                     }
 
@@ -395,7 +397,10 @@ object TapeEditor : EditorModule() {
                         th { +"Chapters" }
                         td {
                             div {
-                                text("Allow call pass-through ")
+                                tooltipText(
+                                    "Allow call pass-through ",
+                                    "tapeCallPassthroughInfo"
+                                )
                                 checkBoxInput(name = "allowPassthrough") {
                                     id = "allowPassthrough"
                                     disabled = true
@@ -406,20 +411,21 @@ object TapeEditor : EditorModule() {
                                         setIsDisabled(SaveAddChapters, checked)
                                     """.trimIndent()
                                 }
-                                infoText("tapeCallPassthroughInfo")
-                                br()
+                                tooltipText("?", "tapeCallPassthroughHint")
+                                linebreak()
 
-                                text("Allow new recordings by filters -")
+                                tooltipText(
+                                    "Allow new recordings by filters -",
+                                    "tapeSaveNewCallsInfo"
+                                )
                                 checkBoxInput(name = "SaveNewCalls") {
                                     id = "SaveNewCalls"
                                     disabled = true
                                     value = pData.tape?.isWritable.isTrue().toString()
                                 }
-                                infoText("tapeSaveNewCallsInfo")
 
                                 if (!pData.newTape) {
-                                    br()
-                                    br()
+                                    linebreak()
                                     makeToggleButton("ChapterData")
                                 }
 
@@ -467,12 +473,11 @@ object TapeEditor : EditorModule() {
                                         )
                                     }
                                 } else {
-                                    text("Save tape to file -")
+                                    tooltipText("Save tape to file -", "tapeSaveHardInfo")
                                     checkBoxInput(name = "hardtape")
-                                    infoText("tapeSaveHardInfo")
                                 }
+                                linebreak()
 
-                                br()
                                 postButton(name = "Action") {
                                     formAction = TapeRouting.RoutePaths.ACTION.path
                                     value = "SaveTape"
@@ -718,8 +723,7 @@ object TapeEditor : EditorModule() {
                         +"Edit"
                     }
 
-                    br()
-                    br()
+                    linebreak()
 
                     getButton {
                         formAction = TapeRouting.RoutePaths.DELETE.path

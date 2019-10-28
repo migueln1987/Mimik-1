@@ -441,6 +441,7 @@ abstract class EditorModule {
                 display: inline-block;
                 border-bottom: 1px dotted #ccc;
                 color: #006080;
+                cursor: default;
             }
             
             .tooltip .tooltiptext {
@@ -797,8 +798,7 @@ abstract class EditorModule {
                 }
 
                 if (info.valueIsBody) {
-                    br()
-                    br()
+                    linebreak()
                     button(type = ButtonType.button) {
                         onClick = "beautifyField($fieldName);"
                         +"Beautify Body"
@@ -949,7 +949,7 @@ abstract class EditorModule {
                     is Responsedata -> {
                         text("Code: \n${data.code}")
                         infoText(
-                            "- %s",
+                            "Status - '%s'",
                             HttpStatusCode.fromValue(data.code ?: 200).description
                         )
                     }

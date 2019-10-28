@@ -180,8 +180,7 @@ object ChapterEditor : EditorModule() {
                                 )
                             }
 
-                            br()
-                            br()
+                            linebreak()
                             tooltipText(
                                 "Usages: ",
                                 "usageInfo"
@@ -195,8 +194,7 @@ object ChapterEditor : EditorModule() {
                                 }.toString()
                             }
 
-                            br()
-                            br()
+                            linebreak()
                             tooltipText(
                                 "Live - ",
                                 "chapLiveInfo"
