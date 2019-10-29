@@ -1,7 +1,6 @@
 package networkRouting.editorPages
 
-import helpers.isTrue
-import helpers.toParameters
+import helpers.limit
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.html.respondHtml
@@ -12,7 +11,6 @@ import io.ktor.request.receiveMultipart
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.*
-import io.ktor.util.filter
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import networkRouting.RoutingContract
@@ -24,17 +22,21 @@ import networkRouting.editorPages.TapeEditor.getTapePage
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
-class TapeRouting(path: String) : RoutingContract(path) {
+class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
     enum class RoutePaths(val path: String) {
         ALL("all"),
         EDIT("edit"),
         DELETE("delete"),
         ACTION("action");
-    }
 
-    private val RoutePaths.asSubPath
-        get() = this@TapeRouting.path + "/" + this.path
+        companion object {
+            const val rootPath = "tapes"
+        }
+
+        val asSubPath
+            get() = "$rootPath/$path"
+    }
 
     override fun init(route: Routing) {
         route.route(path) {
@@ -74,17 +76,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     return@get
                 }
 
-                val limitSet: MutableSet<String> = mutableSetOf()
-                val keys = listOf(
-                    "tape", "chapter", "network"
-                )
                 val limitParams = call.parameters
-                    .filter { s, _ ->
-                        s.toLowerCase().let { pKey ->
-                            val hasKey = keys.contains(pKey)
-                            hasKey && limitSet.add(pKey)
-                        }
-                    }.toParameters
+                    .limit(listOf("tape", "chapter", "network"))
 
                 if (call.parameters != limitParams) {
                     call.respondRedirect {

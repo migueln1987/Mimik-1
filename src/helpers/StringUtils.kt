@@ -2,6 +2,7 @@ package helpers
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import okhttp3.HttpUrl
 
 /**
  * If this string starts with the given [prefix], returns a copy of this string
@@ -79,20 +80,16 @@ fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default
 /**
  * Returns [true] if the input is a valid json
  */
-val String?.isJSONValid: Boolean
-    get() = try {
+val String?.isValidJSON: Boolean
+    get() = !isThrow {
         val adjustedString = this?.replace("\\n", "")
         Gson().fromJson(adjustedString, Any::class.java)
-        true
-    } catch (ex: Exception) {
-//        println("= isJSONValid =\n $ex")
-        false
     }
 
 /**
  * Returns an empty string if the json is valid, or the error message
  */
-val String?.isJSONValidMsg: String
+val String?.isValidJSONMsg: String
     get() = try {
         val adjustedString = this?.replace("\\n", "")
         Gson().fromJson(adjustedString, Any::class.java)
@@ -112,6 +109,12 @@ val String.toJsonName: String
         .replace("/", "")
         .replace(".", "-")
         .plus(".json")
+
+/**
+ * Returns true if this [String] is a valid Url
+ */
+val String?.isValidURL: Boolean
+    get() = HttpUrl.parse(this.orEmpty()) != null
 
 /**
  * Converts the source [String] into a indent-formatted string

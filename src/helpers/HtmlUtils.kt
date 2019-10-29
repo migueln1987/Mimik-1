@@ -27,6 +27,9 @@ fun FlowOrInteractiveOrPhrasingContent.inputButton(
     button(formEncType, formMethod, name, type, btnClass, block)
 }
 
+/**
+ * Creates a ToggleButton which will toggle the element of [target]
+ */
 fun FlowOrPhrasingContent.makeToggleButton(
     target: String,
     isExpanded: Boolean = false
@@ -44,6 +47,31 @@ fun FlowOrPhrasingContent.makeToggleButton(
         +"Toggle view"
     }
     br()
+}
+
+/**
+ * Creates a ToggleButton with a [DIV] below it (as the toggle area).
+ *
+ * The div will contain all the contents of [element]
+ */
+fun FlowContent.makeToggleArea(
+    isExpanded: Boolean = false,
+    element: (DIV) -> Unit
+) {
+    button(
+        type = ButtonType.button,
+        classes = "collapsible".let {
+            if (isExpanded)
+                "$it active" else it
+        }
+    ) { +"Toggle view" }
+
+    br()
+    div {
+        element.invoke(this)
+    }
+
+    script { unsafe { +"setupToggleArea();" } }
 }
 
 /**

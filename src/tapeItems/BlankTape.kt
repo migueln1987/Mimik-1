@@ -44,7 +44,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             }
 
         val isValidURL: Boolean
-            get() = routingURL.isJSONValid
+            get() = routingURL.isValidJSON
 
         var attractors: RequestAttractors? = null
             set(value) {
@@ -177,8 +177,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     /**
      * routingUrl has data, but HttpUrl is unable to parse it
      */
-    val isUrlValid: Boolean
-        get() = !routingUrl.isNullOrBlank() && httpRoutingUrl != null
+    val isValidURL: Boolean
+        get() = routingUrl.isValidURL
 
     override fun getName() = tapeName ?: file?.nameWithoutExtension ?: hashCode().toString()
 
@@ -297,7 +297,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                             "-Name\n %s\n-Can Complete: %b\n" +
                             "-Url: %s\n-Body:\n %s\n-Headers:\n %s%s\n",
                     it.name,
-                    isUrlValid,
+                    isValidURL,
                     okRequest.url(),
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
@@ -305,7 +305,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         "-Uses: ${it.mockUses}" else ""
                 )
 
-                if (isUrlValid) {
+                if (isValidURL) {
                     val responseData = getData(okRequest)
                     println(
                         "== Live Response ==\n-Code %d from %s\n",

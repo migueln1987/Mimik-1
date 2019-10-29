@@ -1,6 +1,6 @@
 package mimikMockHelpers
 
-import helpers.isJSONValid
+import helpers.isValidJSON
 import helpers.tryGetBody
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -30,7 +30,7 @@ class Responsedata : Networkdata {
 
     val replayResponse: okreplay.Response
         get() {
-            val isJson = body.isJSONValid
+            val isJson = body.isValidJSON
             headers = tapeHeaders.newBuilder().set(
                 HttpHeaders.ContentType,
                 if (isJson) "application/json" else "text/plain"

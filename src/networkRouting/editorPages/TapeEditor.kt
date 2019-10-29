@@ -72,7 +72,7 @@ object TapeEditor : EditorModule() {
                                 +"Routing URL: %s".format(
                                     when {
                                         t.routingUrl == null -> "{ no routing url }"
-                                        t.isUrlValid -> t.httpRoutingUrl!!
+                                        t.isValidURL -> t.httpRoutingUrl!!
                                         else -> "{ Invalid }"
                                     }
                                 )
@@ -333,7 +333,7 @@ object TapeEditor : EditorModule() {
                                         +when (val url = pData.tape?.routingUrl?.trim()) {
                                             null -> "{ empty }"
                                             "" -> "" // isBlank()
-                                            else -> if (url.isJSONValid)
+                                            else -> if (url.isValidJSON)
                                                 url else "{ no match }"
                                         }
                                     }

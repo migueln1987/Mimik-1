@@ -11,6 +11,7 @@ import io.ktor.request.httpMethod
 import io.ktor.request.receiveText
 import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
+import io.ktor.util.filter
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import okhttp3.*
@@ -50,7 +51,7 @@ fun ResponseBody?.content(default: String = ""): String {
     return try {
         this?.string().orEmpty()
     } catch (e: Exception) {
-        ""
+        default
     }
 }
 
@@ -67,6 +68,24 @@ val StringValues.toHeaders: Headers
 
 val StringValues.toParameters: Parameters
     get() = Parameters.build { appendAll(this@toParameters) }
+
+/**
+ * Limits the input [StringValues] to only those within the [items] list.
+ */
+fun StringValues.limit(items: List<String>, allowDuplicates: Boolean = false): Parameters {
+    val limitParams: MutableList<String> = mutableListOf()
+
+    return filter { s, _ ->
+        s.toLowerCase().let { pKey ->
+            if (items.contains(pKey)) {
+                if (limitParams.contains(pKey) && !allowDuplicates)
+                    return@filter false
+                limitParams.add(pKey)
+                return@filter true
+            } else false
+        }
+    }.toParameters
+}
 
 val Map<String, String>.toHeaders: Headers
     get() {
@@ -328,7 +347,7 @@ val Responsedata?.isImage: Boolean
 
 // == Others
 fun StringBuilder.toJson(): String {
-    return if (toString().isJSONValid) {
+    return if (toString().isValidJSON) {
         (Parser.default().parse(this) as JsonObject)
             .toJsonString(true, true)
     } else ""

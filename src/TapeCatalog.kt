@@ -134,7 +134,7 @@ class TapeCatalog : OkReplayInterceptor() {
             HttpStatusCode.Found -> {
                 hostTape.item?.let {
                     println("Using tape ${it.name}")
-                    if (it.isUrlValid)
+                    if (it.isValidURL)
                         callRequest = callRequest.reHost(it.httpRoutingUrl)
 
                     it.createNewInteraction { mock ->

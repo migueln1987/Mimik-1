@@ -207,10 +207,26 @@ abstract class EditorModule {
                 function setupTogggButtonTarget(target) {
                     setTimeout(function waitWrapper() {
                         var elem = document.getElementById(target);
+                        if (typeof target == "object")
+                            elem = target;
                         if (elem == null) setTimeout(waitWrapper, 10);
                         else if (!elem.classList.contains("hideableContent"))
                             elem.classList.add("hideableContent");
                     }, 10);
+                }
+                """
+        ),
+
+        SetupToggleArea_func(
+            """
+                function setupToggleArea() {
+                    var scriptTag = document.getElementsByTagName('script');
+                    scriptTag = scriptTag[scriptTag.length - 1];
+                    var togDiv = scriptTag.previousElementSibling;
+                    var togBtn = togDiv.previousElementSibling.previousElementSibling;
+
+                    togBtn.onclick = function() { toggleView(togBtn, togDiv); }
+                    setupTogggButtonTarget(togDiv);
                 }
                 """
         ),
@@ -247,8 +263,7 @@ abstract class EditorModule {
     fun FlowOrMetaDataContent.setupStyle() {
         style {
             unsafe {
-                raw(
-                    """
+                +"""
                     table {
                         font: 1em Arial;
                         border: 1px solid black;
@@ -289,13 +304,17 @@ abstract class EditorModule {
                     }
                     
                     .opacity50 { opacity: 0.5; }
+                    
+                    .radioDiv {
+                        width: 40%;
+                        padding: 6px;
+                    }
                     """.trimIndent()
-                        .appendLines(
-                            breadcrumbStyle,
-                            collapsibleStyle,
-                            tooltipStyle
-                        )
-                )
+                    .appendLines(
+                        breadcrumbStyle,
+                        collapsibleStyle,
+                        tooltipStyle
+                    )
             }
         }
     }

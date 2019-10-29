@@ -1,9 +1,8 @@
 package unitTests.helperTests
 
-import com.beust.klaxon.Parser
 import com.google.gson.Gson
 import helpers.ensurePrefix
-import helpers.isJSONValid
+import helpers.isValidJSON
 import helpers.isTrue
 import org.junit.Assert
 import org.junit.Test
@@ -61,13 +60,13 @@ class StringTests {
     @Test
     fun isJson_EmptyString() {
         val test = ""
-        Assert.assertTrue(test.isJSONValid)
+        Assert.assertTrue(test.isValidJSON)
     }
 
     @Test
     fun isJson_NullString() {
         val test: String? = null
-        Assert.assertTrue(test.isJSONValid)
+        Assert.assertTrue(test.isValidJSON)
     }
 
     class testClass(val string: String = "a", val int: Int = 0)
@@ -78,14 +77,14 @@ class StringTests {
         val test = Gson().toJson(testClassVal)
 
         Assert.assertNotNull(test)
-        Assert.assertTrue(test.isJSONValid)
+        Assert.assertTrue(test.isValidJSON)
     }
 
     @Test
     fun isJson_FromString_newlines() {
         val test = "{\\n    \"Data\": false\\n}"
 
-        Assert.assertTrue(test.isJSONValid)
+        Assert.assertTrue(test.isValidJSON)
     }
 
     @Test
@@ -100,6 +99,6 @@ class StringTests {
             }
         """.trimIndent()
 
-        Assert.assertTrue(test.isJSONValid)
+        Assert.assertTrue(test.isValidJSON)
     }
 }

@@ -334,6 +334,20 @@ object ChapterEditor : EditorModule() {
                                             }
 
                                             td {
+                                                hiddenInput(name = "ref") {
+                                                    value = "%s%s".format(
+                                                        pData.hardTapeName(),
+                                                        pData.hardChapName()
+                                                    ).hashCode().toString()
+                                                }
+                                                getButton {
+                                                    formAction = "../" + DataGen.RoutePaths.Response.asSubPath
+                                                    disabled = pData.chapter == null
+                                                    +"Generate"
+                                                }
+                                            }
+
+                                            td {
                                                 style = "text-align: center;"
                                                 tooltipText(
                                                     "Await status",
@@ -389,7 +403,6 @@ object ChapterEditor : EditorModule() {
                         th { +"Save Options" }
                         td {
                             hiddenInput(name = "name_pre") { value = pData.hardChapName("") }
-                            hiddenInput(name = "tape") { value = pData.hardTapeName("") }
                             hiddenInput(name = "afterAction") { id = name }
 
                             div {
