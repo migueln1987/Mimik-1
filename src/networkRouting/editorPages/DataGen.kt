@@ -3,6 +3,7 @@ package networkRouting.editorPages
 import helpers.*
 import io.ktor.application.call
 import io.ktor.html.respondHtml
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.response.respondRedirect
@@ -30,13 +31,9 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
             get() = "$rootPath/$path"
     }
 
-    val CommonAttributeGroupFacade.disabledBG: Unit
-        get() {
-            if (isThrow { style })
-                style = "background-color: #F8F8F8;"
-            else
-                style += "background-color: #F8F8F8;"
-        }
+    private enum class ResponseActions {
+        Make, Remove, Use, NewChapter
+    }
 
     override fun init(route: Routing) {
         route.route(path) {
@@ -67,9 +64,27 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
     private val Route.responseGen
         get() = route(RoutePaths.ResponseGen.path) {
             post {
-                val gg = call.anyParameters()
+                val params = call.anyParameters()
+                if (params == null) {
+                    call.respondRedirect(RoutePaths.Response.path)
+                    return@post
+                }
 
-                val hh = gg
+                when (enumSafeValue<ResponseActions>(params["Action"])) {
+                    null -> {
+                    }
+                    ResponseActions.Make -> {
+                    }
+
+                    ResponseActions.Remove -> {
+                    }
+
+                    ResponseActions.Use -> {
+                    }
+
+                    ResponseActions.NewChapter -> {
+                    }
+                }
             }
         }
 
@@ -90,10 +105,6 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
             script {
                 unsafe { +JS.all }
             }
-        }
-
-        val inlineDiv: (DIV) -> Unit = {
-            it.style = "display: inline;"
         }
 
         body {
@@ -161,6 +172,57 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                     var usingURL: HttpUrl? = null
                     table {
                         tr {
+                            th { +"Method" }
+                            td {
+                                makeToggleArea {
+                                    div(classes = "radioDiv") {
+                                        val data = actChap.requestData?.method
+                                        val isValid = data != null
+                                        useCustom = !isValid
+                                        radioInput(name = "reqMethod") {
+                                            value = data.orEmpty()
+                                            disabled = !isValid
+                                            checked = isValid
+                                        }
+                                        infoText("Chapter Method") {
+                                            it.inlineDiv
+                                            if (!isValid) it.disabledText
+                                        }
+                                        br()
+
+                                        textInput {
+                                            readonly = true
+                                            disabled = true
+                                            if (isValid) readonlyBG else disabledBG
+                                            value = data ?: noData
+                                        }
+                                    }
+
+                                    div(classes = "radioDiv") {
+                                        val data = actChap.recentRequest?.method
+                                        radioInput(name = "reqMethod") {
+                                            id = "reqMethodCustom"
+                                            value = data.orEmpty()
+                                            checked = data != null || useCustom
+                                        }
+                                        infoText("Custom Method") { it.inlineDiv }
+                                        br()
+
+                                        select {
+                                            onChange = "reqMethodCustom.value = selectedIndex;"
+                                            HttpMethod.DefaultMethods.forEach {
+                                                option {
+                                                    if (data?.toUpperCase() == it.value)
+                                                        selected = true
+                                                    +it.value.toLowerCase().uppercaseFirstLetter()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        tr {
                             th {
                                 style = "width: 20%"
                                 +"Request URL"
@@ -171,18 +233,22 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         usingURL = actTape.routingUrl.asHttpUrl
                                         val data = usingURL.let { it?.hostPath ?: noData }
                                         val isValid = data.isValidURL
+                                        useCustom = !isValid
                                         radioInput(name = "reqUrl") {
                                             value = data
                                             checked = isValid
                                             disabled = !isValid
                                         }
-                                        infoText(property = "Tape URL", divArgs = inlineDiv)
+                                        infoText("Tape URL") {
+                                            it.inlineDiv
+                                            if (!isValid) it.disabledText
+                                        }
                                         br()
 
                                         textInput {
                                             readonly = true
                                             disabled = !isValid
-                                            disabledBG
+                                            if (isValid) readonlyBG else disabledBG
                                             value = data
                                         }
                                     }
@@ -191,19 +257,22 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         usingURL = actChap.requestData?.url.asHttpUrl
                                         val data = usingURL.let { it?.hostPath ?: noData }
                                         val isValid = data.isValidURL
-
+                                        useCustom = !isValid
                                         radioInput(name = "reqUrl") {
                                             value = data
                                             checked = isValid
                                             disabled = !isValid
                                         }
-                                        infoText(property = "Chapter URL", divArgs = inlineDiv)
+                                        infoText("Chapter URL") {
+                                            it.inlineDiv
+                                            if (!isValid) it.disabledText
+                                        }
                                         br()
 
                                         textInput {
                                             readonly = true
                                             disabled = !isValid
-                                            disabledBG
+                                            if (isValid) readonlyBG else disabledBG
                                             value = data
                                         }
                                     }
@@ -212,9 +281,9 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         val data = actChap.recentRequest?.httpUrl?.hostPath
                                         radioInput(name = "reqUrl") {
                                             id = "reqUrlCustom"
-                                            checked = usingURL == null
+                                            checked = usingURL == null || useCustom
                                         }
-                                        infoText(property = "Custom URL", divArgs = inlineDiv)
+                                        infoText("Custom URL") { it.inlineDiv }
                                         br()
 
                                         textInput {
@@ -237,19 +306,22 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.url.asHttpUrl.toParameters
                                         val isValid = data?.isEmpty().isFalse()
+                                        useCustom = !isValid
                                         radioInput(name = "reqParams") {
                                             checked = isValid
                                             disabled = !isValid
                                             value = (data ?: "").toString()
-                                            useCustom = !isValid
                                         }
-                                        infoText(property = "Chapter Params", divArgs = inlineDiv)
+                                        infoText("Chapter Params") {
+                                            it.inlineDiv
+                                            if (!isValid) it.disabledText
+                                        }
                                         br()
 
                                         paramTextArea(data) {
                                             readonly = true
                                             disabled = !isValid
-                                            disabledBG
+                                            if (isValid) readonlyBG else disabledBG
                                         }
                                     }
 
@@ -257,10 +329,10 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         val data = actChap.recentRequest?.url.asHttpUrl.toParameters
                                         radioInput(name = "reqParams") {
                                             id = "reqCustomParams"
-                                            checked = useCustom
+                                            checked = data?.isEmpty().isFalse() || useCustom
                                             value = (data ?: "").toString()
                                         }
-                                        infoText(property = "Custom Params", divArgs = inlineDiv)
+                                        infoText("Custom Params") { it.inlineDiv }
                                         br()
 
                                         paramTextArea(data) {
@@ -282,19 +354,22 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.headers
                                         val isValid = (data?.size() ?: 0) > 0
+                                        useCustom = !isValid
                                         radioInput(name = "netHeaders") {
                                             checked = isValid
                                             disabled = !isValid
                                             value = (data ?: "").toString().trim()
-                                            useCustom = !isValid
                                         }
-                                        infoText(property = "Chapter Headers", divArgs = inlineDiv)
+                                        infoText("Chapter Headers") {
+                                            it.inlineDiv
+                                            if (!isValid) it.disabledText
+                                        }
                                         br()
 
                                         headerTextArea(data) {
                                             readonly = true
                                             disabled = !isValid
-                                            disabledBG
+                                            if (isValid) readonlyBG else disabledBG
                                         }
                                     }
 
@@ -303,9 +378,9 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         radioInput(name = "netHeaders") {
                                             id = "customHeaders"
                                             value = (data ?: "").toString()
-                                            checked = useCustom
+                                            checked = (data?.size() ?: 0) > 0 || useCustom
                                         }
-                                        infoText(property = "Custom Headers", divArgs = inlineDiv)
+                                        infoText("Custom Headers") { it.inlineDiv }
                                         br()
 
                                         headerTextArea(data) {
@@ -324,34 +399,39 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.body
                                         val isValid = !data.isNullOrEmpty()
+                                        useCustom = !isValid
                                         radioInput(name = "reqBody") {
                                             value = data.orEmpty()
                                             checked = isValid
                                             disabled = !isValid
-                                            useCustom = !isValid
                                         }
-                                        infoText(property = "Chapter Body", divArgs = inlineDiv)
+                                        infoText("Chapter Body") {
+                                            it.inlineDiv
+                                            if (!isValid) it.disabledText
+                                        }
                                         br()
 
                                         textArea {
                                             readonly = true
                                             disabled = !isValid
-                                            disabledBG
+                                            if (isValid) readonlyBG else disabledBG
                                             +data.orEmpty()
                                         }
                                     }
 
                                     div(classes = "radioDiv") {
+                                        val data = actChap.recentRequest?.body
                                         radioInput(name = "reqBody") {
                                             id = "reqBodyCustom"
-                                            checked = useCustom
+                                            checked = !data.isNullOrEmpty() || useCustom
                                         }
-                                        infoText(property = "Custom Body", divArgs = inlineDiv)
+                                        infoText("Custom Body") { it.inlineDiv }
                                         br()
 
                                         textArea {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "reqBodyCustom.value = value;"
+                                            +data.orEmpty()
                                         }
                                     }
                                 }
@@ -369,7 +449,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                             td {
                                 style = "text-align: center;"
                                 postButton(name = "Action") {
-                                    value = "make"
+                                    value = ResponseActions.Make.name
                                     formAction = RoutePaths.ResponseGen.path
                                     +"Make call"
                                 }
@@ -401,7 +481,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                 style = "text-align: center;"
                                 postButton(name = "Action") {
                                     formAction = RoutePaths.ResponseGen.path
-                                    value = "remove"
+                                    value = ResponseActions.Remove.name
                                     disabled = genResponses.isEmpty()
                                     +"Remove call"
                                 }
@@ -410,7 +490,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                             td {
                                 postButton(name = "Action") {
                                     formAction = RoutePaths.ResponseGen.path
-                                    value = "use"
+                                    value = ResponseActions.Use.name
                                     disabled = genResponses.isEmpty()
                                     +"Use call -> Chapter"
                                 }
@@ -419,7 +499,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                 div {
                                     postButton(name = "Action") {
                                         formAction = RoutePaths.ResponseGen.path
-                                        value = "newChapter"
+                                        value = ResponseActions.NewChapter.name
                                         disabled = genResponses.isEmpty()
                                         +"Use call -> New Chapter"
                                     }

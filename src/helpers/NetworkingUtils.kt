@@ -13,10 +13,7 @@ import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
 import io.ktor.util.filter
 import io.ktor.util.toMap
-import kotlinx.html.FlowContent
-import kotlinx.html.TEXTAREA
-import kotlinx.html.onKeyPress
-import kotlinx.html.textArea
+import kotlinx.html.*
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import okhttp3.*
@@ -427,6 +424,7 @@ suspend fun ApplicationCall.anyParameters(): Parameters? {
 val Parameters.toSingleMap: Map<String, String>
     get() = toMap().mapValues { it.value.firstOrNull().orEmpty() }
 
+// kotlinx.html
 /**
  * [textArea] which is populated by an input of [Parameters]
  */
@@ -468,6 +466,28 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
         +builder.toString()
     }
 }
+
+/**
+ * Appends the data in [value] to the current [style]
+ */
+fun CommonAttributeGroupFacade.appendStyle(value: String) {
+    if (isThrow { style })
+        style = value
+    else
+        style += value
+}
+
+val CommonAttributeGroupFacade.disabledBG: Unit
+    get() = appendStyle("background-color: #E0E0E0;")
+
+val CommonAttributeGroupFacade.readonlyBG: Unit
+    get() = appendStyle("background-color: #F0F0F0;")
+
+val CommonAttributeGroupFacade.disabledText: Unit
+    get() = appendStyle("color: darkgray;")
+
+val DIV.inlineDiv: Unit
+    get() = appendStyle("display: inline;")
 
 // == mimik
 /**

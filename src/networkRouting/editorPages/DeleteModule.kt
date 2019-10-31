@@ -17,8 +17,8 @@ object DeleteModule : EditorModule() {
                         call.respondRedirect(TapeRouting.RoutePaths.ALL.path)
                     }
                     else -> {
-                        if (tape.chapters.removeIf { it.name == chapterName } && tape.file?.exists().isTrue())
-                            tape.saveFile()
+                        if (tape.chapters.removeIf { it.name == chapterName })
+                            tape.saveIfExists()
 
                         call.respondRedirect {
                             val pathStart = this.encodedPath.substringBeforeLast('/')

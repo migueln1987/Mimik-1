@@ -4,9 +4,7 @@ import TapeCatalog
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
 import helpers.makeCatchResponse
-import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.httpMethod
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking

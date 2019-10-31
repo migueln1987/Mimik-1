@@ -172,7 +172,7 @@ object NetworkDataEditor : EditorModule() {
                             tooltipText("Info", "genKVDataField")
                             br()
                             headerTextArea(pData.networkData?.headers) {
-                                name = "networkHeaders"
+                                name = "netHeaders"
                             }
                         }
                     }

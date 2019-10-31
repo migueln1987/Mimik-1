@@ -604,8 +604,8 @@ abstract class EditorModule {
         if (isNewTape) {
             tapeCatalog.tapes.add(modTape)
             if (get("hardtape") == "on") modTape.saveFile()
-        } else if (modTape.file?.exists().isTrue())
-            modTape.saveFile()
+        } else
+            modTape.saveIfExists()
 
         return modTape
     }
@@ -643,8 +643,7 @@ abstract class EditorModule {
                 chap.responseData = null
         }
 
-        if (tape.file?.exists().isTrue())
-            tape.saveFile()
+        tape.saveIfExists()
 
         return modChap
     }

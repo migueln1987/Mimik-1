@@ -454,6 +454,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     /**
+     * If there is an existing hard tape, then this call will update that file
+     */
+    fun saveIfExists() {
+        if (file?.exists().isTrue())
+            saveFile()
+    }
+
+    /**
      * Saves the data to file. A new file will be created if one doesn't exist
      */
     fun saveFile() {

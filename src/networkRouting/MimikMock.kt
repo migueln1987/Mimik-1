@@ -185,8 +185,7 @@ class MimikMock(path: String = RoutePaths.rootPath) : RoutingContract(path) {
             }
         }
 
-        if (tape.file?.exists().isTrue())
-            tape.saveFile()
+        tape.saveIfExists()
 
         val isJson = bodyText.isValidJSON
 
