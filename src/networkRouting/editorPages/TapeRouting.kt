@@ -1,13 +1,9 @@
 package networkRouting.editorPages
 
-import helpers.limit
+import helpers.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.html.respondHtml
-import io.ktor.http.content.PartData
-import io.ktor.http.content.readAllParts
-import io.ktor.request.isMultipart
-import io.ktor.request.receiveMultipart
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.*
@@ -56,16 +52,11 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
     private val Route.action
         get() = post(RoutePaths.ACTION.path) {
-            if (call.request.isMultipart()) {
-                val values = call.receiveMultipart()
-                    .readAllParts().asSequence()
-                    .filterIsInstance<PartData.FormItem>()
-                    .filterNot { it.name.isNullOrBlank() }
-                    .associate { it.name!! to it.value }
-
-                call.processData(values)
-            } else
+            val params = call.anyParameters()
+            if (params == null || params.isEmpty())
                 call.respondRedirect(RoutePaths.ALL.path)
+            else
+                call.processData(params.toSingleMap)
         }
 
     private val Route.edit
@@ -231,45 +222,36 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
             }
 
         val network = when (data["network"]) {
-            "request" -> Requestdata {
+            "request" -> (foundChap.requestData ?: Requestdata()).also {
                 it.method = data["requestMethod"]
-                it.url = data["requestUrl"]
+                it.url = (it.httpUrl ?: it.url.asHttpUrl)
+                    .reHost(data["requestUrl"]).toString()
             }
 
-            "response" -> Responsedata {
+            "response" -> (foundChap.responseData ?: Responsedata()).also {
                 it.code = data["responseCode"]?.toIntOrNull()
             }
 
             else -> null
         }
             ?.also { nData ->
-                val headerKVs = data.asSequence()
-                    .filter { it.value.isNotBlank() }
-                    .filter { it.key.startsWith("header_") }
-                    .associateBy(
-                        { it.key.removePrefix("header_") },
-                        { it.value }
-                    )
+                val params = data["reqParams"].orEmpty()
+                    .toPairs() { !it[0].startsWith("//") }
 
-                val keys = headerKVs
-                    .filter { it.key.startsWith("key") }
-                    .mapKeys { it.key.removePrefix("key_") }
+                if (nData is Requestdata) {
+                    nData.url = nData.httpUrl.reParam(params).toString()
 
-                val vals = headerKVs
-                    .filter { it.key.startsWith("value") }
-                    .mapKeys { it.key.removePrefix("value_") }
-
-                val headerPairs = keys.mapNotNull {
-                    val valData = vals[it.key]
-                    if (valData != null)
-                        it.value to valData
-                    else null
+                    if (nData.url.isNullOrBlank())
+                        nData.url = null
                 }
 
+                val headersData = data["netHeaders"].orEmpty()
+                    .toPairs() { !it[0].startsWith("//") }
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
-                    headerPairs.forEach {
-                        builder.add(it.first, it.second)
-                    }
+                    headersData?.filter { it.second != null }
+                        ?.forEach {
+                            builder.add(it.first, it.second!!)
+                        }
                 }.build()
 
                 nData.body = data["networkBody"]

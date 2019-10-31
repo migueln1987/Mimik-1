@@ -1,5 +1,6 @@
 package mimikMockHelpers
 
+import helpers.asHttpUrl
 import helpers.tryGetBody
 import io.ktor.http.HttpHeaders
 import okhttp3.HttpUrl
@@ -35,9 +36,14 @@ class Requestdata : Networkdata {
     var method: String? = null
         get() = field?.toUpperCase()
 
+    /**
+     * Full URL
+     *
+     * Example: http://url.ext/sub/path?Key1=Value1&Key2=Value2
+     */
     var url: String? = ""
     val httpUrl: HttpUrl?
-        get() = HttpUrl.parse(url.orEmpty())
+        get() = url.asHttpUrl
 
     val replayRequest: okreplay.Request
         get() = object : okreplay.Request {

@@ -111,10 +111,22 @@ val String.toJsonName: String
         .plus(".json")
 
 /**
+ * Converts the input object into a json string
+ */
+val Any.toJson: String
+    get() = Gson().toJsonTree(this).toString()
+
+/**
  * Returns true if this [String] is a valid Url
  */
 val String?.isValidURL: Boolean
     get() = HttpUrl.parse(this.orEmpty()) != null
+
+/**
+ * Attempts to convert the [String] into a [HttpUrl]
+ */
+val String?.asHttpUrl: HttpUrl?
+    get() = HttpUrl.parse(this.orEmpty().ensurePrefix("http", "http://"))
 
 /**
  * Converts the source [String] into a indent-formatted string
@@ -146,3 +158,24 @@ val String.valueOrIsEmpty: String
 @Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
 fun println(message: String, vararg args: Any? = arrayOf()) =
     System.out.println(message.format(*args))
+
+/**
+ * Parses a string, by line and ":" on each line, into String/ String pairs.
+ *
+ * [allowFilter]: If the value returns true, the item is allowed
+ */
+fun String?.toPairs(allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String?>>? {
+    if (this == null) return null
+
+    return split('\n').asSequence()
+        .mapNotNull {
+            val items = it.split(delimiters = *arrayOf(":"), limit = 2)
+            if (!allowFilter.invoke(items)) return@mapNotNull null
+            when (items.size) {
+                1 -> (items[0].trim() to null)
+                2 -> items[0].trim() to items[1].trim()
+                else -> null
+            }
+        }
+        .filter { (it.first.isNotBlank() && it.second != null) }
+}

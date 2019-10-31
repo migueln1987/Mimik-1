@@ -35,10 +35,13 @@ abstract class EditorModule {
 
         PreVerifyURL_func(
             """
-                function preVerifyURL(url) {
+                function preVerifyURL(url, hasQuery) {
+                    hasQuery = hasQuery || false;
                     if (url == null || url.length == 0)
                         return "{ empty }";
-                    var regex = /^((?:[a-z]{3,9}:\/\/)?(?:(?:(?:\d{1,3}\.){3}\d{1,3})|(?:[\w.-]+\.(?:[a-z]{2,10}))))/i;
+                    var reg_url = /^((?:[a-z]{3,9}:\/\/)?(?:(?:(?:\d{1,3}\.){3}\d{1,3})|(?:[\w.-]+\.(?:[a-z]{2,10}))))/;
+                    var reg_query = /(\?(?:&?[^=&]*=[^=&]*)*)?/;
+                    var regex = new RegExp(reg_url.source + (hasQuery? reg_query.source : ''), 'i');
                     var match = url.match(regex);
                     if (match == null)
                         return "{ no match }"; else return match[0];
@@ -217,11 +220,19 @@ abstract class EditorModule {
                 """
         ),
 
+        GetScriptElement_func(
+            """
+                function getScriptElem() {
+                    var scriptTag = document.getElementsByTagName('script');
+                    return scriptTag[scriptTag.length - 1];
+                }
+                """
+        ),
+
         SetupToggleArea_func(
             """
                 function setupToggleArea() {
-                    var scriptTag = document.getElementsByTagName('script');
-                    scriptTag = scriptTag[scriptTag.length - 1];
+                    var scriptTag = getScriptElem();
                     var togDiv = scriptTag.previousElementSibling;
                     var togBtn = togDiv.previousElementSibling.previousElementSibling;
 
@@ -272,6 +283,10 @@ abstract class EditorModule {
                     
                     button {
                         cursor: pointer;
+                    }
+                    
+                    button:disabled {
+                        cursor: default;
                     }
                     
                     .inputButton {

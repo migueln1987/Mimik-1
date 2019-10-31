@@ -6,12 +6,17 @@ import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
-import io.ktor.request.contentType
-import io.ktor.request.httpMethod
-import io.ktor.request.receiveText
+import io.ktor.http.content.PartData
+import io.ktor.http.content.readAllParts
+import io.ktor.request.*
 import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
 import io.ktor.util.filter
+import io.ktor.util.toMap
+import kotlinx.html.FlowContent
+import kotlinx.html.TEXTAREA
+import kotlinx.html.onKeyPress
+import kotlinx.html.textArea
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import okhttp3.*
@@ -241,6 +246,49 @@ fun cloneResponseBody(responseBody: ResponseBody): ResponseBody {
     }
 }
 
+/**
+ * Returns this [HttpUrl] as the host and path in url form.
+ *
+ * Example: http://url.ext
+ */
+val HttpUrl.hostPath: String
+    get() = "%s://%s%s".format(
+        scheme(),
+        host(),
+        encodedPath()
+    )
+
+/**
+ * Replaces the scheme and host in the input [HttpUrl] with the new value in newHost.
+ *
+ * newHost can be in the format of "url.ext" or "http://url.ext"
+ */
+fun HttpUrl?.reHost(newHost: String?): HttpUrl? {
+    val newHttpHost = HttpUrl.parse(
+        newHost.orEmpty().ensurePrefix("http", "http://")
+    )
+    if (this == null || newHttpHost == null) return newHttpHost
+    return newBuilder().also {
+        it.scheme(newHttpHost.scheme())
+        it.host(newHttpHost.host())
+    }.build()
+}
+
+/**
+ * Removes all the current query params from [HttpUrl], and applies the items from [newParams]
+ */
+fun HttpUrl?.reParam(newParams: Sequence<Pair<String, String?>>?): HttpUrl? {
+    if (this == null) return null
+    return newBuilder().also { builder ->
+        queryParameterNames().forEach {
+            builder.removeAllQueryParameters(it)
+        }
+        newParams?.forEach {
+            builder.addQueryParameter(it.first, it.second)
+        }
+    }.build()
+}
+
 // == okreplay
 
 /**
@@ -335,6 +383,90 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
             else null
         )
     }.build()
+}
+
+/**
+ * Returns the [HttpUrl] as a [Parameters] object. Keys with no values are returned as keys with empty strings
+ */
+val HttpUrl?.toParameters: Parameters?
+    get() {
+        if (this == null) return null
+        val pairs = this.queryParameterNames().asSequence()
+            .filterNotNull().flatMap { name ->
+                if (name.isBlank()) return@flatMap emptySequence<Pair<String, String>>()
+                this.queryParameterValues(name).asSequence().map {
+                    name to (it ?: "")
+                }
+            }
+
+        return Parameters.build {
+            pairs.forEach { append(it.first, it.second) }
+        }
+    }
+
+/**
+ * Returns the [Parameters] which this [ApplicationCall] provides.
+ *
+ * Supports single and MultiPart type calls.
+ */
+suspend fun ApplicationCall.anyParameters(): Parameters? {
+    if (!request.isMultipart()) return parameters
+
+    return Parameters.build {
+        receiveMultipart()
+            .readAllParts().asSequence()
+            .filterIsInstance<PartData.FormItem>()
+            .filterNot { it.name.isNullOrBlank() }
+            .forEach { append(it.name!!, it.value) }
+    }
+}
+
+/**
+ * Returns the first values for each key
+ */
+val Parameters.toSingleMap: Map<String, String>
+    get() = toMap().mapValues { it.value.firstOrNull().orEmpty() }
+
+/**
+ * [textArea] which is populated by an input of [Parameters]
+ */
+fun FlowContent.paramTextArea(params: Parameters?, config: TEXTAREA.() -> Unit = {}) {
+    val pairs = params?.run {
+        toMap().asSequence()
+            .flatMap { kv ->
+                kv.value.asSequence().map { kv.key to it }
+            }
+    }
+
+    textAreaBuilder(pairs, config)
+}
+
+/**
+ * [textArea] which is populated by an input of [Headers]
+ */
+fun FlowContent.headerTextArea(headers: Headers?, config: TEXTAREA.() -> Unit = {}) {
+    val pairs = headers?.run {
+        toMultimap().asSequence()
+            .filter { it.key != null && it.value != null }
+            .flatMap { kv ->
+                kv.value.asSequence()
+                    .filter { it != null }
+                    .map { kv.key!! to it!! }
+            }
+    }
+    textAreaBuilder(pairs, config)
+}
+
+fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: TEXTAREA.() -> Unit = {}) {
+    textArea {
+        config.invoke(this)
+        onKeyPress = "keypressNewlineEnter(this);"
+        val builder = StringBuilder()
+        data?.forEach {
+            builder.appendln("${it.first} : ${it.second}")
+        }
+        +builder.toString()
+    }
 }
 
 // == mimik
