@@ -17,15 +17,15 @@ object DeleteModule : EditorModule() {
                         call.respondRedirect(TapeRouting.RoutePaths.ALL.path)
                     }
                     else -> {
-                        if (tape.chapters.removeIf { it.name == chapterName } && tape.file?.exists().isTrue())
-                            tape.saveFile()
+                        if (tape.chapters.removeIf { it.name == chapterName })
+                            tape.saveIfExists()
 
                         call.respondRedirect {
                             val pathStart = this.encodedPath.substringBeforeLast('/')
                                 .removePrefix("/")
                             path(pathStart, TapeRouting.RoutePaths.EDIT.path)
                             parameters.clear()
-                            parameters.append("tape", tape.name)
+                            parameters["tape"] = tape.name
                         }
                     }
                 }

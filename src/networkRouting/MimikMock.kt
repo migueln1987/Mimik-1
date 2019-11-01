@@ -20,10 +20,14 @@ import okhttp3.internal.http.HttpMethod
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
-class MimikMock(path: String) : RoutingContract(path) {
+class MimikMock(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
     private enum class RoutePaths(val path: String) {
         MOCK("");
+
+        companion object {
+            const val rootPath = "mock"
+        }
     }
 
     override fun init(route: Routing) {
@@ -181,10 +185,9 @@ class MimikMock(path: String) : RoutingContract(path) {
             }
         }
 
-        if (tape.file?.exists().isTrue())
-            tape.saveFile()
+        tape.saveIfExists()
 
-        val isJson = bodyText.isJSONValid
+        val isJson = bodyText.isValidJSON
 
         // Step 4: Profit!!!
         return QueryResponse {
@@ -201,7 +204,7 @@ class MimikMock(path: String) : RoutingContract(path) {
             )
             if (!isJson && bodyText.isNullOrBlank()) {
                 responseMsg += "\nNote; input body is not recognized as a valid json.\n" +
-                        bodyText.isJSONValidMsg
+                        bodyText.isValidJSONMsg
             }
         }
     }

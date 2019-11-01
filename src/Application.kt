@@ -20,6 +20,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import networkRouting.CallProcessor
 import networkRouting.MimikMock
+import networkRouting.editorPages.DataGen
 import networkRouting.editorPages.TapeRouting
 import networkRouting.port
 import org.slf4j.event.Level
@@ -50,14 +51,17 @@ fun Application.module(testing: Boolean = false) {
     HttpClient(OkHttp) { engine {} }
 
     routing {
+
         port(Ports.live) {
             CallProcessor("{...}").init(this@routing)
         }
 
         port(Ports.config) {
-            MimikMock("mock").init(this@routing)
-            TapeRouting("tapes").init(this@routing)
-            get { call.respondRedirect("tapes") }
+            MimikMock().init(this@routing)
+            TapeRouting().init(this@routing)
+            DataGen().init(this@routing)
+
+            get { call.respondRedirect(TapeRouting.RoutePaths.rootPath) }
         }
 
         trace {

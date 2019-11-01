@@ -1,11 +1,12 @@
 package mimikMockHelpers
 
-import helpers.isJSONValid
+import helpers.isValidJSON
 import helpers.tryGetBody
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import okhttp3.Protocol
 import java.nio.charset.Charset
+import java.util.Date
 
 class Responsedata : Networkdata {
     constructor(response: okreplay.Response) {
@@ -19,9 +20,20 @@ class Responsedata : Networkdata {
         builder.invoke(this)
     }
 
+    fun clone(postClone: (Responsedata) -> Unit = {}) = Responsedata {
+        it.code = code
+        it.protocol = protocol
+        it.headers = tapeHeaders.newBuilder().build()
+        it.body = body
+    }.also { postClone.invoke(it) }
+
     override fun toString(): String {
         return "%s".format(code)
     }
+
+    @Suppress("unused")
+    @Transient
+    val recordedDate: Date? = Date()
 
     var code: Int? = null
         get() = field ?: HttpStatusCode.OK.value
@@ -30,7 +42,7 @@ class Responsedata : Networkdata {
 
     val replayResponse: okreplay.Response
         get() {
-            val isJson = body.isJSONValid
+            val isJson = body.isValidJSON
             headers = tapeHeaders.newBuilder().set(
                 HttpHeaders.ContentType,
                 if (isJson) "application/json" else "text/plain"

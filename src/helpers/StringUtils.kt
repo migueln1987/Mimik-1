@@ -2,6 +2,7 @@ package helpers
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import okhttp3.HttpUrl
 
 /**
  * If this string starts with the given [prefix], returns a copy of this string
@@ -36,11 +37,17 @@ fun String.ensurePrefix(prefix: String, value: String? = null) =
     if (startsWith(prefix)) this else (value ?: prefix) + this
 
 /**
+ * Appends the prefix "http://" if none is found
+ */
+val String.ensureHttpPrefix: String
+    get() = ensurePrefix("http", "http://")
+
+/**
  * If this string does not end with the given [suffix],
  * then the string is returned with [value] added.
  * Else the original string is returned.
  */
-fun String.ensureSufix(suffix: String, value: String? = null) =
+fun String.ensureSuffix(suffix: String, value: String? = null) =
     if (endsWith(suffix)) this else this + (value ?: suffix)
 
 /**
@@ -79,20 +86,16 @@ fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default
 /**
  * Returns [true] if the input is a valid json
  */
-val String?.isJSONValid: Boolean
-    get() = try {
+val String?.isValidJSON: Boolean
+    get() = !isThrow {
         val adjustedString = this?.replace("\\n", "")
         Gson().fromJson(adjustedString, Any::class.java)
-        true
-    } catch (ex: Exception) {
-//        println("= isJSONValid =\n $ex")
-        false
     }
 
 /**
  * Returns an empty string if the json is valid, or the error message
  */
-val String?.isJSONValidMsg: String
+val String?.isValidJSONMsg: String
     get() = try {
         val adjustedString = this?.replace("\\n", "")
         Gson().fromJson(adjustedString, Any::class.java)
@@ -112,6 +115,24 @@ val String.toJsonName: String
         .replace("/", "")
         .replace(".", "-")
         .plus(".json")
+
+/**
+ * Converts the input object into a json string
+ */
+val Any.toJson: String
+    get() = Gson().toJsonTree(this).toString()
+
+/**
+ * Returns true if this [String] is a valid Url
+ */
+val String?.isValidURL: Boolean
+    get() = HttpUrl.parse(this.orEmpty()) != null
+
+/**
+ * Attempts to convert the [String] into a [HttpUrl]
+ */
+val String?.asHttpUrl: HttpUrl?
+    get() = HttpUrl.parse(this.orEmpty().ensureHttpPrefix)
 
 /**
  * Converts the source [String] into a indent-formatted string
@@ -143,3 +164,30 @@ val String.valueOrIsEmpty: String
 @Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
 fun println(message: String, vararg args: Any? = arrayOf()) =
     System.out.println(message.format(*args))
+
+/**
+ * Filter for [toPairs] which removes lines starting with "//"
+ */
+val removeCommentFilter: (List<String>) -> Boolean
+    get() = { !it[0].startsWith("//") }
+
+/**
+ * Parses a string, by line and ":" on each line, into String/ String pairs.
+ *
+ * [allowFilter]: If the value returns true, the item is allowed
+ */
+fun String?.toPairs(allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String?>>? {
+    if (this == null) return null
+
+    return split('\n').asSequence()
+        .mapNotNull {
+            val items = it.split(delimiters = *arrayOf(":"), limit = 2)
+            if (!allowFilter.invoke(items)) return@mapNotNull null
+            when (items.size) {
+                1 -> (items[0].trim() to null)
+                2 -> items[0].trim() to items[1].trim()
+                else -> null
+            }
+        }
+        .filter { (it.first.isNotBlank() && it.second != null) }
+}

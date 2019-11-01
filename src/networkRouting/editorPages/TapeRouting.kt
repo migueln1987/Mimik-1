@@ -1,18 +1,12 @@
 package networkRouting.editorPages
 
-import helpers.isTrue
-import helpers.toParameters
+import helpers.*
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.html.respondHtml
-import io.ktor.http.content.PartData
-import io.ktor.http.content.readAllParts
-import io.ktor.request.isMultipart
-import io.ktor.request.receiveMultipart
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.*
-import io.ktor.util.filter
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import networkRouting.RoutingContract
@@ -24,17 +18,21 @@ import networkRouting.editorPages.TapeEditor.getTapePage
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
-class TapeRouting(path: String) : RoutingContract(path) {
+class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
     enum class RoutePaths(val path: String) {
         ALL("all"),
         EDIT("edit"),
         DELETE("delete"),
         ACTION("action");
-    }
 
-    private val RoutePaths.asSubPath
-        get() = this@TapeRouting.path + "/" + this.path
+        companion object {
+            const val rootPath = "tapes"
+        }
+
+        val asSubPath
+            get() = "$rootPath/$path"
+    }
 
     override fun init(route: Routing) {
         route.route(path) {
@@ -54,16 +52,11 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
     private val Route.action
         get() = post(RoutePaths.ACTION.path) {
-            if (call.request.isMultipart()) {
-                val values = call.receiveMultipart()
-                    .readAllParts().asSequence()
-                    .filterIsInstance<PartData.FormItem>()
-                    .filterNot { it.name.isNullOrBlank() }
-                    .associate { it.name!! to it.value }
-
-                call.processData(values)
-            } else
+            val params = call.anyParameters()
+            if (params == null || params.isEmpty())
                 call.respondRedirect(RoutePaths.ALL.path)
+            else
+                call.processData(params.toSingleMap)
         }
 
     private val Route.edit
@@ -74,17 +67,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
                     return@get
                 }
 
-                val limitSet: MutableSet<String> = mutableSetOf()
-                val keys = listOf(
-                    "tape", "chapter", "network"
-                )
                 val limitParams = call.parameters
-                    .filter { s, _ ->
-                        s.toLowerCase().let { pKey ->
-                            val hasKey = keys.contains(pKey)
-                            hasKey && limitSet.add(pKey)
-                        }
-                    }.toParameters
+                    .limit(listOf("tape", "chapter", "network"))
 
                 if (call.parameters != limitParams) {
                     call.respondRedirect {
@@ -139,7 +123,7 @@ class TapeRouting(path: String) : RoutingContract(path) {
                 respondRedirect {
                     if (foundTape != null && data["resumeEdit"] == "true") {
                         path(TapeRouting.RoutePaths.EDIT.asSubPath)
-                        parameters.append("tape", data["tape"].orEmpty())
+                        parameters["tape"] = data["tape"].orEmpty()
                     } else path(TapeRouting.RoutePaths.ALL.asSubPath)
                 }
             }
@@ -188,9 +172,9 @@ class TapeRouting(path: String) : RoutingContract(path) {
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
 
-            parameters.append("tape", tape.name)
+            parameters["tape"] = tape.name
             when (data["afterAction"]) {
-                "newChapter" -> parameters.append("chapter", "")
+                "newChapter" -> parameters["chapter"] = ""
                 "addNew" -> parameters["tape"] = ""
                 "allTapes" -> {
                     parameters.remove("tape")
@@ -213,8 +197,8 @@ class TapeRouting(path: String) : RoutingContract(path) {
 
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
-            parameters.append("tape", foundTape.name)
-            parameters.append("chapter", chap.name)
+            parameters["tape"] = foundTape.name
+            parameters["chapter"] = chap.name
             when (data["afterAction"]) {
                 "newChapter" -> parameters["chapter"] = ""
                 "parentTape" -> parameters.remove("chapter")
@@ -238,45 +222,35 @@ class TapeRouting(path: String) : RoutingContract(path) {
             }
 
         val network = when (data["network"]) {
-            "request" -> Requestdata {
+            "request" -> (foundChap.requestData ?: Requestdata()).also {
                 it.method = data["requestMethod"]
-                it.url = data["requestUrl"]
+                it.url = data["requestUrl"]?.ensureHttpPrefix
             }
 
-            "response" -> Responsedata {
+            "response" -> (foundChap.responseData ?: Responsedata()).also {
                 it.code = data["responseCode"]?.toIntOrNull()
             }
 
             else -> null
         }
             ?.also { nData ->
-                val headerKVs = data.asSequence()
-                    .filter { it.value.isNotBlank() }
-                    .filter { it.key.startsWith("header_") }
-                    .associateBy(
-                        { it.key.removePrefix("header_") },
-                        { it.value }
-                    )
+                val params = data["reqParams"].orEmpty()
+                    .toPairs(removeCommentFilter)
 
-                val keys = headerKVs
-                    .filter { it.key.startsWith("key") }
-                    .mapKeys { it.key.removePrefix("key_") }
+                if (nData is Requestdata) {
+                    nData.url = nData.httpUrl.reQuery(params).toString()
 
-                val vals = headerKVs
-                    .filter { it.key.startsWith("value") }
-                    .mapKeys { it.key.removePrefix("value_") }
-
-                val headerPairs = keys.mapNotNull {
-                    val valData = vals[it.key]
-                    if (valData != null)
-                        it.value to valData
-                    else null
+                    if (nData.url.isNullOrBlank())
+                        nData.url = null
                 }
 
+                val headersData = data["netHeaders"].orEmpty()
+                    .toPairs(removeCommentFilter)
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
-                    headerPairs.forEach {
-                        builder.add(it.first, it.second)
-                    }
+                    headersData?.filter { it.second != null }
+                        ?.forEach {
+                            builder.add(it.first, it.second!!)
+                        }
                 }.build()
 
                 nData.body = data["networkBody"]
@@ -288,13 +262,14 @@ class TapeRouting(path: String) : RoutingContract(path) {
             "response" ->
                 foundChap.responseData = network as? Responsedata
         }
+        foundTape.saveIfExists()
 
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
 
-            parameters.append("tape", foundTape.name)
-            parameters.append("chapter", foundChap.name)
-            parameters.append("network", data["network"].orEmpty())
+            parameters["tape"] = foundTape.name
+            parameters["chapter"] = foundChap.name
+            parameters["network"] = data["network"].orEmpty()
             when (data["afterAction"]) {
                 "viewChapter" -> parameters.remove("network")
             }

@@ -1,8 +1,6 @@
 package networkRouting.editorPages
 
-import helpers.appendLines
-import helpers.isJSONValid
-import helpers.uppercaseFirstLetter
+import helpers.*
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -89,10 +87,9 @@ object NetworkDataEditor : EditorModule() {
                                     textInput(name = "requestUrl") {
                                         disableEnterKey
                                         id = name
-                                        placeholder = nData?.url.orEmpty()
-                                        value = placeholder
+                                        placeholder = nData?.httpUrl?.hostPath ?: R.getProperty("urlPlaceholderExample")
+                                        value = nData?.httpUrl?.hostPath.orEmpty()
                                         size = "${placeholder.length + 20}"
-                                        onLoad = "regexUrl(value)"
                                         onKeyUp = "regexUrl(value)"
                                     }
 
@@ -106,11 +103,23 @@ object NetworkDataEditor : EditorModule() {
                                                 +when (val url = nData?.url) {
                                                     null -> "{ empty }"
                                                     "" -> "" // isBlank()
-                                                    else -> if (url.isJSONValid)
+                                                    else -> if (url.isValidJSON)
                                                         url else "{ no match }"
                                                 }
                                             }
                                         }
+                                    }
+                                    script { unsafe { +"regexUrl(requestUrl.value);" } }
+                                }
+                            }
+
+                            tr {
+                                th { +"Params" }
+                                td {
+                                    tooltipText("Info", "genKVDataField")
+                                    br()
+                                    paramTextArea(nData?.httpUrl.toParameters) {
+                                        name = "reqParams"
                                     }
                                 }
                             }
@@ -159,7 +168,13 @@ object NetworkDataEditor : EditorModule() {
 
                     tr {
                         th { +"Headers" }
-                        td { addHeaderTable(pData.networkData?.headers) }
+                        td {
+                            tooltipText("Info", "genKVDataField")
+                            br()
+                            headerTextArea(pData.networkData?.headers) {
+                                name = "netHeaders"
+                            }
+                        }
                     }
 
                     tr {
@@ -167,7 +182,10 @@ object NetworkDataEditor : EditorModule() {
                         td {
                             table {
                                 tr {
-                                    th { +"Data" }
+                                    th {
+                                        resizableCol
+                                        +"Data"
+                                    }
                                     th { +"Actions" }
                                 }
                                 tr {

@@ -2,7 +2,7 @@ package apiTests
 
 import VCRConfig
 import com.beust.klaxon.internal.firstNotNullResult
-import helpers.isJSONValid
+import helpers.isValidJSON
 import helpers.isTrue
 import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
@@ -119,7 +119,7 @@ class MockTests {
     @Test
     fun useMock() {
         val testBody = "{\"test\":true }"
-        Assert.assertTrue(testBody.isJSONValid)
+        Assert.assertTrue(testBody.isValidJSON)
 
         TestApp {
             handleRequest(HttpMethod.Put, "/mock") {

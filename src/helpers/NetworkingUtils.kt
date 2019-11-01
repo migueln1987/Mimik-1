@@ -6,17 +6,21 @@ import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
-import io.ktor.request.contentType
-import io.ktor.request.httpMethod
-import io.ktor.request.receiveText
+import io.ktor.http.content.PartData
+import io.ktor.http.content.readAllParts
+import io.ktor.request.*
 import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
+import io.ktor.util.filter
+import io.ktor.util.toMap
+import kotlinx.html.*
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import okhttp3.*
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
 import org.w3c.dom.NodeList
+import tapeItems.BlankTape.Companion.isTestRunning
 import java.io.IOException
 import java.nio.charset.Charset
 
@@ -50,7 +54,7 @@ fun ResponseBody?.content(default: String = ""): String {
     return try {
         this?.string().orEmpty()
     } catch (e: Exception) {
-        ""
+        default
     }
 }
 
@@ -67,6 +71,24 @@ val StringValues.toHeaders: Headers
 
 val StringValues.toParameters: Parameters
     get() = Parameters.build { appendAll(this@toParameters) }
+
+/**
+ * Limits the input [StringValues] to only those within the [items] list.
+ */
+fun StringValues.limit(items: List<String>, allowDuplicates: Boolean = false): Parameters {
+    val limitParams: MutableList<String> = mutableListOf()
+
+    return filter { s, _ ->
+        s.toLowerCase().let { pKey ->
+            if (items.contains(pKey)) {
+                if (limitParams.contains(pKey) && !allowDuplicates)
+                    return@filter false
+                limitParams.add(pKey)
+                return@filter true
+            } else false
+        }
+    }.toParameters
+}
 
 val Map<String, String>.toHeaders: Headers
     get() {
@@ -222,6 +244,90 @@ fun cloneResponseBody(responseBody: ResponseBody): ResponseBody {
     }
 }
 
+/**
+ * Returns this [HttpUrl] as the host and path in url form.
+ *
+ * Example: http://url.ext
+ */
+val HttpUrl.hostPath: String
+    get() = "%s://%s%s".format(
+        scheme(),
+        host(),
+        encodedPath()
+    )
+
+/**
+ * Replaces the scheme and host in the input [HttpUrl] with the new value in newHost.
+ *
+ * newHost can be in the format of "url.ext" or "http://url.ext"
+ */
+fun HttpUrl?.reHost(newHost: String?): HttpUrl? {
+    val newHttpHost = HttpUrl.parse(
+        newHost.orEmpty().ensureHttpPrefix
+    )
+    if (this == null || newHttpHost == null) return newHttpHost
+    return newBuilder().also {
+        it.scheme(newHttpHost.scheme())
+        it.host(newHttpHost.host())
+    }.build()
+}
+
+/**
+ * Removes all the current query parameters from [HttpUrl], and applies the items from [newQuerys].
+ *
+ * [append]: When true, items are appended instead of clearing before [newQuerys] is added.
+ */
+fun HttpUrl?.reQuery(newQuerys: Sequence<Pair<String, Any?>>?, append: Boolean = false): HttpUrl? {
+    if (this == null) return null
+    return newBuilder().also { builder ->
+        if (!append)
+            queryParameterNames().forEach {
+                builder.removeAllQueryParameters(it)
+            }
+        newQuerys?.forEach {
+            builder.addQueryParameter(it.first, it.second.toString())
+        }
+    }.build()
+}
+
+/**
+ * Returns a Response from the given request.
+ *
+ * Note: if [isTestRunning] is true, the response body will contain the request body
+ */
+fun miniResponse(
+    request: okhttp3.Request,
+    status: HttpStatusCode = HttpStatusCode.OK
+): okhttp3.Response {
+    return okhttp3.Response.Builder().also {
+        it.request(request)
+        it.protocol(Protocol.HTTP_1_1)
+        it.code(status.value)
+        it.header(HttpHeaders.ContentType, "text/plain")
+        if (HttpMethod.requiresRequestBody(request.method()))
+            it.body(
+                ResponseBody.create(
+                    MediaType.parse("text/plain"),
+                    if (isTestRunning) request.body().content() else ""
+                )
+            )
+        it.message(status.description)
+    }.build()
+}
+
+fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Response? {
+    val requestBuilder = Request.Builder()
+        .also { builder.invoke(it) }
+
+    val request = try {
+        requestBuilder.build()
+    } catch (_: Exception) {
+        null
+    } ?: return null
+
+    return newCall(request).execute()
+}
+
 // == okreplay
 
 /**
@@ -318,6 +424,48 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
     }.build()
 }
 
+/**
+ * Returns the [HttpUrl] as a [Parameters] object. Keys with no values are returned as keys with empty strings
+ */
+val HttpUrl?.toParameters: Parameters?
+    get() {
+        if (this == null) return null
+        val pairs = this.queryParameterNames().asSequence()
+            .filterNotNull().flatMap { name ->
+                if (name.isBlank()) return@flatMap emptySequence<Pair<String, String>>()
+                this.queryParameterValues(name).asSequence().map {
+                    name to (it ?: "")
+                }
+            }
+
+        return Parameters.build {
+            pairs.forEach { append(it.first, it.second) }
+        }
+    }
+
+/**
+ * Returns the [Parameters] which this [ApplicationCall] provides.
+ *
+ * Supports single and MultiPart type calls.
+ */
+suspend fun ApplicationCall.anyParameters(): Parameters? {
+    if (!request.isMultipart()) return parameters
+
+    return Parameters.build {
+        receiveMultipart()
+            .readAllParts().asSequence()
+            .filterIsInstance<PartData.FormItem>()
+            .filterNot { it.name.isNullOrBlank() }
+            .forEach { append(it.name!!, it.value) }
+    }
+}
+
+/**
+ * Returns the first values for each key
+ */
+val Parameters.toSingleMap: Map<String, String>
+    get() = toMap().mapValues { it.value.firstOrNull().orEmpty() }
+
 // == mimik
 /**
  * Returns if the response
@@ -328,10 +476,34 @@ val Responsedata?.isImage: Boolean
 
 // == Others
 fun StringBuilder.toJson(): String {
-    return if (toString().isJSONValid) {
+    return if (toString().isValidJSON) {
         (Parser.default().parse(this) as JsonObject)
             .toJsonString(true, true)
     } else ""
 }
 
 fun NodeList.asList() = (0..length).mapNotNull(this::item)
+
+// fuel
+val com.github.kittinunf.fuel.core.Headers.toOkHeaders: okhttp3.Headers
+    get() = Headers.Builder().also { builder ->
+        entries.forEach { hKV ->
+            hKV.value.forEach { builder.add(hKV.key, it) }
+        }
+    }.build()
+
+val com.github.kittinunf.fuel.core.Request.toRequestData: Requestdata
+    get() = Requestdata {
+        it.method = method.value
+        it.url = url.toString()
+        it.headers = headers.toOkHeaders
+        it.httpUrl.reQuery(parameters.asSequence())
+        it.body = body.asString(null)
+    }
+
+val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
+    get() = Responsedata {
+        it.code = statusCode
+        it.headers = headers.toOkHeaders
+        it.body = body().toByteArray().toString(Charset.defaultCharset())
+    }

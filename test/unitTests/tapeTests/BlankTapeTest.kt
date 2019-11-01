@@ -26,7 +26,7 @@ class BlankTapeTest {
         Assert.assertFalse(testObject.hasNameSet)
 
         Assert.assertNull(testObject.attractors)
-        Assert.assertFalse(testObject.isUrlValid)
+        Assert.assertFalse(testObject.isValidURL)
 
         Assert.assertEquals(testObject.mode, TapeMode.READ_WRITE)
         Assert.assertTrue(testObject.isReadable)
@@ -59,7 +59,7 @@ class BlankTapeTest {
         assertContains(path, testObject.attractors?.routingPath?.value)
 
         Assert.assertEquals(url, testObject.routingUrl)
-        Assert.assertTrue(testObject.isUrlValid)
+        Assert.assertTrue(testObject.isValidURL)
 
         Assert.assertEquals(testObject.mode, TapeMode.READ_ONLY)
         Assert.assertTrue(testObject.isReadable)
@@ -110,7 +110,7 @@ class BlankTapeTest {
             }.build()
 
         testObject.routingUrl = validUrl
-        Assert.assertTrue(testObject.isUrlValid)
+        Assert.assertTrue(testObject.isValidURL)
 
         val testChain = testObject.requestToChain(request)
 

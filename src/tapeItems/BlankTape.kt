@@ -8,17 +8,14 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import helpers.*
 import helpers.attractors.RequestAttractors
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
-import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
-import okhttp3.ResponseBody
 import okhttp3.internal.http.HttpMethod
 import okreplay.*
 import java.io.File
@@ -44,7 +41,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             }
 
         val isValidURL: Boolean
-            get() = routingURL.isJSONValid
+            get() = routingURL.isValidJSON
 
         var attractors: RequestAttractors? = null
             set(value) {
@@ -114,7 +111,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             }
 
             if (!routingURL.isNullOrBlank())
-                returnTape.routingUrl = routingURL?.ensurePrefix("http", "http://")
+                returnTape.routingUrl = routingURL?.ensureHttpPrefix
 
             return returnTape
         }
@@ -177,8 +174,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     /**
      * routingUrl has data, but HttpUrl is unable to parse it
      */
-    val isUrlValid: Boolean
-        get() = !routingUrl.isNullOrBlank() && httpRoutingUrl != null
+    val isValidURL: Boolean
+        get() = routingUrl.isValidURL
 
     override fun getName() = tapeName ?: file?.nameWithoutExtension ?: hashCode().toString()
 
@@ -227,31 +224,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     override fun size() = chapters.size
 
     /**
-     * Returns a Response from the given request.
-     *
-     * Note: if [isTestRunning] is true, the response body will contain the request body
-     */
-    private fun miniResponse(
-        request: okhttp3.Request,
-        status: HttpStatusCode = HttpStatusCode.OK
-    ): okhttp3.Response {
-        return okhttp3.Response.Builder().also {
-            it.request(request)
-            it.protocol(Protocol.HTTP_1_1)
-            it.code(status.value)
-            it.header(HttpHeaders.ContentType, "text/plain")
-            if (HttpMethod.requiresRequestBody(request.method()))
-                it.body(
-                    ResponseBody.create(
-                        MediaType.parse("text/plain"),
-                        if (isTestRunning) request.body().content() else ""
-                    )
-                )
-            it.message(status.description)
-        }.build()
-    }
-
-    /**
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
     fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
@@ -297,7 +269,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                             "-Name\n %s\n-Can Complete: %b\n" +
                             "-Url: %s\n-Body:\n %s\n-Headers:\n %s%s\n",
                     it.name,
-                    isUrlValid,
+                    isValidURL,
                     okRequest.url(),
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
@@ -305,7 +277,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         "-Uses: ${it.mockUses}" else ""
                 )
 
-                if (isUrlValid) {
+                if (isValidURL) {
                     val responseData = getData(okRequest)
                     println(
                         "== Live Response ==\n-Code %d from %s\n",
@@ -451,6 +423,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         chapters.add(RecordedInteractions(request, response))
 
         saveFile()
+    }
+
+    /**
+     * If there is an existing hard tape, then this call will update that file
+     */
+    fun saveIfExists() {
+        if (file?.exists().isTrue())
+            saveFile()
     }
 
     /**

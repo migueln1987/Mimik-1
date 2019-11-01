@@ -26,6 +26,7 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib-jdk8", kotlin_version))
     implementation("io.ktor:ktor-server-netty:$ktor_version")
+    implementation("com.github.kittinunf.fuel:fuel:$fuel_version")
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.github.microutils:kotlin-logging:1.7.6")
