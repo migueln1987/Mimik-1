@@ -1,5 +1,8 @@
 package networkRouting.editorPages
 
+import com.github.kittinunf.fuel.core.ResponseResultOf
+import com.github.kittinunf.fuel.httpGet
+import com.github.kittinunf.fuel.httpPost
 import helpers.*
 import io.ktor.application.call
 import io.ktor.html.respondHtml
@@ -9,6 +12,8 @@ import io.ktor.http.Parameters
 import io.ktor.response.respondRedirect
 import io.ktor.routing.*
 import kotlinx.html.*
+import mimikMockHelpers.Requestdata
+import mimikMockHelpers.Responsedata
 import networkRouting.RoutingContract
 import okhttp3.HttpUrl
 import java.util.Date
@@ -46,7 +51,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         get() = route(RoutePaths.Response.path) {
             get {
                 val limitParams = call.parameters
-                    .limit(listOf("ref"))
+                    .limit(listOf("ref", "item"))
 
                 if (call.parameters != limitParams) {
                     call.respondRedirect {
@@ -70,19 +75,108 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                     return@post
                 }
 
+                val tape = tapeCatalog.tapes
+                    .firstOrNull { it.name == params["tape"] }
+
+                if (tape == null) {
+                    call.respondRedirect(RoutePaths.Response.path)
+                    return@post
+                }
+
+                val chap = tape.chapters
+                    .firstOrNull { it.name == params["chapter"] }
+
                 when (enumSafeValue<ResponseActions>(params["Action"])) {
-                    null -> {
-                    }
+                    null -> Unit
+
                     ResponseActions.Make -> {
+                        val (request, response, _) = params.asResponseCall()
+
+                        if (chap == null) {
+                            call.respondRedirect(RoutePaths.Response.path)
+                            return@post
+                        }
+
+                        chap.recentRequest = request.toRequestData
+                        if (chap.genResponses.isNullOrEmpty())
+                            chap.genResponses = mutableListOf()
+                        val requestResponse = response.toResponseData
+                        chap.genResponses?.add(requestResponse)
+
+                        call.respondRedirect {
+                            path(RoutePaths.Response.asSubPath)
+                            parameters["ref"] = params["ref"].orEmpty()
+                            parameters["item"] = requestResponse.hashCode().toString()
+                        }
                     }
 
                     ResponseActions.Remove -> {
+                        chap?.genResponses?.removeIf {
+                            it.hashCode().toString() == params["selectResponse"]
+                        }
+
+                        call.respondRedirect {
+                            path(RoutePaths.Response.asSubPath)
+                            parameters["ref"] = params["ref"].orEmpty()
+                        }
                     }
 
                     ResponseActions.Use -> {
+                        if (chap == null) {
+                            call.respondRedirect {
+                                path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                                parameters["tape"] = tape.name
+                            }
+                            return@post
+                        }
+
+                        chap.responseData = chap.genResponses
+                            ?.firstOrNull { it.hashCode().toString() == params["selectResponse"] }
+                        tape.saveIfExists()
+
+                        call.respondRedirect {
+                            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                            parameters.clear()
+                            parameters["tape"] = tape.name
+                            parameters["chapter"] = chap.name
+                        }
                     }
 
                     ResponseActions.NewChapter -> {
+                        val requestData: Requestdata?
+                        val responseData: Responsedata?
+                        if (chap == null) {
+                            val (request, response, _) = params.asResponseCall()
+                            requestData = request.toRequestData
+                            responseData = response.toResponseData
+                        } else {
+                            requestData = chap.recentRequest?.clone()
+                            chap.recentRequest = null
+
+                            responseData = chap.genResponses
+                                ?.firstOrNull { it.hashCode().toString() == params["selectResponse"] }
+                                ?.clone()
+
+                            chap.genResponses?.removeIf {
+                                it == responseData
+                            }
+                        }
+
+                        val newChap = tape.createNewInteraction {
+                            it.chapterName = params["newChapter"]
+                            it.requestData = requestData
+                            it.attractors = requestData?.toAttractors
+                            it.responseData = responseData
+                        }
+
+                        tape.saveIfExists()
+
+                        call.respondRedirect {
+                            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                            parameters.clear()
+                            parameters["tape"] = tape.name
+                            parameters["chapter"] = newChap.name
+                        }
                     }
                 }
             }
@@ -124,8 +218,8 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
             val actTape = tapeCatalog.tapes
                 .first { it.chapters.contains(actChap) }
 
-            val genResponses = (actChap.genResponses ?: listOf())
-                .toMutableList().apply {
+            val genResponses = (actChap.genResponses ?: mutableListOf())
+                .apply {
                     actChap.responseData?.also { add(0, it) }
                 }
 
@@ -168,13 +262,13 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                 hiddenInput(name = "chapter") { value = actChap.name }
 
                 h2 { +"Request" }
-                makeToggleArea {
+                toggleArea {
                     var usingURL: HttpUrl? = null
                     table {
                         tr {
                             th { +"Method" }
                             td {
-                                makeToggleArea {
+                                toggleArea {
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.method
                                         val isValid = data != null
@@ -185,12 +279,13 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                             checked = isValid
                                         }
                                         infoText("Chapter Method") {
-                                            it.inlineDiv
-                                            if (!isValid) it.disabledText
+                                            inlineDiv
+                                            if (!isValid) disabledText
                                         }
                                         br()
 
                                         textInput {
+                                            style = "width: 6em;"
                                             readonly = true
                                             disabled = true
                                             if (isValid) readonlyBG else disabledBG
@@ -200,19 +295,20 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
                                     div(classes = "radioDiv") {
                                         val data = actChap.recentRequest?.method
+                                        val dataDefault = data?.toUpperCase() ?: HttpMethod.Get.value
                                         radioInput(name = "reqMethod") {
                                             id = "reqMethodCustom"
-                                            value = data.orEmpty()
+                                            value = dataDefault
                                             checked = data != null || useCustom
                                         }
-                                        infoText("Custom Method") { it.inlineDiv }
+                                        infoText("Custom Method") { inlineDiv }
                                         br()
 
                                         select {
                                             onChange = "reqMethodCustom.value = selectedIndex;"
                                             HttpMethod.DefaultMethods.forEach {
                                                 option {
-                                                    if (data?.toUpperCase() == it.value)
+                                                    if (dataDefault == it.value)
                                                         selected = true
                                                     +it.value.toLowerCase().uppercaseFirstLetter()
                                                 }
@@ -222,13 +318,14 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                 }
                             }
                         }
+
                         tr {
                             th {
                                 style = "width: 20%"
                                 +"Request URL"
                             }
                             td {
-                                makeToggleArea {
+                                toggleArea {
                                     div(classes = "radioDiv") {
                                         usingURL = actTape.routingUrl.asHttpUrl
                                         val data = usingURL.let { it?.hostPath ?: noData }
@@ -240,12 +337,12 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                             disabled = !isValid
                                         }
                                         infoText("Tape URL") {
-                                            it.inlineDiv
-                                            if (!isValid) it.disabledText
+                                            inlineDiv
+                                            if (!isValid) disabledText
                                         }
                                         br()
 
-                                        textInput {
+                                        textInput(classes = "hoverExpand") {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
@@ -264,12 +361,12 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                             disabled = !isValid
                                         }
                                         infoText("Chapter URL") {
-                                            it.inlineDiv
-                                            if (!isValid) it.disabledText
+                                            inlineDiv
+                                            if (!isValid) disabledText
                                         }
                                         br()
 
-                                        textInput {
+                                        textInput(classes = "hoverExpand") {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
@@ -283,11 +380,11 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                             id = "reqUrlCustom"
                                             checked = usingURL == null || useCustom
                                         }
-                                        infoText("Custom URL") { it.inlineDiv }
+                                        infoText("Custom URL") { inlineDiv }
                                         br()
 
-                                        textInput {
-                                            placeholder = data ?: "Example: http://google.com/"
+                                        textInput(classes = "hoverExpand") {
+                                            placeholder = data ?: R.getProperty("urlPlaceholderExample")
                                             value = data.orEmpty()
                                             onKeyUp = "reqUrlCustom.value = value;"
                                         }
@@ -299,7 +396,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                         tr {
                             th { +"Params" }
                             td {
-                                makeToggleArea {
+                                toggleArea {
                                     tooltipText("Info", "genKVDataField")
                                     br()
 
@@ -313,8 +410,8 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                             value = (data ?: "").toString()
                                         }
                                         infoText("Chapter Params") {
-                                            it.inlineDiv
-                                            if (!isValid) it.disabledText
+                                            inlineDiv
+                                            if (!isValid) disabledText
                                         }
                                         br()
 
@@ -332,7 +429,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                             checked = data?.isEmpty().isFalse() || useCustom
                                             value = (data ?: "").toString()
                                         }
-                                        infoText("Custom Params") { it.inlineDiv }
+                                        infoText("Custom Params") { inlineDiv }
                                         br()
 
                                         paramTextArea(data) {
@@ -347,7 +444,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                         tr {
                             th { +"Headers" }
                             td {
-                                makeToggleArea {
+                                toggleArea {
                                     tooltipText("Info", "genKVDataField")
                                     br()
 
@@ -355,14 +452,14 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         val data = actChap.requestData?.headers
                                         val isValid = (data?.size() ?: 0) > 0
                                         useCustom = !isValid
-                                        radioInput(name = "netHeaders") {
+                                        radioInput(name = "reqHeaders") {
                                             checked = isValid
                                             disabled = !isValid
                                             value = (data ?: "").toString().trim()
                                         }
                                         infoText("Chapter Headers") {
-                                            it.inlineDiv
-                                            if (!isValid) it.disabledText
+                                            inlineDiv
+                                            if (!isValid) disabledText
                                         }
                                         br()
 
@@ -375,12 +472,12 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
                                     div(classes = "radioDiv") {
                                         val data = actChap.recentRequest?.headers
-                                        radioInput(name = "netHeaders") {
+                                        radioInput(name = "reqHeaders") {
                                             id = "customHeaders"
                                             value = (data ?: "").toString()
                                             checked = (data?.size() ?: 0) > 0 || useCustom
                                         }
-                                        infoText("Custom Headers") { it.inlineDiv }
+                                        infoText("Custom Headers") { inlineDiv }
                                         br()
 
                                         headerTextArea(data) {
@@ -395,19 +492,19 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                         tr {
                             th { +"Body" }
                             td {
-                                makeToggleArea {
+                                toggleArea {
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.body
                                         val isValid = !data.isNullOrEmpty()
                                         useCustom = !isValid
                                         radioInput(name = "reqBody") {
-                                            value = data.orEmpty()
                                             checked = isValid
                                             disabled = !isValid
+                                            value = data.orEmpty()
                                         }
                                         infoText("Chapter Body") {
-                                            it.inlineDiv
-                                            if (!isValid) it.disabledText
+                                            inlineDiv
+                                            if (!isValid) disabledText
                                         }
                                         br()
 
@@ -424,8 +521,9 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         radioInput(name = "reqBody") {
                                             id = "reqBodyCustom"
                                             checked = !data.isNullOrEmpty() || useCustom
+                                            value = data.orEmpty()
                                         }
-                                        infoText("Custom Body") { it.inlineDiv }
+                                        infoText("Custom Body") { inlineDiv }
                                         br()
 
                                         textArea {
@@ -443,23 +541,24 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                 linebreak()
 
                 h2 { +"Response" }
-                makeToggleArea(item != null) {
-                    table {
-                        tr {
-                            td {
-                                style = "text-align: center;"
-                                postButton(name = "Action") {
-                                    value = ResponseActions.Make.name
-                                    formAction = RoutePaths.ResponseGen.path
-                                    +"Make call"
-                                }
+                table {
+                    tr {
+                        td {
+                            style = "text-align: center;"
+                            postButton(name = "Action") {
+                                value = ResponseActions.Make.name
+                                formAction = RoutePaths.ResponseGen.path
+                                +"Make call"
                             }
+                        }
 
-                            td {
-                                style = "text-align: center;"
-                                if (genResponses.isEmpty())
-                                    +noData else select {
+                        td {
+                            style = "text-align: center;"
+                            if (genResponses.isEmpty())
+                                +noData else {
+                                select {
                                     name = "selectResponse"
+                                    id = name
                                     genResponses.forEach {
                                         option {
                                             onChange = ""
@@ -475,47 +574,71 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                         }
                                     }
                                 }
-                            }
+                                +" "
 
-                            td {
-                                style = "text-align: center;"
-                                postButton(name = "Action") {
-                                    formAction = RoutePaths.ResponseGen.path
-                                    value = ResponseActions.Remove.name
-                                    disabled = genResponses.isEmpty()
-                                    +"Remove call"
-                                }
-                            }
-
-                            td {
-                                postButton(name = "Action") {
-                                    formAction = RoutePaths.ResponseGen.path
-                                    value = ResponseActions.Use.name
-                                    disabled = genResponses.isEmpty()
-                                    +"Use call -> Chapter"
+                                hiddenInput(name = "item") {
+                                    id = name
+                                    disabled = true
                                 }
 
-                                br()
-                                div {
-                                    postButton(name = "Action") {
-                                        formAction = RoutePaths.ResponseGen.path
-                                        value = ResponseActions.NewChapter.name
-                                        disabled = genResponses.isEmpty()
-                                        +"Use call -> New Chapter"
-                                    }
-                                    +" "
-                                    textInput(name = "newChapter") {
-                                        disabled = genResponses.isEmpty()
-                                        if (genResponses.isEmpty())
-                                            disabledBG
-                                        placeholder = "New Chapter name"
-                                    }
+                                getButton {
+                                    formAction = RoutePaths.Response.path
+                                    onClick = """
+                                            item.disabled = false;
+                                            item.value = selectResponse.value;
+                                        """.trimIndent()
+                                    +"View"
+                                }
+                            }
+                        }
+
+                        td {
+                            style = "text-align: center;"
+                            postButton(name = "Action") {
+                                formAction = RoutePaths.ResponseGen.path
+                                value = ResponseActions.Remove.name
+                                disabled = genResponses.isEmpty()
+                                +"Remove call"
+                            }
+                        }
+
+                        td {
+                            postButton(name = "Action") {
+                                formAction = RoutePaths.ResponseGen.path
+                                value = ResponseActions.Use.name
+                                disabled = genResponses.isEmpty()
+                                +"Use call -> Chapter"
+                            }
+
+                            br()
+                            div {
+                                postButton(name = "Action") {
+                                    formAction = RoutePaths.ResponseGen.path
+                                    value = ResponseActions.NewChapter.name
+                                    disabled = genResponses.isEmpty()
+                                    +"Use call -> New Chapter"
+                                }
+                                +" "
+                                textInput(name = "newChapter") {
+                                    disabled = genResponses.isEmpty()
+                                    if (genResponses.isEmpty())
+                                        disabledBG
+                                    placeholder = "New Chapter name"
                                 }
                             }
                         }
                     }
-
+                }
+                toggleArea(item != null) {
                     if (actItem != null) {
+                        val divStyle = """
+                            resize: vertical;
+                            min-height: 10em;
+                            overflow-y: scroll;
+                            border: 1px solid;
+                            height: 10em;
+                        """.trimIndent()
+
                         table {
                             id = "resultTable"
                             tr {
@@ -535,25 +658,35 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                             tr {
                                 th { +"Headers" }
                                 td {
-                                    table {
-                                        thead {
-                                            tr {
-                                                th { +"Key" }
-                                                th { +"Value" }
-                                            }
-                                        }
-                                        tbody {
-                                            val headerMap = actItem.headers?.toMultimap()
-                                            if (headerMap.isNullOrEmpty())
-                                                +noData else headerMap.forEach { (t, u) ->
-                                                u.forEach {
+                                    div {
+                                        style = divStyle
+                                        val headerMap = actItem.headers?.toMultimap()
+
+                                        if (headerMap.isNullOrEmpty())
+                                            +noData
+                                        else
+                                            table {
+                                                thead {
                                                     tr {
-                                                        td { +t }
-                                                        td { +it }
+                                                        th {
+                                                            resizableCol
+                                                            +"Key"
+                                                        }
+                                                        th { +"Value" }
+                                                    }
+                                                }
+                                                tbody {
+                                                    wordBreak_word
+                                                    headerMap.forEach { (t, u) ->
+                                                        u.forEach {
+                                                            tr {
+                                                                td { +t }
+                                                                td { +it }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
                                     }
                                 }
                             }
@@ -562,10 +695,10 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                                 th { +"Body" }
                                 td {
                                     textArea {
+                                        style = "width: -webkit-fill-available;$divStyle"
+                                        readonlyBG
                                         readonly = true
-                                        // +actItem.body.orEmpty()
-
-                                        +actItem.toJson
+                                        +actItem.body.orEmpty()
                                     }
                                     script {
                                         unsafe {
@@ -579,5 +712,30 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                 }
             }
         }
+    }
+
+    fun Parameters.asResponseCall(): ResponseResultOf<String> {
+        val method = this["reqMethod"].orEmpty().toUpperCase()
+        val url = this["reqUrl"].orEmpty().ensureHttpPrefix
+        val params = this["reqParams"]
+            .toPairs(removeCommentFilter)?.toList()
+        val headers = this["reqHeaders"].toPairs(removeCommentFilter)
+            ?.filter { it.second != null }
+            ?.map { it.first to it.second!! }?.toList()?.toTypedArray()
+        val body = this["reqBody"]
+
+        var request = when (HttpMethod.parse(method)) {
+            HttpMethod.Get -> url.httpGet(params)
+            HttpMethod.Post -> url.httpPost(params)
+            else -> url.httpGet(params)
+        }
+
+        if (headers != null)
+            request = request.header(*headers)
+
+        if (!body.isNullOrBlank())
+            request = request.body(body)
+
+        return request.responseString()
     }
 }

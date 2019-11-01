@@ -18,6 +18,7 @@ abstract class EditorModule {
 
     private val filterKey = "filter"
     val loadFlag = "_load_"
+    private val noData = "{ no data }"
 
     companion object {
         val randomHost = RandomHost()
@@ -30,7 +31,7 @@ abstract class EditorModule {
                 function disableEnter(field) {
                     field.onkeydown = function() {return event.key != 'Enter';};
                 }
-                """
+            """
         ),
 
         PreVerifyURL_func(
@@ -40,13 +41,14 @@ abstract class EditorModule {
                     if (url == null || url.length == 0)
                         return "{ empty }";
                     var reg_url = /^((?:[a-z]{3,9}:\/\/)?(?:(?:(?:\d{1,3}\.){3}\d{1,3})|(?:[\w.-]+\.(?:[a-z]{2,10}))))/;
+                    var reg_path = /(\/[-a-z\\d%_.~+]*)*/;
                     var reg_query = /(\?(?:&?[^=&]*=[^=&]*)*)?/;
-                    var regex = new RegExp(reg_url.source + (hasQuery? reg_query.source : ''), 'i');
+                    var regex = new RegExp(reg_url.source + reg_path.source + (hasQuery? reg_query.source : ''), 'i');
                     var match = url.match(regex);
                     if (match == null)
                         return "{ no match }"; else return match[0];
                 }
-                """
+            """
         ),
 
         PrettyJson(
@@ -66,7 +68,7 @@ abstract class EditorModule {
                     field.value = prettyJson(field.value);
                     field.style.height = (field.scrollHeight - 4) + 'px';
                 }
-                """
+            """
         ),
 
         SetIsDisabled_func(
@@ -80,7 +82,7 @@ abstract class EditorModule {
                         setIsDisabled(divObj.childNodes[x], newState);
                     }
                 }
-                """
+            """
         ),
 
         FormatParentFieldWidth_func(
@@ -101,7 +103,7 @@ abstract class EditorModule {
                     adjustFullWidth();
                     new ResizeObserver(adjustFullWidth).observe(field);
                 }
-                """
+            """
         ),
 
         CreateTextInput_func(
@@ -118,7 +120,7 @@ abstract class EditorModule {
                     inputField.id = inputField.name;
                     return inputField;
                 }
-                """
+            """
         ),
 
         /**
@@ -126,16 +128,16 @@ abstract class EditorModule {
          */
         KeyPressNewlineEnter_func(
             """
-            function keypressNewlineEnter(field) {
-                if (event.key == 'Enter') {
-                    var pre = field.value.substring(0, field.selectionStart);
-                    var post = field.value.substring(field.selectionStart, field.textLength);
-                    field.value = pre + "\n" + post;
-                    field.style.height = field.scrollHeight + 'px';
-                    event.preventDefault();
+                function keypressNewlineEnter(field) {
+                    if (event.key == 'Enter') {
+                        var pre = field.value.substring(0, field.selectionStart);
+                        var post = field.value.substring(field.selectionStart, field.textLength);
+                        field.value = pre + "\n" + post;
+                        field.style.height = field.scrollHeight + 'px';
+                        event.preventDefault();
+                    }
                 }
-            }
-            """.trimIndent()
+            """
         ),
 
         CreateCheckbox_func(
@@ -146,7 +148,7 @@ abstract class EditorModule {
                     inputField.type = "checkbox";
                     return inputField;
                 }
-                """
+            """
         ),
 
         /**
@@ -162,7 +164,7 @@ abstract class EditorModule {
                     deleteBtn.onclick = function() { node.remove(); };
                     return deleteBtn;
                 }
-                """
+            """
         ),
 
         CreateBtn_func(
@@ -174,7 +176,7 @@ abstract class EditorModule {
                     newBtn.innerText = name;
                     return newBtn;
                 }
-                """
+            """
         ),
 
         ToggleDisp_func(
@@ -185,39 +187,50 @@ abstract class EditorModule {
                         caller.classList.remove("active");
                     } else {
                         caller.classList.toggle("active");
-                        toToggle.style.overflow = "hidden";
-                        if (toToggle.style.maxHeight){
-                            toToggle.style.display = "none";
-                            toToggle.style.maxHeight = null;
+                        var toggleStyle = toToggle.style;
+                        toggleStyle.overflow = "hidden";
+                        if (toggleStyle.maxHeight){
+                            toggleStyle.display = "none";
+                            toggleStyle.maxHeight = null;
                         } else {
-                            toToggle.style.display = "inline-table";
-                            toToggle.style.height = "100%"
-                            toToggle.style.maxHeight = (toToggle.scrollHeight + 100) + "px";
+                            toggleStyle.display = "inline-table";
+                            toggleStyle.height = "100%"
+                            toggleStyle.maxHeight = (toToggle.scrollHeight + 100) + "px";
                             var watcher = setInterval(function() {
                                 if (toToggle.clientHeight == toToggle.scrollHeight) {
-                                    toToggle.style.overflow = "visible";
+                                    toggleStyle.overflow = "visible";
                                     clearInterval(watcher);
                                 }
                              }, 100);
                         }
                     }
                 }
-                """
+            """
         ),
 
         SetupToggButton_func(
             """
                 function setupTogggButtonTarget(target) {
+                    waitForElem(target, function(elem) {
+                        if (!elem.classList.contains("hideableContent"))
+                            elem.classList.add("hideableContent");
+                        });
+                }
+            """
+        ),
+
+        WaitForElem_func(
+            """
+                function waitForElem(target, action){
                     setTimeout(function waitWrapper() {
                         var elem = document.getElementById(target);
                         if (typeof target == "object")
                             elem = target;
                         if (elem == null) setTimeout(waitWrapper, 10);
-                        else if (!elem.classList.contains("hideableContent"))
-                            elem.classList.add("hideableContent");
+                        else action(elem);
                     }, 10);
                 }
-                """
+            """
         ),
 
         GetScriptElement_func(
@@ -226,7 +239,7 @@ abstract class EditorModule {
                     var scriptTag = document.getElementsByTagName('script');
                     return scriptTag[scriptTag.length - 1];
                 }
-                """
+            """
         ),
 
         SetupToggleArea_func(
@@ -238,8 +251,9 @@ abstract class EditorModule {
 
                     togBtn.onclick = function() { toggleView(togBtn, togDiv); }
                     setupTogggButtonTarget(togDiv);
+                    return [togBtn, togDiv];
                 }
-                """
+            """
         ),
 
         SubmitNameCheck(
@@ -249,7 +263,7 @@ abstract class EditorModule {
                     if (checkName.value == "")
                         checkName.value = checkName.placeholder;
                 }
-                """
+            """
         );
 
         companion object {
@@ -323,6 +337,10 @@ abstract class EditorModule {
                     .radioDiv {
                         width: 40%;
                         padding: 6px;
+                    }
+                    
+                    .hoverExpand:hover {
+                        width: -webkit-fill-available;
                     }
                     """.trimIndent()
                     .appendLines(
@@ -724,13 +742,10 @@ abstract class EditorModule {
     ) {
         val info = TableQueryMatcher().also(tableInfo)
 
-        val colContent = "col_${info.tableId}"
         tr {
             th { +info.matcherName }
             td {
-                makeToggleButton(colContent)
-                div {
-                    id = colContent
+                toggleArea {
                     addMatcherRowData(bit, info)
                 }
             }
@@ -983,7 +998,7 @@ abstract class EditorModule {
      */
     fun FlowContent.displayInteractionData(data: Networkdata?) {
         if (data == null) {
-            +"{ no data }"
+            +noData
             return
         }
 
@@ -996,12 +1011,19 @@ abstract class EditorModule {
             table {
                 thead {
                     tr {
-                        th { +"Specific" }
-                        th { +"Headers" }
+                        th {
+                            resizableCol
+                            +"Specific"
+                        }
+                        th {
+                            resizableCol
+                            +"Headers"
+                        }
                         th { +"Body" }
                     }
                 }
                 tbody {
+                    wordBreak_word
                     tr {
                         tapeDataRow(data)
                     }
@@ -1017,10 +1039,15 @@ abstract class EditorModule {
                     is Requestdata -> {
                         text("Method: \n${data.method}")
                         br()
-                        +"Url: %s".format(
-                            if (data.url.isNullOrBlank())
-                                "{ no data }" else data.url
-                        )
+                        +"Url: "
+                        a {
+                            val url = data.url
+                            href = url.orEmpty()
+                            +when (url) {
+                                null, "" -> noData
+                                else -> url
+                            }
+                        }
                     }
                     is Responsedata -> {
                         text("Code: \n${data.code}")
@@ -1029,7 +1056,7 @@ abstract class EditorModule {
                             HttpStatusCode.fromValue(data.code ?: 200).description
                         )
                     }
-                    else -> text("{ no data }")
+                    else -> text(noData)
                 }
             }
         }
@@ -1038,29 +1065,33 @@ abstract class EditorModule {
             val divID = "resizingTapeData_${data.hashCode()}"
             val headers = data.headers
 
-            if (headers == null || headers.size() == 0) {
-                +"{ no data }"
-            } else {
+            if (headers == null || headers.size() == 0)
+                +noData
+            else {
                 div {
                     id = divID
                     style = """
-                    margin-bottom: 1em;
-                    resize: vertical;
-                    overflow: auto;
-                    min-height: 5em;
-                    background-color: #DDD;
-                """.trimIndent()
+                        margin-bottom: 1em;
+                        resize: vertical;
+                        overflow: auto;
+                        min-height: 5em;
+                        background-color: #DDD;
+                    """.trimIndent()
 
                     val tableID = "header_${data.hashCode()}"
                     table {
                         id = tableID
                         thead {
                             tr {
-                                th { +"Key" }
+                                th {
+                                    resizableCol
+                                    +"Key"
+                                }
                                 th { +"Value" }
                             }
                         }
                         tbody {
+                            wordBreak_word
                             headers.toMultimap().forEach { (t, u) ->
                                 u.forEach {
                                     tr {
@@ -1092,7 +1123,7 @@ abstract class EditorModule {
             }
 
             if (data.body == null)
-                +"{ no data }"
+                +noData
 
             textArea {
                 id = areaID

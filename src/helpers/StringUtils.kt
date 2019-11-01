@@ -37,11 +37,17 @@ fun String.ensurePrefix(prefix: String, value: String? = null) =
     if (startsWith(prefix)) this else (value ?: prefix) + this
 
 /**
+ * Appends the prefix "http://" if none is found
+ */
+val String.ensureHttpPrefix: String
+    get() = ensurePrefix("http", "http://")
+
+/**
  * If this string does not end with the given [suffix],
  * then the string is returned with [value] added.
  * Else the original string is returned.
  */
-fun String.ensureSufix(suffix: String, value: String? = null) =
+fun String.ensureSuffix(suffix: String, value: String? = null) =
     if (endsWith(suffix)) this else this + (value ?: suffix)
 
 /**
@@ -126,7 +132,7 @@ val String?.isValidURL: Boolean
  * Attempts to convert the [String] into a [HttpUrl]
  */
 val String?.asHttpUrl: HttpUrl?
-    get() = HttpUrl.parse(this.orEmpty().ensurePrefix("http", "http://"))
+    get() = HttpUrl.parse(this.orEmpty().ensureHttpPrefix)
 
 /**
  * Converts the source [String] into a indent-formatted string
@@ -158,6 +164,12 @@ val String.valueOrIsEmpty: String
 @Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
 fun println(message: String, vararg args: Any? = arrayOf()) =
     System.out.println(message.format(*args))
+
+/**
+ * Filter for [toPairs] which removes lines starting with "//"
+ */
+val removeCommentFilter: (List<String>) -> Boolean
+    get() = { !it[0].startsWith("//") }
 
 /**
  * Parses a string, by line and ":" on each line, into String/ String pairs.

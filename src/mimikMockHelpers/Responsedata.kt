@@ -20,6 +20,13 @@ class Responsedata : Networkdata {
         builder.invoke(this)
     }
 
+    fun clone(postClone: (Responsedata) -> Unit = {}) = Responsedata {
+        it.code = code
+        it.protocol = protocol
+        it.headers = tapeHeaders.newBuilder().build()
+        it.body = body
+    }.also { postClone.invoke(it) }
+
     override fun toString(): String {
         return "%s".format(code)
     }

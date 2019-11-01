@@ -274,9 +274,7 @@ object TapeEditor : EditorModule() {
 
                             infoText(
                                 "Tape name. Example: 'General' becomes '/General.json'"
-                            ) {
-                                it.hidden = true
-                            }
+                            ) { hidden = true }
 
                             pData.tape?.also {
                                 br()
@@ -297,7 +295,7 @@ object TapeEditor : EditorModule() {
                                 disableEnterKey
                                 id = name
                                 if (pData.newTape) {
-                                    placeholder = "Example: http://google.com"
+                                    placeholder = R.getProperty("urlPlaceholderExample")
                                     value = ""
                                 } else {
                                     pData.tape?.also {
@@ -345,12 +343,7 @@ object TapeEditor : EditorModule() {
                     tr {
                         th { +"Request Attractors" }
                         td {
-                            makeToggleButton("reqView")
-
-                            div {
-                                id = "reqView"
-                                br()
-
+                            toggleArea {
                                 infoText("attrInfo", "tape")
                                 table {
                                     tr {
@@ -408,10 +401,11 @@ object TapeEditor : EditorModule() {
                                     value = pData.tape?.alwaysLive.isTrue().toString()
                                     onChange = """
                                         setIsDisabled(SaveNewCalls, checked)
-                                        if (checked)
-                                            ChapterData.classList.add("opacity50");
-                                        else
-                                            ChapterData.classList.remove("opacity50");
+                                        if (document.getElementById('ChapterData'))
+                                            if (checked)
+                                                ChapterData.classList.add("opacity50");
+                                            else
+                                                ChapterData.classList.remove("opacity50");
                                         setIsDisabled(SaveAddChapters, checked)
                                     """.trimIndent()
                                 }
@@ -430,12 +424,9 @@ object TapeEditor : EditorModule() {
 
                                 if (!pData.newTape) {
                                     linebreak()
-                                    makeToggleButton("ChapterData")
-                                }
-
-                                div {
-                                    id = "ChapterData"
-                                    displayTapeChapters(pData)
+                                    toggleArea(id = "ChapterData") {
+                                        displayTapeChapters(pData)
+                                    }
                                 }
 
                                 if (pData.newTape) {
@@ -472,10 +463,7 @@ object TapeEditor : EditorModule() {
                                             +"Save tape as a hard tape"
                                         }
 
-                                        infoText(
-                                            "tapeSaveAsHard",
-                                            currentPath
-                                        )
+                                        infoText("tapeSaveAsHard", currentPath)
                                     }
                                 } else {
                                     tooltipText("Save tape to file -", "tapeSaveHardInfo")

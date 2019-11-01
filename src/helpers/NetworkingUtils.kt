@@ -20,6 +20,7 @@ import okhttp3.*
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
 import org.w3c.dom.NodeList
+import tapeItems.BlankTape.Companion.isTestRunning
 import java.io.IOException
 import java.nio.charset.Charset
 
@@ -262,7 +263,7 @@ val HttpUrl.hostPath: String
  */
 fun HttpUrl?.reHost(newHost: String?): HttpUrl? {
     val newHttpHost = HttpUrl.parse(
-        newHost.orEmpty().ensurePrefix("http", "http://")
+        newHost.orEmpty().ensureHttpPrefix
     )
     if (this == null || newHttpHost == null) return newHttpHost
     return newBuilder().also {
@@ -272,18 +273,59 @@ fun HttpUrl?.reHost(newHost: String?): HttpUrl? {
 }
 
 /**
- * Removes all the current query params from [HttpUrl], and applies the items from [newParams]
+ * Removes all the current query parameters from [HttpUrl], and applies the items from [newQuerys].
+ *
+ * [append]: When true, items are appended instead of clearing before [newQuerys] is added.
  */
-fun HttpUrl?.reParam(newParams: Sequence<Pair<String, String?>>?): HttpUrl? {
+fun HttpUrl?.reQuery(newQuerys: Sequence<Pair<String, Any?>>?, append: Boolean = false): HttpUrl? {
     if (this == null) return null
     return newBuilder().also { builder ->
-        queryParameterNames().forEach {
-            builder.removeAllQueryParameters(it)
-        }
-        newParams?.forEach {
-            builder.addQueryParameter(it.first, it.second)
+        if (!append)
+            queryParameterNames().forEach {
+                builder.removeAllQueryParameters(it)
+            }
+        newQuerys?.forEach {
+            builder.addQueryParameter(it.first, it.second.toString())
         }
     }.build()
+}
+
+/**
+ * Returns a Response from the given request.
+ *
+ * Note: if [isTestRunning] is true, the response body will contain the request body
+ */
+fun miniResponse(
+    request: okhttp3.Request,
+    status: HttpStatusCode = HttpStatusCode.OK
+): okhttp3.Response {
+    return okhttp3.Response.Builder().also {
+        it.request(request)
+        it.protocol(Protocol.HTTP_1_1)
+        it.code(status.value)
+        it.header(HttpHeaders.ContentType, "text/plain")
+        if (HttpMethod.requiresRequestBody(request.method()))
+            it.body(
+                ResponseBody.create(
+                    MediaType.parse("text/plain"),
+                    if (isTestRunning) request.body().content() else ""
+                )
+            )
+        it.message(status.description)
+    }.build()
+}
+
+fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Response? {
+    val requestBuilder = Request.Builder()
+        .also { builder.invoke(it) }
+
+    val request = try {
+        requestBuilder.build()
+    } catch (_: Exception) {
+        null
+    } ?: return null
+
+    return newCall(request).execute()
 }
 
 // == okreplay
@@ -424,71 +466,6 @@ suspend fun ApplicationCall.anyParameters(): Parameters? {
 val Parameters.toSingleMap: Map<String, String>
     get() = toMap().mapValues { it.value.firstOrNull().orEmpty() }
 
-// kotlinx.html
-/**
- * [textArea] which is populated by an input of [Parameters]
- */
-fun FlowContent.paramTextArea(params: Parameters?, config: TEXTAREA.() -> Unit = {}) {
-    val pairs = params?.run {
-        toMap().asSequence()
-            .flatMap { kv ->
-                kv.value.asSequence().map { kv.key to it }
-            }
-    }
-
-    textAreaBuilder(pairs, config)
-}
-
-/**
- * [textArea] which is populated by an input of [Headers]
- */
-fun FlowContent.headerTextArea(headers: Headers?, config: TEXTAREA.() -> Unit = {}) {
-    val pairs = headers?.run {
-        toMultimap().asSequence()
-            .filter { it.key != null && it.value != null }
-            .flatMap { kv ->
-                kv.value.asSequence()
-                    .filter { it != null }
-                    .map { kv.key!! to it!! }
-            }
-    }
-    textAreaBuilder(pairs, config)
-}
-
-fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: TEXTAREA.() -> Unit = {}) {
-    textArea {
-        config.invoke(this)
-        onKeyPress = "keypressNewlineEnter(this);"
-        val builder = StringBuilder()
-        data?.forEach {
-            builder.appendln("${it.first} : ${it.second}")
-        }
-        +builder.toString()
-    }
-}
-
-/**
- * Appends the data in [value] to the current [style]
- */
-fun CommonAttributeGroupFacade.appendStyle(value: String) {
-    if (isThrow { style })
-        style = value
-    else
-        style += value
-}
-
-val CommonAttributeGroupFacade.disabledBG: Unit
-    get() = appendStyle("background-color: #E0E0E0;")
-
-val CommonAttributeGroupFacade.readonlyBG: Unit
-    get() = appendStyle("background-color: #F0F0F0;")
-
-val CommonAttributeGroupFacade.disabledText: Unit
-    get() = appendStyle("color: darkgray;")
-
-val DIV.inlineDiv: Unit
-    get() = appendStyle("display: inline;")
-
 // == mimik
 /**
  * Returns if the response
@@ -506,3 +483,27 @@ fun StringBuilder.toJson(): String {
 }
 
 fun NodeList.asList() = (0..length).mapNotNull(this::item)
+
+// fuel
+val com.github.kittinunf.fuel.core.Headers.toOkHeaders: okhttp3.Headers
+    get() = Headers.Builder().also { builder ->
+        entries.forEach { hKV ->
+            hKV.value.forEach { builder.add(hKV.key, it) }
+        }
+    }.build()
+
+val com.github.kittinunf.fuel.core.Request.toRequestData: Requestdata
+    get() = Requestdata {
+        it.method = method.value
+        it.url = url.toString()
+        it.headers = headers.toOkHeaders
+        it.httpUrl.reQuery(parameters.asSequence())
+        it.body = body.asString(null)
+    }
+
+val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
+    get() = Responsedata {
+        it.code = statusCode
+        it.headers = headers.toOkHeaders
+        it.body = body().toByteArray().toString(Charset.defaultCharset())
+    }

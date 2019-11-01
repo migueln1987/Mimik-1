@@ -8,17 +8,14 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import helpers.*
 import helpers.attractors.RequestAttractors
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
-import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
-import okhttp3.ResponseBody
 import okhttp3.internal.http.HttpMethod
 import okreplay.*
 import java.io.File
@@ -114,7 +111,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             }
 
             if (!routingURL.isNullOrBlank())
-                returnTape.routingUrl = routingURL?.ensurePrefix("http", "http://")
+                returnTape.routingUrl = routingURL?.ensureHttpPrefix
 
             return returnTape
         }
@@ -225,31 +222,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     override fun isSequential() = mode.isSequential
 
     override fun size() = chapters.size
-
-    /**
-     * Returns a Response from the given request.
-     *
-     * Note: if [isTestRunning] is true, the response body will contain the request body
-     */
-    private fun miniResponse(
-        request: okhttp3.Request,
-        status: HttpStatusCode = HttpStatusCode.OK
-    ): okhttp3.Response {
-        return okhttp3.Response.Builder().also {
-            it.request(request)
-            it.protocol(Protocol.HTTP_1_1)
-            it.code(status.value)
-            it.header(HttpHeaders.ContentType, "text/plain")
-            if (HttpMethod.requiresRequestBody(request.method()))
-                it.body(
-                    ResponseBody.create(
-                        MediaType.parse("text/plain"),
-                        if (isTestRunning) request.body().content() else ""
-                    )
-                )
-            it.message(status.description)
-        }.build()
-    }
 
     /**
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain

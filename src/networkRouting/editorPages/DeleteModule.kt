@@ -25,7 +25,7 @@ object DeleteModule : EditorModule() {
                                 .removePrefix("/")
                             path(pathStart, TapeRouting.RoutePaths.EDIT.path)
                             parameters.clear()
-                            parameters.append("tape", tape.name)
+                            parameters["tape"] = tape.name
                         }
                     }
                 }

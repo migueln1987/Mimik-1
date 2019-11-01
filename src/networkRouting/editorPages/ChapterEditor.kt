@@ -121,17 +121,12 @@ object ChapterEditor : EditorModule() {
                     tr {
                         th { +"Request Attractors" }
                         td {
-                            makeToggleButton("reqView")
-
-                            div {
-                                id = "reqView"
-                                br()
-
+                            toggleArea {
                                 infoText("attrInfo", "chapter")
                                 table {
                                     tr {
                                         th {
-                                            style = "width: 20%" // minimum-ish size + some padding
+                                            style = "width: 15%" // minimum-ish size + some padding
                                             +"Path"
                                         }
                                         td {
@@ -225,10 +220,9 @@ object ChapterEditor : EditorModule() {
                             infoText("(optional, not used for incoming calls)")
                         }
                         td {
-                            makeToggleButton("requestDataDiv")
+                            toggleArea(id = "requestDataDiv") {
+                                if (isLive) appendClass("opacity50")
 
-                            div(classes = if (isLive) "opacity50" else "") {
-                                id = "requestDataDiv"
                                 table {
                                     style = "width: auto;"
                                     thead {
@@ -302,10 +296,9 @@ object ChapterEditor : EditorModule() {
                             }
                         }
                         td {
-                            makeToggleButton("responseDataDiv")
+                            toggleArea(id = "responseDataDiv") {
+                                if (isLive) appendClass("opacity50")
 
-                            div(classes = if (isLive) "opacity50" else "") {
-                                id = "responseDataDiv"
                                 table {
                                     style = "width: auto;"
                                     thead {

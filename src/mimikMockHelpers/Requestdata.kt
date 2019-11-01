@@ -1,6 +1,7 @@
 package mimikMockHelpers
 
 import helpers.asHttpUrl
+import helpers.attractors.RequestAttractors
 import helpers.tryGetBody
 import io.ktor.http.HttpHeaders
 import okhttp3.HttpUrl
@@ -23,7 +24,7 @@ class Requestdata : Networkdata {
             body = ""
     }
 
-    fun clone(postClone: (Requestdata) -> Unit) = Requestdata {
+    fun clone(postClone: (Requestdata) -> Unit = {}) = Requestdata {
         it.method = method
         it.url = url.toString()
         it.headers = tapeHeaders.newBuilder().build()
@@ -64,4 +65,10 @@ class Requestdata : Networkdata {
             override fun newBuilder() = TODO()
             override fun toYaml() = TODO()
         }
+
+    /**
+     * Creates [RequestAttractors] from this [Requestdata]
+     */
+    val toAttractors: RequestAttractors
+        get() = RequestAttractors(this)
 }

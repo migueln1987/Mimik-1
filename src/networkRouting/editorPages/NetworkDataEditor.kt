@@ -87,7 +87,7 @@ object NetworkDataEditor : EditorModule() {
                                     textInput(name = "requestUrl") {
                                         disableEnterKey
                                         id = name
-                                        placeholder = nData?.httpUrl?.hostPath ?: "Example: http://google.com/"
+                                        placeholder = nData?.httpUrl?.hostPath ?: R.getProperty("urlPlaceholderExample")
                                         value = nData?.httpUrl?.hostPath.orEmpty()
                                         size = "${placeholder.length + 20}"
                                         onKeyUp = "regexUrl(value)"
@@ -182,7 +182,10 @@ object NetworkDataEditor : EditorModule() {
                         td {
                             table {
                                 tr {
-                                    th { +"Data" }
+                                    th {
+                                        resizableCol
+                                        +"Data"
+                                    }
                                     th { +"Actions" }
                                 }
                                 tr {

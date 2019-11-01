@@ -67,7 +67,7 @@ class RecordedInteractions {
     var recentRequest: Requestdata? = null
 
     @Transient
-    var genResponses: List<Responsedata>? = listOf()
+    var genResponses: MutableList<Responsedata>? = mutableListOf()
 
     val hasRequestData: Boolean
         get() = requestData != null

@@ -123,7 +123,7 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
                 respondRedirect {
                     if (foundTape != null && data["resumeEdit"] == "true") {
                         path(TapeRouting.RoutePaths.EDIT.asSubPath)
-                        parameters.append("tape", data["tape"].orEmpty())
+                        parameters["tape"] = data["tape"].orEmpty()
                     } else path(TapeRouting.RoutePaths.ALL.asSubPath)
                 }
             }
@@ -172,9 +172,9 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
 
-            parameters.append("tape", tape.name)
+            parameters["tape"] = tape.name
             when (data["afterAction"]) {
-                "newChapter" -> parameters.append("chapter", "")
+                "newChapter" -> parameters["chapter"] = ""
                 "addNew" -> parameters["tape"] = ""
                 "allTapes" -> {
                     parameters.remove("tape")
@@ -197,8 +197,8 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
 
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
-            parameters.append("tape", foundTape.name)
-            parameters.append("chapter", chap.name)
+            parameters["tape"] = foundTape.name
+            parameters["chapter"] = chap.name
             when (data["afterAction"]) {
                 "newChapter" -> parameters["chapter"] = ""
                 "parentTape" -> parameters.remove("chapter")
@@ -224,8 +224,7 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         val network = when (data["network"]) {
             "request" -> (foundChap.requestData ?: Requestdata()).also {
                 it.method = data["requestMethod"]
-                it.url = (it.httpUrl ?: it.url.asHttpUrl)
-                    .reHost(data["requestUrl"]).toString()
+                it.url = data["requestUrl"]?.ensureHttpPrefix
             }
 
             "response" -> (foundChap.responseData ?: Responsedata()).also {
@@ -236,17 +235,17 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         }
             ?.also { nData ->
                 val params = data["reqParams"].orEmpty()
-                    .toPairs() { !it[0].startsWith("//") }
+                    .toPairs(removeCommentFilter)
 
                 if (nData is Requestdata) {
-                    nData.url = nData.httpUrl.reParam(params).toString()
+                    nData.url = nData.httpUrl.reQuery(params).toString()
 
                     if (nData.url.isNullOrBlank())
                         nData.url = null
                 }
 
                 val headersData = data["netHeaders"].orEmpty()
-                    .toPairs() { !it[0].startsWith("//") }
+                    .toPairs(removeCommentFilter)
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
                     headersData?.filter { it.second != null }
                         ?.forEach {
@@ -268,9 +267,9 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         respondRedirect {
             path(TapeRouting.RoutePaths.EDIT.asSubPath)
 
-            parameters.append("tape", foundTape.name)
-            parameters.append("chapter", foundChap.name)
-            parameters.append("network", data["network"].orEmpty())
+            parameters["tape"] = foundTape.name
+            parameters["chapter"] = foundChap.name
+            parameters["network"] = data["network"].orEmpty()
             when (data["afterAction"]) {
                 "viewChapter" -> parameters.remove("network")
             }
