@@ -10,7 +10,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveText
 import io.ktor.response.respond
 import io.ktor.routing.Route
-import io.ktor.routing.Routing
 import io.ktor.routing.put
 import io.ktor.routing.route
 import mimikMockHelpers.MockUseStates
@@ -20,7 +19,7 @@ import okhttp3.internal.http.HttpMethod
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
-class MimikMock(path: String = RoutePaths.rootPath) : RoutingContract(path) {
+class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
     private enum class RoutePaths(val path: String) {
         MOCK("");
@@ -30,7 +29,7 @@ class MimikMock(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         }
     }
 
-    override fun init(route: Routing) {
+    override fun init(route: Route) {
         route.route(path) {
             mock
         }

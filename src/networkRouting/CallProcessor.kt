@@ -8,14 +8,11 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respondText
-import io.ktor.routing.Routing
-import io.ktor.routing.get
-import io.ktor.routing.post
-import io.ktor.routing.route
+import io.ktor.routing.*
 
-class CallProcessor(path: String) : RoutingContract(path) {
+class CallProcessor : RoutingContract("{...}") {
 
-    override fun init(route: Routing) {
+    override fun init(route: Route) {
         route.route(path) {
             get { call.action() }
             post { call.action() }

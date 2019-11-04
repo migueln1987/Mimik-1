@@ -17,14 +17,11 @@ fun Route.port(port: Int, body: Route.() -> Unit): Route {
  * Evaluates if a route port equals [port]
  * @param port equals [port]
  */
-data class HttpPortRouteSelector(val port: Int) :
-    RouteSelector(RouteSelectorEvaluation.qualityParameter) {
-    override fun evaluate(context: RoutingResolveContext, segmentIndex: Int):
-            RouteSelectorEvaluation {
-        return if (context.call.request.local.port == port)
+data class HttpPortRouteSelector(val port: Int) : RouteSelector(RouteSelectorEvaluation.qualityConstant) {
+    override fun evaluate(context: RoutingResolveContext, segmentIndex: Int) =
+        if (context.call.request.local.port == port)
             RouteSelectorEvaluation.Constant
         else RouteSelectorEvaluation.Failed
-    }
 
     override fun toString() = "(port:$port)"
 }
