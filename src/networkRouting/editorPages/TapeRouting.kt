@@ -18,7 +18,7 @@ import networkRouting.editorPages.TapeEditor.getTapePage
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
-class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
+class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
     enum class RoutePaths(val path: String) {
         ALL("all"),
@@ -34,7 +34,7 @@ class TapeRouting(path: String = RoutePaths.rootPath) : RoutingContract(path) {
             get() = "$rootPath/$path"
     }
 
-    override fun init(route: Routing) {
+    override fun init(route: Route) {
         route.route(path) {
             all
             action

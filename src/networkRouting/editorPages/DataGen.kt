@@ -19,7 +19,7 @@ import okhttp3.HttpUrl
 import java.util.Date
 
 @Suppress("RemoveRedundantQualifierName")
-class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
+class DataGen : RoutingContract(RoutePaths.rootPath) {
 
     private val noData = "{ no data }"
 
@@ -40,7 +40,7 @@ class DataGen(path: String = RoutePaths.rootPath) : RoutingContract(path) {
         Make, Remove, Use, NewChapter
     }
 
-    override fun init(route: Routing) {
+    override fun init(route: Route) {
         route.route(path) {
             response
             responseGen

@@ -70,7 +70,7 @@ class MockUseStates(val state: Int) {
     /**
      * Returns this State as a type of MOCK.
      *
-     * Note: invalid values set this state as DISABLEDMOCK
+     * Note: invalid values set this state as [DISABLEDLIMITED]
      */
     fun asLimited(uses: Int): MockUseStates {
         if (uses == state) return this
@@ -81,7 +81,7 @@ class MockUseStates(val state: Int) {
     }
 
     /**
-     * Returns this State as type of Disabled
+     * Returns this State as type of Disabled ([DISABLEDLIMITED] or [DISABLE])
      */
     @Suppress("RemoveRedundantQualifierName")
     val asDisabled: MockUseStates

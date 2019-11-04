@@ -448,7 +448,11 @@ object TapeEditor : EditorModule() {
                         th { +"Save Options" }
                         td {
                             div {
-                                if (!pData.newTape) {
+                                if (pData.newTape) {
+                                    tooltipText("Save tape to file -", "tapeSaveHardInfo")
+                                    checkBoxInput(name = "hardtape")
+                                    linebreak()
+                                } else {
                                     hiddenInput(name = "name_pre") {
                                         value = pData.hardTapeName("")
                                     }
@@ -464,12 +468,9 @@ object TapeEditor : EditorModule() {
                                         }
 
                                         infoText("tapeSaveAsHard", currentPath)
+                                        linebreak()
                                     }
-                                } else {
-                                    tooltipText("Save tape to file -", "tapeSaveHardInfo")
-                                    checkBoxInput(name = "hardtape")
                                 }
-                                linebreak()
 
                                 postButton(name = "Action") {
                                     formAction = TapeRouting.RoutePaths.ACTION.path

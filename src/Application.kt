@@ -53,13 +53,13 @@ fun Application.module(testing: Boolean = false) {
     routing {
 
         port(Ports.live) {
-            CallProcessor("{...}").init(this@routing)
+            CallProcessor().init(this)
         }
 
         port(Ports.config) {
-            MimikMock().init(this@routing)
-            TapeRouting().init(this@routing)
-            DataGen().init(this@routing)
+            MimikMock().init(this)
+            TapeRouting().init(this)
+            DataGen().init(this)
 
             get { call.respondRedirect(TapeRouting.RoutePaths.rootPath) }
         }
