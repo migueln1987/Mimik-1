@@ -52,6 +52,7 @@ class RequestAttractors {
             source: Map<T, RequestAttractors?>,
             path: String?,
             params: String?,
+            headers: List<String>?,
             body: String? = null,
             custom: (T) -> AttractorMatches = { AttractorMatches() }
         ): QueryResponse<T> {
@@ -74,10 +75,10 @@ class RequestAttractors {
                     it.value.second.appendValues(it.value.first?.getParamMatches(params))
                     it.value.second.matchingRequired
                 }
-//                .filter {
-//                    it.value.second.appendValues(it.value.first?.getHeaderMatches(params))
-//                    it.value.second.matchingRequired
-//                }
+                .filter {
+                    it.value.second.appendValues(it.value.first?.getHeaderMatches(headers))
+                    it.value.second.matchingRequired
+                }
                 .filter {
                     it.value.second.appendValues(it.value.first?.getBodyMatches(body))
                     it.value.second.matchingRequired
@@ -245,8 +246,24 @@ class RequestAttractors {
     private fun getParamMatches(source: String?) =
         getMatchCount(queryParamMatchers, source)
 
-    private fun getHeaderMatches(source: String?) =
-        getMatchCount(queryHeaderMatchers, source)
+    private fun getHeaderMatches(source: List<String>?): AttractorMatches {
+        if (queryHeaderMatchers?.isNullOrEmpty().isTrue())
+            return AttractorMatches().also {
+                if (!source.isNullOrEmpty()) it.Required = 1
+            }
+
+        if (queryHeaderMatchers?.any { it.allowAllInputs.isTrue() }.isTrue())
+            return AttractorMatches(1, 1, 0)
+
+        if (queryHeaderMatchers?.all { it.hardValue.isBlank() }.isTrue())
+            return AttractorMatches()
+
+        return AttractorMatches().apply {
+            source?.forEach {
+                appendValues(getMatchCount(queryHeaderMatchers, it))
+            }
+        }
+    }
 
     private fun getBodyMatches(source: String?) =
         getMatchCount(queryBodyMatchers, source)

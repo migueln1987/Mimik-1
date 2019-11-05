@@ -1,11 +1,6 @@
 import com.google.gson.Gson
+import helpers.*
 import helpers.attractors.RequestAttractors
-import helpers.content
-import helpers.fileListing
-import helpers.makeCatchResponse
-import helpers.reHost
-import helpers.toOkRequest
-import helpers.toTapeData
 import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +9,7 @@ import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
+import kotlin.io.println
 
 class TapeCatalog : OkReplayInterceptor() {
     private val config = VCRConfig.getConfig
@@ -67,6 +63,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val path = request.url().encodedPath().removePrefix("/")
         val params = request.url().query()
+        val headers = request.headers().toStringPairs()
         val body = request.body()?.content()
 
         val validChapters = tapes.asSequence()
@@ -76,9 +73,8 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val foundChapter = RequestAttractors.findBest(
             validChapters,
-            path, params, body
-        ) // todo; re-enable header filter?
-        // { it.matchingHeaders(request) }
+            path, params, headers, body
+        )
 
         val foundTape = tapes.firstOrNull {
             it.chapters.contains(foundChapter.item)
@@ -101,6 +97,7 @@ class TapeCatalog : OkReplayInterceptor() {
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         val path = request.url().encodedPath().removePrefix("/")
         val params = request.url().query()
+        val headers = request.headers().toStringPairs()
 
         val validTapes = tapes
             .filter { it.mode.isWritable }
@@ -108,7 +105,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         return RequestAttractors.findBest(
             validTapes,
-            path, params
+            path, params, headers
         )
     }
 
@@ -119,9 +116,7 @@ class TapeCatalog : OkReplayInterceptor() {
             println("Using response tape ${it.name}")
             it.requestToChain(callRequest)?.also { chain ->
                 start(config, it)
-                return withContext(Dispatchers.IO) {
-                    intercept(chain)
-                }
+                return withContext(Dispatchers.IO) { intercept(chain) }
             }
 
             return callRequest.makeCatchResponse(HttpStatusCode.PreconditionFailed) {

@@ -116,6 +116,25 @@ fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) {
 
 fun Headers.contains(key: String, value: String) = values(key).contains(value)
 
+/**
+ * Converts the [Headers] into a list of Key/Value pairs
+ */
+val Headers.toPairs: List<Pair<String, String>>
+    get() = toMultimap().asSequence()
+        .filter { it.key != null }
+        .flatMap { kv ->
+            kv.value.asSequence().map {
+                kv.key!! to it.orEmpty()
+            }
+        }.toList()
+
+/**
+ * Returns this [Headers] as a list of "Key : Value", or user defined [format]
+ */
+fun Headers.toStringPairs(
+    format: (Pair<String, String>) -> String = { "${it.first} : ${it.second}" }
+) = toPairs.map { format.invoke(it) }
+
 fun HttpUrl.containsPath(vararg path: String) =
     pathSegments().containsAll(path.toList())
 
