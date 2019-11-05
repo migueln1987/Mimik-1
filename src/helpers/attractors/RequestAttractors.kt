@@ -1,6 +1,7 @@
 package helpers.attractors
 
 import helpers.anyTrue
+import helpers.isNotTrue
 import helpers.isTrue
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
@@ -103,6 +104,9 @@ class RequestAttractors {
         }
     }
 
+    /**
+     * Returns [true] if any of the data in this object has data
+     */
     val hasData: Boolean
         get() {
             return anyTrue(
@@ -159,64 +163,71 @@ class RequestAttractors {
     /**
      * Using the provided [matchScanner], the source list will be scanned for required and optional matches
      *
-     * If there is no matchers, and there is data, assume the user doesn't want this to match
+     * - No [matchScanner]s and [source] is not null: returns failed match
+     * - Any [matchScanner]'s allowAllInputs = true: ANY input (even none) passes the match
+     * - all of [matchScanner]'s values are blank: skips this test
+     * - [source] is null: fail all the non-optional (and non-except) tests
      */
     fun getMatchCount(
         matchScanner: List<RequestAttractorBit>?,
         source: String?
     ): AttractorMatches {
-        if (matchScanner == null || matchScanner.isEmpty())
+        if (matchScanner.isNullOrEmpty())
             return AttractorMatches().also {
                 if (!source.isNullOrEmpty()) it.Required = 1
             }
+
+        // match ANY input passed in, even an empty input
+        if (matchScanner.any { it.allowAllInputs.isTrue() })
+            return AttractorMatches(1, 1, 0)
 
         // nothing can possibly match, so give up here
         if (matchScanner.all { it.hardValue.isBlank() })
             return AttractorMatches()
 
-        val reqCount = matchScanner.count { it.required }
+        val reqCount = matchScanner.count { it.required && it.except.isNotTrue() }
         if (source == null) // hard fail if source is null
             return AttractorMatches(reqCount, -1, -1)
 
         val (required, reqRatio) = matchScanner.asSequence()
             .filter { it.required }
             .fold(0 to 0.0) { acc, x ->
-                val match = x.regex.find(source)
-                var matchVal = 0
-                var matchRto = 0.0
-
-                if (match.hasMatch) {
-                    if (x.except.isTrue().not()) {
-                        matchVal = 1
-                        matchRto =
-                            (if (match.hasMatch) x.regex.pattern.length else 0) /
-                                    source.length.toDouble()
-                    }
-                } else {
-                    if (x.except.isTrue()) {
-                        matchVal = 1
-                        matchRto = 1.0
-                    }
-                }
-
-                (acc.first + matchVal) to (acc.second + matchRto)
+                val result = x.matchResult(source)
+                (acc.first + result.first) to (acc.second + result.second)
             }
 
         val (optional, optRatio) = matchScanner.asSequence()
             .filter { it.optional.isTrue() }
             .fold(0 to 0.0) { acc, x ->
-                val match = x.regex.find(source)
-                val matchRto = (if (match.hasMatch) x.regex.pattern.length else 0) /
-                        source.length.toDouble()
-
-                (acc.first + (if (match.hasMatch) 1 else 0)) to
-                        (acc.second + matchRto)
+                val result = x.matchResult(source)
+                (acc.first + result.first) to (acc.second + result.second)
             }
 
         return AttractorMatches(reqCount, required, optional).also {
             it.reqRatio = reqRatio
             it.optRatio = optRatio
         }
+    }
+
+    fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
+        val match = regex.find(source)
+        var matchVal = 0
+        var matchRto = 0.0
+
+        if (match.hasMatch) {
+            if (except.isNotTrue()) {
+                matchVal = 1
+                val matchLen = if (match.hasMatch) regex.pattern.length else 0
+                matchRto = matchLen / source.length.toDouble()
+            }
+        } else {
+            if (except.isTrue()) {
+                matchVal = 1
+                matchRto = 1.0
+            }
+        }
+
+        return (matchVal to matchRto)
     }
 
     /**

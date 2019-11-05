@@ -601,6 +601,8 @@ abstract class EditorModule {
             val hostValue = get("hostValue")?.toIntOrNull() ?: RandomHost().value
             tape.tapeName = get("tapeName")?.trim() ?: hostValue.toString()
             tape.routingURL = get("RoutingUrl")?.trim()
+            if (tape.routingURL.isNullOrBlank())
+                tape.routingURL = null
 
             tape.attractors = RequestAttractors { attr ->
                 get("filterPath")?.trim()?.also { path ->
@@ -615,8 +617,11 @@ abstract class EditorModule {
                 }
             }
 
-            tape.alwaysLive = tape.isValidURL && get("allowPassthrough") == "on"
-            tape.allowLiveRecordings = get("SaveNewCalls") == "on"
+            if (tape.attractors?.hasData.isNotTrue())
+                tape.attractors = null
+
+            tape.alwaysLive = if (tape.isValidURL && get("allowPassthrough") == "on") true else null
+            tape.allowLiveRecordings = if (get("SaveNewCalls") == "on") true else null
         }
 
         if (isNewTape) {
@@ -652,7 +657,7 @@ abstract class EditorModule {
             if (get("usesEnabled") != "on")
                 chap.mockUses = MockUseStates.asDisabled(chap.mockUses)
 
-            chap.alwaysLive = get("useLive") == "on"
+            chap.alwaysLive = if (get("useLive") == "on") true else null
 
             if (get("clearRequest") == "on")
                 chap.requestData = null
@@ -697,10 +702,16 @@ abstract class EditorModule {
         val results = values.keys.map { key ->
             RequestAttractorBit {
                 it.value = values.getValue(key)
-                it.optional = optionals.getOrDefault(key, "") == "on"
-                it.except = excepts.getOrDefault(key, "") == "on"
+                it.optional = if (optionals.getOrDefault(key, "") == "on") true else null
+                it.except = if (excepts.getOrDefault(key, "") == "on") true else null
             }
         }
+        if (get(mKey.allowAny_ID) == "on") {
+            return results.toMutableList().also {
+                it.add(0, RequestAttractorBit { it.allowAllInputs = true })
+            }
+        }
+
         return if (results.isEmpty()) null else results
     }
 
@@ -730,6 +741,8 @@ abstract class EditorModule {
             get() = "$filterKey${nameShort}_Opt"
         val rowExceptName
             get() = "$filterKey${nameShort}_Except"
+        val allowAny_ID
+            get() = "$filterKey${nameShort}_allowAny"
     }
 
     /**
@@ -760,8 +773,24 @@ abstract class EditorModule {
         bit: List<RequestAttractorBit>?,
         info: TableQueryMatcher
     ) {
+        val isAllowAny = bit?.any { it.allowAllInputs.isTrue() }.orFalse
+
+        tooltipText("Allow any input: ", "allowAnyInputInput")
+        checkBoxInput(name = info.allowAny_ID) {
+            checked = isAllowAny
+            onChange = """
+                if (this.checked) 
+                    ${info.tableId}.style.color = "#A0A0A0";
+                else
+                    ${info.tableId}.style.color = "";
+            """.trimIndent()
+        }
+        linebreak()
+
         table {
             id = info.tableId
+            if (isAllowAny)
+                appendStyles("color: #A0A0A0;")
 
             script {
                 unsafe {
@@ -812,9 +841,10 @@ abstract class EditorModule {
                 }
             }
             tbody {
-                bit?.forEachIndexed { index, bit ->
-                    appendBit(bit, index, info)
-                }
+                bit?.filter { it.allowAllInputs.isNotTrue() }
+                    ?.forEachIndexed { index, bit ->
+                        appendBit(bit, index, info)
+                    }
 
                 tr {
                     td {
@@ -864,13 +894,13 @@ abstract class EditorModule {
 
             td {
                 checkBoxInput(name = "${info.rowOptName}${TapeEditor.loadFlag}$count") {
-                    checked = bit.optional ?: false
+                    checked = bit.optional.orFalse
                 }
                 text(" Optional")
                 br()
 
                 checkBoxInput(name = "${info.rowExceptName}${TapeEditor.loadFlag}$count") {
-                    checked = bit.except ?: false
+                    checked = bit.except.orFalse
                 }
                 text(" Except")
             }
