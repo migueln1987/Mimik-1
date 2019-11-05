@@ -411,6 +411,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             filteredChapters,
             request.url().encodedPath(),
             request.url().query(),
+            request.headers().toStringPairs(),
             if (HttpMethod.requiresRequestBody(request.method()))
                 request.body().content() else null
         )

@@ -29,6 +29,9 @@ data class AttractorMatches(
         )
     }
 
+    /**
+     * Appends the current data, then returns a reference of this object
+     */
     fun appendValues(data: AttractorMatches?): AttractorMatches {
         if (data == null) return this
         if (data.Required > 0) {
