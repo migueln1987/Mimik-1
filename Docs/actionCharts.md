@@ -70,9 +70,18 @@ m-->>in: Created (201) or Found (302)
 ## RequestAttractors (mockFilter_{filter})
 `Ratio` is defined by "how much of the literal regex matches"<br>
 > Example: <br>
-> `matchevery` (0.8%) would have a higher ratio than `match.*` (0.46%) for an input of `matcheverything`
+> "`matchevery`" would have a higher ratio than "`match.*`" for an input of `matcheverything`<br>
+> "matchevery" = 0.8%<br>
+> "match.*" = 0.46%
 
 `avoid` ratio will always equal `1` if it matches
+
+`{...} Matches? = ...`:
+- No attractors + testing data = `Fail`
+- Attractor has data + testing data is empty = `Fail`
+- Any Attractor's `allowAllInputs` is true = `Pass`
+- All Attractor values are empty = `Pass`
+  - And the attractor's `Except` is false
 
 ```mermaid
 sequenceDiagram
@@ -91,28 +100,28 @@ opt Source is empty
 end
 
 loop source map
-	f->>c: Matches?
+	f->>c: (Custom) Matches?
 	alt Fails
 		c-->>f: no match
-	else No configured matcher
+	else Pass
 		c-->>f: continue
 	end
-	f->>p: Matches?
+	f->>p: Path Matches?
 	alt Fails
 		p-->>f: no match
-	else No configured matcher
+	else Pass
 		p-->>f: continue
 	end
-	f->>q: Matches?
+	f->>q: Param Matches?
 	alt Fails
 		q-->>f: no match
-	else No configured matcher
+	else Pass
 		q-->>f: continue
 	end
-	f->>b: Matches?
+	f->>b: Body Matches?
 	alt Fails
 		b-->>f: no match
-	else No configured matcher
+	else Pass
 		b-->>f: continue
 	end
 end
