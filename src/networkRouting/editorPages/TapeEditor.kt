@@ -457,7 +457,7 @@ object TapeEditor : EditorModule() {
                                         value = pData.hardTapeName("")
                                     }
 
-                                    if (pData.tape?.file?.exists().isTrue().not()) {
+                                    if (pData.tape?.file?.exists().isNotTrue()) {
                                         hiddenInput(name = "tape") { value = pData.hardTapeName() }
                                         hiddenInput(name = "resumeEdit") { value = "true" }
 
@@ -538,7 +538,7 @@ object TapeEditor : EditorModule() {
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isEnabled(it.mockUses) &&
-                                        it.alwaysLive ?: false
+                                        it.alwaysLive.orFalse
                             }.toString()
                         }
                         td {
@@ -561,7 +561,7 @@ object TapeEditor : EditorModule() {
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isDisabled(it.mockUses) &&
-                                        it.alwaysLive ?: false
+                                        it.alwaysLive.orFalse
                             }.toString()
                         }
                         td {
@@ -656,7 +656,7 @@ object TapeEditor : EditorModule() {
                 }
             }
 
-            td { +(chap.alwaysLive ?: false).toString() }
+            td { +(chap.alwaysLive.orFalse).toString() }
 
             td {
                 chap.attractors?.also { attr ->

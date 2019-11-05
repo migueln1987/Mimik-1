@@ -1,11 +1,17 @@
 package helpers.attractors
 
+import helpers.isNotTrue
 import helpers.isTrue
 
 /**
  * A request attractor which could be optional
  */
 class RequestAttractorBit {
+    /**
+     * When true, the parent RequestAttractor category will match any passed in parameter
+     */
+    var allowAllInputs: Boolean? = null
+
     var value: String? = null
 
     var hardValue: String
@@ -14,12 +20,10 @@ class RequestAttractorBit {
             value = newValue
         }
 
-    var optional: Boolean? = false
+    var optional: Boolean? = null
 
     var required: Boolean
-        get() {
-            return optional.isTrue().not()
-        }
+        get() = optional.isNotTrue()
         set(value) {
             optional = !value
         }
@@ -27,7 +31,7 @@ class RequestAttractorBit {
     /**
      * when true, the regex must not find a match
      */
-    var except: Boolean? = false
+    var except: Boolean? = null
 
     val regex
         get() = hardValue.toRegex()

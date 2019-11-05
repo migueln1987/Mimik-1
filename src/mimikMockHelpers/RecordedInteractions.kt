@@ -1,11 +1,11 @@
 package mimikMockHelpers
 
+import helpers.RandomHost
 import helpers.attractors.AttractorMatches
 import helpers.attractors.RequestAttractors
 import helpers.isTrue
 import helpers.toTapeData
 import java.util.Date
-import java.util.UUID
 
 @Suppress("unused")
 class RecordedInteractions {
@@ -25,8 +25,9 @@ class RecordedInteractions {
             if (value.isNullOrBlank().not())
                 field = value
         }
+
     val name: String
-        get() = chapterName ?: UUID.randomUUID().toString()
+        get() = chapterName ?: RandomHost(hashCode()).valueAsUUID
 
     var alwaysLive: Boolean? = false
 

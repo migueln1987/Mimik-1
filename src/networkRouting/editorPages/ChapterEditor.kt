@@ -168,7 +168,7 @@ object ChapterEditor : EditorModule() {
                     tr {
                         th { +"Uses" }
                         td {
-                            text("Enabled - ")
+                            text("Enabled: ")
                             checkBoxInput(name = "usesEnabled") {
                                 checked = MockUseStates.isEnabled(
                                     pData.chapter?.mockUses
@@ -191,10 +191,7 @@ object ChapterEditor : EditorModule() {
                             }
 
                             linebreak()
-                            tooltipText(
-                                "Live - ",
-                                "chapLiveInfo"
-                            )
+                            tooltipText("Live: ", "chapLiveInfo")
                             checkBoxInput(name = "useLive") {
                                 checked = isLive
                                 onClick = """

@@ -4,6 +4,7 @@ import VCRConfig
 import com.beust.klaxon.internal.firstNotNullResult
 import helpers.isValidJSON
 import helpers.isTrue
+import helpers.orFalse
 import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -341,7 +342,7 @@ class MockTests {
                 ?.chapters?.firstOrNull()
 
             Assert.assertNotNull(mock)
-            Assert.assertTrue(mock?.alwaysLive ?: false)
+            Assert.assertTrue(mock?.alwaysLive.orFalse)
             Assert.assertNull(mock?.responseData)
 
             handleRequest(HttpMethod.Post, "/mail")
@@ -368,7 +369,7 @@ class MockTests {
 
             Assert.assertNotNull(mock)
             requireNotNull(mock)
-            Assert.assertTrue(mock.alwaysLive ?: false)
+            Assert.assertTrue(mock.alwaysLive.orFalse)
             Assert.assertNull(mock.responseData)
 
             handleRequest(HttpMethod.Post, "/mail")
@@ -413,7 +414,7 @@ class MockTests {
 
             Assert.assertNotNull(mock)
             requireNotNull(mock)
-            Assert.assertTrue(mock.alwaysLive ?: false)
+            Assert.assertTrue(mock.alwaysLive.orFalse)
             Assert.assertNull(mock.responseData)
 
             handleRequest(HttpMethod.Post, "/mail")
@@ -453,7 +454,7 @@ class MockTests {
 
             Assert.assertNotNull(tape)
             requireNotNull(tape)
-            Assert.assertTrue(tape.alwaysLive ?: false)
+            Assert.assertTrue(tape.alwaysLive.orFalse)
 
             handleRequest(HttpMethod.Post, "/mail")
                 .apply {

@@ -6,9 +6,22 @@ package helpers
 fun Boolean?.isTrue() = this == true
 
 /**
+ * Returns [true] if [value] does not equal [true].
+ *
+ * (null || false) = true
+ */
+fun Boolean?.isNotTrue() = (this == true).not()
+
+/**
  * Returns true only if [value] equals false. [null] returns false.
  */
 fun Boolean?.isFalse() = this == false
+
+/**
+ * Attempts to return [this] value, or [false] (when [this] is null)
+ */
+val Boolean?.orFalse
+    get() = this ?: false
 
 /**
  * Returns true if all the inputs are true

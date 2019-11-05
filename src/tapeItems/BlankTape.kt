@@ -50,6 +50,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     reBuild.attractors
                         ?.also { it.append(value) }
                         ?: also { reBuild.attractors = value }
+                    if (value == null)
+                        reBuild.attractors = null
                 }
             }
 
@@ -161,7 +163,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
 
-    var alwaysLive: Boolean? = false
+    var alwaysLive: Boolean? = null
 
     var chapters: MutableList<RecordedInteractions> = mutableListOf()
 
@@ -448,7 +450,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                             -> true // export non memory-only chapters
                             else -> false
                         }
-                    } ?: false
+                    }.orFalse
             }
             .let { jsonList ->
                 JsonArray().apply { jsonList.forEach { add(it) } }
