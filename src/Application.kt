@@ -19,6 +19,7 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import networkRouting.CallProcessor
+import networkRouting.FetchResponder
 import networkRouting.MimikMock
 import networkRouting.editorPages.DataGen
 import networkRouting.editorPages.TapeRouting
@@ -60,6 +61,7 @@ fun Application.module(testing: Boolean = false) {
             MimikMock().init(this)
             TapeRouting().init(this)
             DataGen().init(this)
+            FetchResponder().init(this)
 
             get { call.respondRedirect(TapeRouting.RoutePaths.rootPath) }
         }

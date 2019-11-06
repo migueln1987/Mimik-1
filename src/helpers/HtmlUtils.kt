@@ -5,6 +5,7 @@ import io.ktor.http.Parameters
 import io.ktor.util.toMap
 import kotlinx.html.*
 import okhttp3.Headers
+import java.io.File
 import kotlin.math.abs
 import kotlin.random.Random
 
@@ -217,6 +218,135 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
             builder.appendln("${it.first} : ${it.second}")
         }
         +builder.toString()
+    }
+}
+
+fun FlowContent.calloutWindow(
+    calloutID: String = "",
+    headerDiv: DIV.() -> Unit = { +"" },
+    container: DIV.() -> Unit
+) {
+    div(classes = "callout") {
+        id = calloutID
+        div(classes = "callout-header") { headerDiv.invoke(this) }
+        span(classes = "closebtn") {
+            onClick = "parentElement.style.top = -parentElement.clientHeight + 'px';"
+            +"x"
+        }
+        div(classes = "callout-container") { container.invoke(this) }
+    }
+}
+
+/**
+ * type: (file (default), tape, chapter)
+ * name: (chapter name); file/tape is from filename
+ * age: Date (in Long)
+ */
+fun FlowContent.refreshWatchWindow(
+    file: File?,
+    extraAppend: () -> List<Pair<String, String>>? = { null }
+) {
+    if (file == null) return
+    val fileID = abs(file.hashCode())
+    val extras = extraAppend.invoke() ?: listOf()
+    val watchType = extras.firstOrNull { it.first == "type" }?.second ?: "file"
+    val watchName = extras.firstOrNull { it.first == "name" }?.second ?: file.nameWithoutExtension
+    val watchAge = extras.firstOrNull { it.first == "age" && it.second.isNotBlank() }?.second
+        ?: file.lastModified().toString()
+    val refreshNotifID = "refreshNotif_$fileID"
+
+    div(classes = "callout") {
+        id = "refreshWatch_$fileID"
+        appendStyles("z-index: 18;", "opacity: 0.4;")
+        onMouseOver = "this.style.opacity = 1;"
+        onMouseOut = "this.style.opacity = 0.4;"
+
+        div(classes = "callout-container") {
+            checkBoxInput {
+                id = "refreshOn_$fileID"
+                checked = true
+                onChange = "if(checked) runWatcher();"
+            }
+            +" Observing $watchType: $watchName"
+            br()
+            div {
+                style = "text-align: center;"
+                id = "refreshBlink_$fileID"
+                +"."
+            }
+        }
+    }
+
+    calloutWindow(refreshNotifID, { +"New Data" }) {
+        a {
+            href = "javascript:window.location.reload(true)"
+            +"Refresh page"
+        }
+    }
+
+    script {
+        unsafe {
+            val ageID = "lastAge_$fileID"
+            val appender = StringBuilder().apply {
+                extras.forEach { appendln("formData.append('%s', '%s');".format(it.first, it.second)) }
+
+                if (!this.contains("append('age'"))
+                    appendln("formData.append('age', '%s');".format(watchAge))
+                if (!this.contains("append('type'"))
+                    appendln("formData.append('type', '%s');".format(watchType))
+            }
+
+            +"""
+                $refreshNotifID.style.top = -$refreshNotifID.clientHeight + 'px';
+                
+                var observeCnt_$fileID = 0;
+                function runWatcher() {
+                    var ${ageID}_watcher = setInterval(function() {
+                        refreshBlink_$fileID.innerText += "..";
+                        observeCnt_$fileID++;
+                        if (observeCnt_$fileID == 4) {
+                            refreshBlink_$fileID.innerText = ".";
+                            observeCnt_$fileID = 0;
+                        }
+                        
+                        if (!refreshOn_$fileID.checked)
+                            clearInterval(${ageID}_watcher);
+                        
+                        const formData = new FormData();
+                        formData.append('file', '$file');
+                        $appender
+                    
+                        fetch('../fetch/ageCheck', {
+                            method: "POST",
+                            body: formData
+                        })
+                        .then(function(response) {
+                            response.json().then((json) => {
+                                switch(json['action']) {
+                                    case 'Invalid':
+                                        refreshOn_$fileID.checked = false;
+                                        refreshOn_$fileID.disabled = true;
+                                        refreshBlink_$fileID.innerText = json['data'];
+                                        clearInterval(${ageID}_watcher);
+                                        break;
+                                    case 'Refresh':
+                                        $refreshNotifID.style.top = "";
+                                        refreshOn_$fileID.checked = false;
+                                        clearInterval(${ageID}_watcher);
+                                        break;
+                                }
+                             });
+                        })
+                        .catch(function(error) {
+                            refreshOn_$fileID.checked = false;
+                            clearInterval(${ageID}_watcher);
+                            console.log(error);
+                        });
+                    }, 1000);
+                }
+                runWatcher();
+            """.trimIndent()
+        }
     }
 }
 

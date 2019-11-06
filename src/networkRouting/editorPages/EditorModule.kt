@@ -10,6 +10,7 @@ import kotlinx.html.*
 import mimikMockHelpers.*
 import okhttp3.Headers
 import tapeItems.BlankTape
+import java.util.Date
 
 abstract class EditorModule {
     val tapeCatalog by lazy { TapeCatalog.Instance }
@@ -346,7 +347,8 @@ abstract class EditorModule {
                     .appendLines(
                         breadcrumbStyle,
                         collapsibleStyle,
-                        tooltipStyle
+                        tooltipStyle,
+                        calloutStyle
                     )
             }
         }
@@ -583,6 +585,48 @@ abstract class EditorModule {
             }
             """.trimIndent()
 
+    private val calloutStyle: String
+        get() = """
+            .callout {
+                position: fixed;
+                max-width: 300px;
+                margin-left: 40%;
+                margin-right: 40%;
+                width: 30%;
+                top: 0;
+                z-index: 20;
+                transition: top 0.2s;
+            }
+            
+            .callout-header {
+                padding: 2px 20px;
+                padding-right: 30px;
+                padding-left: 10px;
+                background: #555;
+                font-size: 30px;
+                color: white;
+            }
+            
+            .callout-container {
+                padding: 6px;
+                background-color: #ccc;
+                color: black
+            }
+            
+            .closebtn {
+                position: absolute;
+                top: 0px;
+                right: 6px;
+                color: white;
+                font-size: 30px;
+                cursor: pointer;
+            }
+            
+            .closebtn:hover {
+                color: lightgrey;
+            }
+        """.trimIndent()
+
     val CommonAttributeGroupFacade.disableEnterKey: Unit
         get() {
             onKeyDown = "return event.key != 'Enter';"
@@ -623,6 +667,7 @@ abstract class EditorModule {
             tape.alwaysLive = if (tape.isValidURL && get("allowPassthrough") == "on") true else null
             tape.allowLiveRecordings = if (get("SaveNewCalls") == "on") true else null
         }
+        modTape.modifiedDate = Date()
 
         if (isNewTape) {
             tapeCatalog.tapes.add(modTape)
@@ -664,6 +709,8 @@ abstract class EditorModule {
 
             if (get("responseAwait") == "on")
                 chap.responseData = null
+
+            chap.modifiedDate = Date()
         }
 
         tape.saveIfExists()

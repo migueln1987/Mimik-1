@@ -10,6 +10,7 @@ import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import tapeItems.BlankTape
+import kotlin.math.max
 
 object TapeEditor : EditorModule() {
     fun HTML.getAllTapesPage() {
@@ -160,8 +161,21 @@ object TapeEditor : EditorModule() {
 
         body {
             setupStyle()
-
             BreadcrumbNav(pData)
+
+            if (!pData.newTape) {
+                val newestTime = max(
+                    pData.tape?.file?.lastModified() ?: 0,
+                    pData.tape?.modifiedDate?.time ?: 0
+                ).toString()
+                refreshWatchWindow(pData.tape?.file) {
+                    listOf(
+                        ("type" to "tape"),
+                        ("age" to newestTime),
+                        ("name" to pData.hardTapeName())
+                    )
+                }
+            }
 
             if (pData.loadTape_Failed)
                 p { +"No tape with the name \"${pData.expectedTapeName}\" was found." }
