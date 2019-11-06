@@ -18,7 +18,10 @@ class RecordedInteractions {
         responseData = response.toTapeData
     }
 
-    var recordedDate = Date()
+    var recordedDate: Date? = Date()
+        get() = field ?: Date()
+    var modifiedDate: Date? = Date()
+        get() = field ?: recordedDate ?: Date()
 
     var chapterName: String? = null
         set(value) {

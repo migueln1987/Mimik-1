@@ -6,6 +6,7 @@ import helpers.*
 import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
+import kotlin.math.max
 
 object ChapterEditor : EditorModule() {
     /**
@@ -21,6 +22,20 @@ object ChapterEditor : EditorModule() {
         body {
             setupStyle()
             BreadcrumbNav(pData)
+
+            if (!pData.newChapter) {
+                val newestTime = max(
+                    pData.tape?.file?.lastModified() ?: 0,
+                    pData.chapter?.modifiedDate?.time ?: 0
+                )
+                refreshWatchWindow(pData.tape?.file) {
+                    listOf(
+                        ("type" to "chapter"),
+                        ("age" to newestTime.toString()),
+                        ("name" to pData.hardChapName())
+                    )
+                }
+            }
 
             if (pData.loadTape_Failed)
                 p {

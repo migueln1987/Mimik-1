@@ -21,6 +21,7 @@ import okreplay.*
 import java.io.File
 import java.io.Writer
 import java.nio.charset.Charset
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
@@ -159,6 +160,15 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     @Transient
     var file: File? = null
+        get() = field ?: File(
+            VCRConfig.getConfig.tapeRoot.get(),
+            name.toJsonName
+        )
+
+    var recordedDate: Date? = Date()
+        get() = field ?: Date()
+    var modifiedDate: Date? = Date()
+        get() = field ?: recordedDate ?: Date()
 
     var attractors: RequestAttractors? = null
     var routingUrl: String? = null
