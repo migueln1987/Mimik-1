@@ -85,6 +85,16 @@ class RecordedInteractions {
         )
     }
 
+    fun clone(postClone: (RecordedInteractions) -> Unit = {}) = RecordedInteractions {
+        it.recordedDate = Date()
+        it.chapterName = "${name}_clone"
+        it.alwaysLive = alwaysLive
+        it.attractors = attractors?.clone()
+        it.mockUses = mockUses
+        it.requestData = requestData?.clone()
+        it.responseData = responseData?.clone()
+    }.also { postClone.invoke(it) }
+
     /**
      * @return
      * - (-1): there is no replay data

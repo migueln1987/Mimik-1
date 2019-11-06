@@ -42,6 +42,7 @@ object TapeEditor : EditorModule() {
                 table {
                     tr {
                         th(classes = "center") {
+                            appendStyles("width: 15%;")
                             a {
                                 href = "edit?tape=${t.name}"
                                 +t.name
@@ -82,15 +83,33 @@ object TapeEditor : EditorModule() {
                         }
 
                         td {
+                            appendStyles("width: 15%;")
                             postForm(
                                 action = TapeRouting.RoutePaths.ACTION.path,
                                 encType = FormEncType.multipartFormData
                             ) {
                                 hiddenInput(name = "tape") { value = t.name }
+                                hiddenInput(name = "afterAction") {
+                                    id = name
+                                    disabled = true
+                                }
+
                                 p {
                                     inputButton(name = "Action") {
                                         value = "Edit"
                                         +value
+                                    }
+                                }
+                                p {
+                                    postButton(name = "Action") {
+                                        value = "Clone"
+                                        +"Clone"
+                                    }
+
+                                    postButton(name = "Action") {
+                                        value = "Clone"
+                                        onClick = "afterAction.disabled=false; afterAction.value='edit';"
+                                        +"Clone & Edit"
                                     }
                                 }
                                 p {
@@ -139,7 +158,6 @@ object TapeEditor : EditorModule() {
 
         val folders = mutableListOf(subDirectoryDefault)
             .apply { addAll(VCRConfig.getConfig.tapeRoot.get().getFolders()) }
-
         head {
             script {
                 unsafe {
@@ -444,7 +462,7 @@ object TapeEditor : EditorModule() {
                                 }
 
                                 if (pData.newTape) {
-                                    br()
+                                    linebreak()
                                     postButton(name = "Action") {
                                         formAction = TapeRouting.RoutePaths.ACTION.path
                                         id = "SaveAddChapters"
@@ -630,15 +648,21 @@ object TapeEditor : EditorModule() {
 
     private fun FlowContent.displayTapeChapters(data: ActiveData) {
         val tape = data.tape ?: return
-        br()
         hiddenInput(name = "tape") { value = tape.name }
         postForm(action = TapeRouting.RoutePaths.EDIT.path) {
-            hiddenInput(name = "chapter")
-            button { +"Create new chapter" }
+            hiddenInput(name = "chapter") {
+                id = name
+                disabled = true
+            }
+            button {
+                onClick = "chapter.disabled = false;"
+                +"Create new chapter"
+            }
         }
 
         if (tape.chapters.isEmpty())
             return
+        linebreak()
 
         table {
             thead {
@@ -722,13 +746,31 @@ object TapeEditor : EditorModule() {
             }
 
             td {
-                form {
+                form(encType = FormEncType.multipartFormData) {
                     hiddenInput(name = "tape") { value = tape }
                     hiddenInput(name = "chapter") { value = chap.name }
+                    hiddenInput(name = "afterAction") {
+                        id = name
+                        disabled = true
+                    }
 
                     getButton {
                         formAction = TapeRouting.RoutePaths.EDIT.path
                         +"Edit"
+                    }
+
+                    linebreak()
+                    postButton(name = "Action") {
+                        formAction = TapeRouting.RoutePaths.ACTION.path
+                        value = "Clone"
+                        +"Clone"
+                    }
+
+                    postButton(name = "Action") {
+                        formAction = TapeRouting.RoutePaths.ACTION.path
+                        value = "Clone"
+                        onClick = "afterAction.disabled=false; afterAction.value='edit';"
+                        +"Clone & Edit"
                     }
 
                     linebreak()

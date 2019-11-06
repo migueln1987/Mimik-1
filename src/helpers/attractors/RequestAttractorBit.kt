@@ -45,15 +45,10 @@ class RequestAttractorBit {
         builder.invoke(this)
     }
 
-    /**
-     * Returns a deep copy of this object
-     */
-    fun clone(): RequestAttractorBit {
-        return RequestAttractorBit {
-            it.value = value
-            it.optional = optional
-            it.except = except
-        }
+    fun clone() = RequestAttractorBit {
+        it.value = value
+        it.optional = optional
+        it.except = except
     }
 
     override fun toString(): String {

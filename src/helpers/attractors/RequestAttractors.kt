@@ -118,6 +118,13 @@ class RequestAttractors {
             )
         }
 
+    fun clone() = RequestAttractors {
+        it.routingPath = routingPath?.clone()
+        it.queryParamMatchers = queryParamMatchers?.map { it.clone() }
+        it.queryHeaderMatchers = queryParamMatchers?.map { it.clone() }
+        it.queryBodyMatchers = queryParamMatchers?.map { it.clone() }
+    }
+
     fun append(data: RequestAttractors?) {
         if (data == null) return
 
