@@ -189,6 +189,16 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     val isValidURL: Boolean
         get() = routingUrl.isValidURL
 
+    fun clone(postClone: (BlankTape) -> Unit = {}) = BlankTape {
+        it.tapeName = "${tapeName}_clone"
+        it.recordedDate = Date()
+        it.attractors = attractors?.clone()
+        it.routingUrl = routingUrl
+        it.alwaysLive = alwaysLive
+        it.chapters = chapters.map { it.clone() }.toMutableList()
+        it.tapeMode = tapeMode
+    }.also { postClone.invoke(it) }
+
     override fun getName() = tapeName ?: file?.nameWithoutExtension ?: hashCode().toString()
 
     private enum class SearchPreferences {

@@ -7,6 +7,7 @@ import io.ktor.html.respondHtml
 import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.*
+import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import networkRouting.RoutingContract
@@ -127,6 +128,8 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                     } else path(TapeRouting.RoutePaths.ALL.asSubPath)
                 }
             }
+
+            "Clone" -> Action_Clone(data)
 
             "Edit" -> {
                 respondRedirect {
@@ -272,6 +275,61 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             parameters["network"] = data["network"].orEmpty()
             when (data["afterAction"]) {
                 "viewChapter" -> parameters.remove("network")
+            }
+        }
+    }
+
+    private suspend fun ApplicationCall.Action_Clone(data: Map<String, String>) {
+        val tapeName = data["tape"]
+        val tape = tapeCatalog.tapes.firstOrNull { it.name == tapeName }
+        if (tape == null) {
+            respondRedirect(TapeRouting.RoutePaths.ALL.asSubPath)
+            return
+        }
+
+        val chapName = data["chapter"]
+        val chap = tape.chapters.firstOrNull { it.name == chapName }
+
+        var newTape: BlankTape? = null
+        var newChap: RecordedInteractions? = null
+
+        if (chap == null) {
+            newTape = tape.clone { post ->
+                var cName = post.name
+                var loopCheck = 1
+                while (tapeCatalog.tapes.any { it.name == cName }) {
+                    cName = post.name + loopCheck
+                    loopCheck++
+                }
+                post.tapeName = cName
+            }
+            newTape.saveIfExists()
+            tapeCatalog.tapes.add(newTape)
+        } else {
+            newChap = chap.clone { post ->
+                var cName = post.name
+                var loopCheck = 1
+                while (tape.chapters.any { it.name == cName }) {
+                    cName = post.name + loopCheck
+                    loopCheck++
+                }
+                post.chapterName = cName
+            }
+            tape.chapters.add(newChap)
+            tape.saveIfExists()
+        }
+
+        respondRedirect {
+            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+            parameters["tape"] = tape.name
+
+            when (data["afterAction"]) {
+                "edit" -> {
+                    if (newChap == null)
+                        parameters["tape"] = newTape?.name.orEmpty()
+                    else
+                        parameters["chapter"] = newChap.name
+                }
             }
         }
     }
