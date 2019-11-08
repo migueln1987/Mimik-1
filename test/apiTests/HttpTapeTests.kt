@@ -1,7 +1,10 @@
 package apiTests
 
+import com.fiserv.mimik.Ports
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.request.port
 import io.ktor.server.testing.handleRequest
 import org.junit.Assert
 import org.junit.Test
@@ -11,7 +14,7 @@ class HttpTapeTests {
     fun deleteTape() {
         val tapeName = "DeleteTapeTest"
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock") {
+            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
                 addHeader("mockTape_Name", tapeName)
                 addHeader("mockTape_Only", "true")
             }.apply {
@@ -20,7 +23,7 @@ class HttpTapeTests {
                 }
             }
 
-            handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName")
+            handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName", Ports.config)
                 .apply {
                     response {
                         val hasTape = TapeCatalog.Instance.tapes

@@ -164,6 +164,7 @@ object ChapterEditor : EditorModule() {
 
                                         addMatcherRow(attr?.queryHeaderMatchers) {
                                             it.matcherName = "Header"
+                                            it.allowAnyCheckState = attr?.queryHeaderMatchers.isNullOrEmpty()
                                         }
 
                                         addMatcherRow(attr?.queryBodyMatchers) {

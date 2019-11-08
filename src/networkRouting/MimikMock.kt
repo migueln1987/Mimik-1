@@ -222,6 +222,12 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         val bodyAttractors = filters.filterAttractorKeys("body")
 
+        var headAttractors = filters.filterAttractorKeys("header")
+        if (headAttractors.isEmpty())
+            headAttractors = headAttractors.toMutableList().apply {
+                add(RequestAttractorBit { it.allowAllInputs = true })
+            }
+
         return RequestAttractors { attr ->
             if (urlPath != null)
                 attr.routingPath = RequestAttractorBit(urlPath)
@@ -229,6 +235,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
                 attr.queryParamMatchers = paramAttractors
             if (bodyAttractors.isNotEmpty())
                 attr.queryBodyMatchers = bodyAttractors
+            attr.queryHeaderMatchers = headAttractors
         }
     }
 

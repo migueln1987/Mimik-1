@@ -49,7 +49,7 @@ enum class BoundStates {
 }
 
 inline fun <reified T : Any?> testBounds?.observe(tape: BlankTape, watch: () -> T?): T? {
-    if (this == null) return null
+    if (this == null) return watch.invoke()
     if (!stateUses.containsKey(tape.name))
         stateUses[tape.name] = mutableListOf()
 
