@@ -125,6 +125,9 @@ class RequestAttractors {
         it.queryBodyMatchers = queryParamMatchers?.map { it.clone() }
     }
 
+    /**
+     * Appends [data] to this object's data. null [data] are ignored
+     */
     fun append(data: RequestAttractors?) {
         if (data == null) return
 
@@ -147,14 +150,18 @@ class RequestAttractors {
         }
     }
 
-    data class matcherPair(
+    private data class MatcherPair(
         var from: List<RequestAttractorBit>? = null,
         var to: List<RequestAttractorBit>? = null
     )
 
-    private fun matchAppender(matchers: matcherPair.() -> Unit): List<RequestAttractorBit>? {
-        matcherPair().apply {
-            matchers.invoke(this)
+    /**
+     * Appends data from [matchers]'s [MatcherPair.from] to the contents of [MatcherPair.to],
+     * then returns [MatcherPair.to].
+     */
+    private fun matchAppender(matchers: MatcherPair.() -> Unit): List<RequestAttractorBit>? {
+        return MatcherPair().apply {
+            matchers.invoke(this) // initialize matcherPair's data
 
             from?.also { newData ->
                 to = (to ?: listOf())
@@ -163,9 +170,7 @@ class RequestAttractors {
                         addAll(newData.filterNot { contains(it) })
                     }
             }
-
-            return to
-        }
+        }.to
     }
 
     /**
@@ -193,7 +198,7 @@ class RequestAttractors {
         if (matchScanner.all { it.hardValue.isBlank() })
             return AttractorMatches()
 
-        val reqCount = matchScanner.count { it.required && it.except.isNotTrue() }
+        val reqCount = matchScanner.count { it.required }
         if (source == null) // hard fail if source is null
             return AttractorMatches(reqCount, -1, -1)
 
@@ -217,7 +222,7 @@ class RequestAttractors {
         }
     }
 
-    fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
+    private fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
         val match = regex.find(source)
         var matchVal = 0
         var matchRto = 0.0

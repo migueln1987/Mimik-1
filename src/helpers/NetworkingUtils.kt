@@ -13,14 +13,12 @@ import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
 import io.ktor.util.filter
 import io.ktor.util.toMap
-import kotlinx.html.*
 import mimikMockHelpers.Requestdata
 import mimikMockHelpers.Responsedata
 import okhttp3.*
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
 import org.w3c.dom.NodeList
-import tapeItems.BlankTape.Companion.isTestRunning
 import java.io.IOException
 import java.nio.charset.Charset
 
@@ -38,7 +36,7 @@ val okhttp3.Response.toJson: String
     }
 
 /**
- * Returns the string contents of a RequestBody
+ * Returns the string contents of a RequestBody, or [default] in the case the body is empty
  */
 fun RequestBody?.content(default: String = ""): String {
     return this?.let { _ ->
@@ -141,7 +139,7 @@ fun HttpUrl.containsPath(vararg path: String) =
 /**
  * Returns a brief okHttp response to respond with a defined response [status] and [message]
  */
-fun okhttp3.Request.makeCatchResponse(
+fun okhttp3.Request.createResponse(
     status: HttpStatusCode,
     message: () -> String = { "" }
 ): okhttp3.Response {
@@ -327,7 +325,7 @@ fun miniResponse(
             it.body(
                 ResponseBody.create(
                     MediaType.parse("text/plain"),
-                    if (isTestRunning) request.body().content() else ""
+                    if (TapeCatalog.isTestRunning) request.body().content() else ""
                 )
             )
         it.message(status.description)
@@ -346,6 +344,21 @@ fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Res
 
     return newCall(request).execute()
 }
+
+/**
+ * Returns the hashCode of this [Request]'s toString.
+ *
+ * If another [Request] has the same method + url + headers + body, then the contentHash will be the same
+ */
+val okhttp3.Request.contentHash: Int
+    get() {
+        return "%s%s%s%s".format(
+            method(),
+            url().toString(),
+            headers().toString(),
+            body().content()
+        ).hashCode()
+    }
 
 // == okreplay
 
@@ -402,18 +415,27 @@ val okreplay.Response.toTapeData: Responsedata
     get() = Responsedata(this)
 
 // ktor
-suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
-    val requestBody = when {
+/**
+ * Tries to get the body text from this request (if request supports hosting a body).
+ * [default] is returned if the body is expected, but can't be recieved.
+ * [null] is returned if the request does not support hosting a body
+ */
+suspend fun ApplicationCall.tryGetBody(default: String = ""): String? {
+    return when {
         HttpMethod.requiresRequestBody(request.httpMethod.value) -> {
             try {
                 receiveText()
             } catch (e: Exception) {
-                println("ApplicationCall.toOkRequest \n$e")
-                ""
+                println("ApplicationCall.tryGetBody \n$e")
+                default
             }
         }
         else -> null
     }
+}
+
+suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
+    val requestBody = tryGetBody()
 
     return okhttp3.Request.Builder().also { build ->
         build.url(

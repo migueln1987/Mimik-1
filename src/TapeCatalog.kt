@@ -2,13 +2,17 @@ import com.google.gson.Gson
 import helpers.*
 import helpers.attractors.RequestAttractors
 import io.ktor.application.ApplicationCall
+import io.ktor.features.callId
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
+import networkRouting.TestingManager.observe
+import networkRouting.TestingManager.TestManager
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
+import java.util.Date
 import kotlin.io.println
 
 class TapeCatalog : OkReplayInterceptor() {
@@ -17,6 +21,8 @@ class TapeCatalog : OkReplayInterceptor() {
     val tapes: MutableList<BlankTape> = mutableListOf()
 
     companion object {
+        var isTestRunning = false
+
         val Instance by lazy {
             TapeCatalog().also { it.loadTapeData() }
         }
@@ -58,7 +64,7 @@ class TapeCatalog : OkReplayInterceptor() {
      * - HttpStatusCode.NotFound (404) = item
      * - HttpStatusCode.Conflict (409) = null item
      */
-    fun findResponseByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
+    fun findResponseByQuery(request: okhttp3.Request, tapeLimit: List<String>? = null): QueryResponse<BlankTape> {
         if (tapes.isEmpty()) return QueryResponse()
 
         val path = request.url().encodedPath().removePrefix("/")
@@ -67,6 +73,7 @@ class TapeCatalog : OkReplayInterceptor() {
         val body = request.body()?.content()
 
         val validChapters = tapes.asSequence()
+            .filter { tapeLimit?.contains(it.name) ?: true }
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
             .associateWith { it.attractors }
@@ -99,7 +106,7 @@ class TapeCatalog : OkReplayInterceptor() {
         val params = request.url().query()
         val headers = request.headers().toStringPairs()
 
-        val validTapes = tapes
+        val validTapes = tapes.asSequence()
             .filter { it.mode.isWritable }
             .associateBy({ it }, { it.attractors })
 
@@ -110,17 +117,48 @@ class TapeCatalog : OkReplayInterceptor() {
     }
 
     suspend fun processCall(call: ApplicationCall): okhttp3.Response {
-        var callRequest = call.toOkRequest()
+        var callRequest: okhttp3.Request = call.toOkRequest()
 
-        findResponseByQuery(callRequest).item?.also {
-            println("Using response tape ${it.name}")
-            it.requestToChain(callRequest)?.also { chain ->
-                start(config, it)
-                return withContext(Dispatchers.IO) { intercept(chain) }
+        val bounds = TestManager.getManagerByID(call.callId)
+
+        if (bounds != null) {
+            val response = when {
+                bounds.expireTime?.after(Date()).isTrue() ->
+                    callRequest.createResponse(HttpStatusCode.Forbidden) {
+                        "Testing bounds expired"
+                    }
+                !bounds.isEnabled ->
+                    callRequest.createResponse(HttpStatusCode.Forbidden) {
+                        "Test with handle ${bounds.handle} is stopped."
+                    }
+                bounds.tapes.isEmpty() ->
+                    callRequest.createResponse(HttpStatusCode.Forbidden) {
+                        "Test with handle ${bounds.handle} has no tapes."
+                    }
+                else -> null
+            }
+            if (response != null) return response
+        }
+
+        findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
+            println("Using response tape ${tape.name}")
+            tape.requestToChain(callRequest)?.also { chain ->
+                start(config, tape)
+                return withContext(Dispatchers.IO) {
+                    bounds.observe(tape) {
+                        intercept(chain)
+                    }!!
+                }
             }
 
-            return callRequest.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+            return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
                 R.getProperty("processCall_InvalidUrl")
+            }
+        }
+
+        if (bounds != null) {
+            return callRequest.createResponse(HttpStatusCode.Forbidden) {
+                "Test bounds [${bounds.handle}] has no matching tapes."
             }
         }
 
@@ -142,11 +180,11 @@ class TapeCatalog : OkReplayInterceptor() {
                     it.requestToChain(callRequest)?.let { chain ->
                         start(config, it)
                         withContext(Dispatchers.IO) { intercept(chain) }
-                    } ?: callRequest.makeCatchResponse(HttpStatusCode.PreconditionFailed) {
+                    } ?: callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
                         R.getProperty("processCall_InvalidUrl")
                     }
                 } ?: let {
-                    callRequest.makeCatchResponse(HttpStatusCode.Conflict) {
+                    callRequest.createResponse(HttpStatusCode.Conflict) {
                         R.getProperty("processCall_ConflictingTapes")
                     }
                 }
@@ -162,7 +200,7 @@ class TapeCatalog : OkReplayInterceptor() {
                     tape.saveFile()
                     tapes.add(tape)
                 }
-                callRequest.makeCatchResponse(hostTape.status) { hostTape.responseMsg.orEmpty() }
+                callRequest.createResponse(hostTape.status) { hostTape.responseMsg.orEmpty() }
             }
         }
     }

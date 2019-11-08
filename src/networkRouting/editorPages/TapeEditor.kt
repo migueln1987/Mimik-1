@@ -153,7 +153,7 @@ object TapeEditor : EditorModule() {
         val pData = params.toActiveEdit
 
         val randomVal = randomHost.value
-        val randomValStr = randomHost.valueAsChars
+        val randomValStr = randomHost.valueAsChars()
         val currentPath = VCRConfig.getConfig.tapeRoot.get().path
 
         val folders = mutableListOf(subDirectoryDefault)

@@ -1,8 +1,7 @@
 package helpers
 
-inline fun <reified T : Enum<T>> enumContains(name: String?): Boolean {
-    return enumValues<T>().any { it.name == name }
-}
+inline fun <reified T : Enum<T>> enumContains(name: String?) =
+    enumValues<T>().any { it.name == name }
 
 inline fun <reified T : Enum<T>> enumSafeValue(name: String?): T? {
     if (name == null) return null

@@ -21,30 +21,47 @@ class RandomHost(init: Int? = null) {
         value = init?.let { abs(it) } ?: nextRandom()
     }
 
-    val valueAsChars: String
-        get() {
-            val useRandom = Random(value.toLong())
+    /**
+     * Returns a random series of chars between [min] and [max] length.
+     *
+     * Results are predictable based on the current [value].
+     */
+    fun valueAsChars(min: Int = 5, max: Int = 10): String {
+        val useRandom = Random(value.toLong())
 
-            // positive value between 5-10 chars
-            val length = max(5, abs(useRandom.nextInt(10)))
-
-            val byteData = ByteArray(length)
-            useRandom.nextBytes(byteData)
-
-            return byteData.asSequence()
-                .map { it and Byte.MAX_VALUE } // abs value
-                .map { it / Byte.MAX_VALUE.toFloat() } // 0-127 -> 0-100%
-                .map { (it * (charPool.size - 1)).toInt() } // % -> 0-charPool
-                .map { charPool[it] } // get char value
-                .joinToString("")
+        var useMin = min
+        var useMax = max
+        if (min > max) {
+            useMax = min
+            useMin = max
         }
 
-    val valueToUUID: UUID
-        get() = nameUUIDFromBytes(valueAsChars.toByteArray())
+        // positive value between 5-10 chars
+        val length = max(useMin, abs(useRandom.nextInt(useMax)))
 
+        val byteData = ByteArray(length)
+        useRandom.nextBytes(byteData)
+
+        return byteData.asSequence()
+            .map { it and Byte.MAX_VALUE } // abs value
+            .map { it / Byte.MAX_VALUE.toFloat() } // 0-127 -> 0-100%
+            .map { (it * (charPool.size - 1)).toInt() } // % -> 0-charPool
+            .map { charPool[it] } // get char value
+            .joinToString("")
+    }
+
+    val valueToUUID: UUID
+        get() = nameUUIDFromBytes(valueAsChars().toByteArray())
+
+    /**
+     * Returns a [UUID] in string form (8-4-4-4-12, each letter being hexadecimal)
+     */
     val valueAsUUID
         get() = valueToUUID.toString()
 
+    /**
+     * Causes [value] to randomize to a new value (within 0 and [bound])
+     */
     fun nextRandom(bound: Int? = null): Int {
         value = when (bound) {
             null, 0 -> random.nextInt()

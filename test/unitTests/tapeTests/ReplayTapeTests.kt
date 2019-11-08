@@ -43,6 +43,7 @@ class ReplayTapeTests {
             it.mockUses = MockUseStates.SINGLEMOCK.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
+                attr.queryHeaderMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
         }
         testObject.chapters.add(chapter)
@@ -65,6 +66,7 @@ class ReplayTapeTests {
             it.mockUses = MockUseStates.ALWAYS.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
+                attr.queryHeaderMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
             it.response = mockk {
                 every { hasBody() } returns true
@@ -96,6 +98,7 @@ class ReplayTapeTests {
             it.mockUses = MockUseStates.SINGLEMOCK.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
+                attr.queryHeaderMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
             it.response = mockk {
                 every { hasBody() } returns true
@@ -111,6 +114,7 @@ class ReplayTapeTests {
             it.mockUses = MockUseStates.ALWAYS.state
             it.attractors = RequestAttractors { attr ->
                 attr.routingPath = RequestAttractorBit("/path")
+                attr.queryHeaderMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
             it.response = mockk {
                 every { hasBody() } returns true

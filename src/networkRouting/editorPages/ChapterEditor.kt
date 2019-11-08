@@ -97,7 +97,7 @@ object ChapterEditor : EditorModule() {
 
                                     button(type = ButtonType.button) {
                                         onClick = chapNameAction.format(
-                                            randomHost.valueAsChars,
+                                            randomHost.valueAsChars(),
                                             nameAction
                                         )
                                         +"Use generated string"
@@ -164,6 +164,7 @@ object ChapterEditor : EditorModule() {
 
                                         addMatcherRow(attr?.queryHeaderMatchers) {
                                             it.matcherName = "Header"
+                                            it.allowAnyCheckState = attr?.queryHeaderMatchers.isNullOrEmpty()
                                         }
 
                                         addMatcherRow(attr?.queryBodyMatchers) {

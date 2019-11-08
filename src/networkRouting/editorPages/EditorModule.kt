@@ -777,19 +777,23 @@ abstract class EditorModule {
             get() = matcherName.take(2).toUpperCase()
 
         private val filterKey = "filter"
+        private val filterPrefix
+            get() = "$filterKey$nameShort"
 
         val tableId
-            get() = "$filterKey${nameShort}_Table"
+            get() = "${filterPrefix}_Table"
         val rowID
-            get() = "$filterKey${nameShort}_ID"
+            get() = "${filterPrefix}_ID"
         val rowValueName
-            get() = "$filterKey${nameShort}_Value"
+            get() = "${filterPrefix}_Value"
         val rowOptName
-            get() = "$filterKey${nameShort}_Opt"
+            get() = "${filterPrefix}_Opt"
         val rowExceptName
-            get() = "$filterKey${nameShort}_Except"
+            get() = "${filterPrefix}_Except"
         val allowAny_ID
-            get() = "$filterKey${nameShort}_allowAny"
+            get() = "${filterPrefix}_allowAny"
+
+        var allowAnyCheckState: Boolean? = null
     }
 
     /**
@@ -820,7 +824,7 @@ abstract class EditorModule {
         bit: List<RequestAttractorBit>?,
         info: TableQueryMatcher
     ) {
-        val isAllowAny = bit?.any { it.allowAllInputs.isTrue() }.orFalse
+        val isAllowAny = bit?.any { it.allowAllInputs.isTrue() }.orFalse || info.allowAnyCheckState.orFalse
 
         tooltipText("Allow any input: ", "allowAnyInputInput")
         checkBoxInput(name = info.allowAny_ID) {

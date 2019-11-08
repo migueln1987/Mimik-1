@@ -121,11 +121,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     companion object {
-        @Transient
-        var isTestRunning = false
-
         var tapeRoot: TapeRoot = VCRConfig.getConfig.tapeRoot
-        internal val gson = Gson()
+        private val gson = Gson()
 
         @Transient
         private val defaultResponse = object : Response {
@@ -199,7 +196,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         it.tapeMode = tapeMode
     }.also { postClone.invoke(it) }
 
-    override fun getName() = tapeName ?: file?.nameWithoutExtension ?: hashCode().toString()
+    override fun getName() = tapeName ?: RandomHost(hashCode()).valueAsChars()
 
     private enum class SearchPreferences {
         /**
@@ -245,6 +242,26 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     override fun size() = chapters.size
 
+    fun resetLimitedUses() {
+        chapters.forEach { it.resetUses() }
+    }
+
+    @Transient
+    var useWatcher: ((RecordedInteractions, Int?) -> Int)? = null
+        get() {
+            return field ?: { chap, value ->
+                if (value != null)
+                    chap.mockUses = value
+                chap.mockUses
+            }
+        }
+
+    var RecordedInteractions.uses
+        get() = useWatcher!!.invoke(this, null)
+        set(value) {
+            useWatcher!!.invoke(this, value)
+        }
+
     /**
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
@@ -267,7 +284,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     fun getData(request: okhttp3.Request): okhttp3.Response {
-        return if (isTestRunning)
+        return if (TapeCatalog.isTestRunning)
             miniResponse(request)
         else
             try {
@@ -295,8 +312,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     okRequest.url(),
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
-                    if (it.mockUses >= 0)
-                        "-Uses: ${it.mockUses}" else ""
+                    if (it.uses >= 0)
+                        "-Uses: ${it.uses}" else ""
                 )
 
                 if (isValidURL) {
@@ -306,14 +323,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         responseData.code(), okRequest.url()
                     )
                     if (responseData.isSuccessful) {
-                        if (it.mockUses > 0) it.mockUses--
+                        if (it.uses > 0) it.uses--
                         println(
                             "== Live Response Data ==\n-Body:\n %s\n-Headers:\n %s%s\n",
                             if (it.responseData.isImage)
                                 "[image]" else it.responseData?.body,
                             it.responseData?.headers.toString(),
-                            if (it.mockUses >= 0)
-                                "\n-Remaining Uses: ${it.mockUses}" else ""
+                            if (it.uses >= 0)
+                                "\n-Remaining Uses: ${it.uses}" else ""
                         )
                         return responseData.toReplayResponse
                     }
@@ -324,7 +341,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         }
 
         val awaitMock = findBestMatch(okRequest, SearchPreferences.AwaitOnly)
-        if (awaitMock.status == HttpStatusCode.Found) {
+        if (awaitMock.status == HttpStatusCode.Found && isWritable) {
             awaitMock.item?.also {
                 println(
                     "== Await Request ==\n-Name\n %s\n-Url: %s\n-Body:\n %s\n-Headers:\n %s%s",
@@ -332,8 +349,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     okRequest.url(),
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
-                    if (it.mockUses >= 0)
-                        "\n-Uses: ${it.mockUses}" else ""
+                    if (it.uses >= 0)
+                        "\n-Uses: ${it.uses}" else ""
                 )
                 val responseData = getData(okRequest)
                 println(
@@ -342,7 +359,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 )
                 return if (responseData.isSuccessful) {
                     it.response = responseData.toReplayResponse
-                    if (it.mockUses > 0) it.mockUses--
+                    if (it.uses > 0) it.uses--
                     saveFile()
 
                     println(
@@ -350,8 +367,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         if (it.responseData.isImage)
                             "[image]" else it.responseData?.body,
                         it.responseData?.headers.toString(),
-                        if (it.mockUses >= 0)
-                            "\n-Remaining Uses: ${it.mockUses}" else ""
+                        if (it.uses >= 0)
+                            "\n-Remaining Uses: ${it.uses}" else ""
                     )
 
                     it.response
@@ -365,10 +382,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         val limitedMock = findBestMatch(okRequest, SearchPreferences.LimitedOnly)
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
-                it.mockUses--
+                it.uses--
                 println(
                     "== Limited Mock ==\n-Name\n %s\n-Remaining Uses\n %s\n",
-                    it.name, it.mockUses
+                    it.name, it.uses
                 )
                 return it.response
                     ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
@@ -396,7 +413,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     ): QueryResponse<RecordedInteractions> {
         val filteredChapters = chapters.asSequence()
             .filter {
-                when (it.mockUses) {
+                when (it.uses) {
                     MockUseStates.DISABLE.state,
                     MockUseStates.DISABLEDLIMITED.state ->
                         false
@@ -415,10 +432,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         it.awaitResponse
 
                     SearchPreferences.MockOnly ->
-                        it.mockUses == MockUseStates.ALWAYS.state
+                        it.uses == MockUseStates.ALWAYS.state
 
                     SearchPreferences.LimitedOnly ->
-                        it.mockUses in (1..Int.MAX_VALUE)
+                        it.uses in (1..Int.MAX_VALUE)
                 }
             }
             .associateWith { it.attractors }
