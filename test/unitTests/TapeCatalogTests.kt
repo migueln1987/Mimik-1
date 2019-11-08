@@ -3,7 +3,7 @@ package unitTests
 import TapeCatalog
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
-import helpers.makeCatchResponse
+import helpers.createResponse
 import io.ktor.http.HttpStatusCode
 import io.mockk.every
 import io.mockk.mockk
@@ -87,7 +87,7 @@ class TapeCatalogTests {
 
         runBlocking {
             testObject.apply {
-                val response = request.makeCatchResponse(testCode)
+                val response = request.createResponse(testCode)
                 { testMessage }
 
                 Assert.assertEquals(response.code(), testCode.value)

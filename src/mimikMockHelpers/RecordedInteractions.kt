@@ -11,6 +11,7 @@ import java.util.Date
 class RecordedInteractions {
     constructor(builder: (RecordedInteractions) -> Unit = {}) {
         builder.invoke(this)
+        origionalMockUses = mockUses
     }
 
     constructor(request: okreplay.Request, response: okreplay.Response) {
@@ -48,6 +49,19 @@ class RecordedInteractions {
      * (1..Int.Max_Value) = limited mock
      */
     var mockUses = MockUseStates.ALWAYS.state
+        get() {
+            if (origionalMockUses == null)
+                origionalMockUses = field
+            return field
+        }
+        set(value) {
+            if (origionalMockUses == null)
+                origionalMockUses = field
+            field = value
+        }
+
+    @Transient
+    var origionalMockUses: Int? = null
 
     val awaitResponse: Boolean
         get() = !hasResponseData
@@ -83,6 +97,10 @@ class RecordedInteractions {
         return "%s; Uses: %d".format(
             name, mockUses
         )
+    }
+
+    fun resetUses() {
+        origionalMockUses?.also { mockUses = it }
     }
 
     fun clone(postClone: (RecordedInteractions) -> Unit = {}) = RecordedInteractions {

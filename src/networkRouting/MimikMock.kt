@@ -7,7 +7,6 @@ import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.receiveText
 import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.put
@@ -132,11 +131,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 //                .toHeaders.valueOrNull
 //        }
 
-        val bodyText = try {
-            receiveText()
-        } catch (e: Exception) {
-            null
-        }
+        val bodyText = tryGetBody()
 
         // Method will have a body and filter isn't allowing bodies
         if (HttpMethod.requiresRequestBody(mockParams["method"].orEmpty()) &&

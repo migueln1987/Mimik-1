@@ -39,7 +39,7 @@ class RandomHostTests {
 
     @Test
     fun stringValue() {
-        val test = host.valueAsChars
+        val test = host.valueAsChars()
         Assert.assertTrue(test.length in (5..10))
     }
 }
