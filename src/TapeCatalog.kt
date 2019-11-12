@@ -68,7 +68,7 @@ class TapeCatalog : OkReplayInterceptor() {
         if (tapes.isEmpty()) return QueryResponse()
 
         val path = request.url().encodedPath().removePrefix("/")
-        val params = request.url().query()
+        val queries = request.url().query()
         val headers = request.headers().toStringPairs()
         val body = request.body()?.content()
 
@@ -80,7 +80,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val foundChapter = RequestAttractors.findBest(
             validChapters,
-            path, params, headers, body
+            path, queries, headers, body
         )
 
         val foundTape = tapes.firstOrNull {
@@ -103,7 +103,7 @@ class TapeCatalog : OkReplayInterceptor() {
      */
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         val path = request.url().encodedPath().removePrefix("/")
-        val params = request.url().query()
+        val queries = request.url().query()
         val headers = request.headers().toStringPairs()
 
         val validTapes = tapes.asSequence()
@@ -112,7 +112,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         return RequestAttractors.findBest(
             validTapes,
-            path, params, headers
+            path, queries, headers
         )
     }
 
@@ -142,13 +142,13 @@ class TapeCatalog : OkReplayInterceptor() {
 
         findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
             println("Using response tape ${tape.name}")
-            tape.requestToChain(callRequest)?.also { chain ->
+            tape.requestToChain(callRequest)?.also ChainAlso@{ chain ->
                 start(config, tape)
-                return withContext(Dispatchers.IO) {
+                withContext(Dispatchers.IO) {
                     bounds.observe(tape) {
                         intercept(chain)
-                    }!!
-                }
+                    }
+                }?.also { return it }
             }
 
             return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
@@ -156,10 +156,8 @@ class TapeCatalog : OkReplayInterceptor() {
             }
         }
 
-        if (bounds != null) {
-            return callRequest.createResponse(HttpStatusCode.Forbidden) {
-                "Test bounds [${bounds.handle}] has no matching tapes."
-            }
+        if (bounds != null) return callRequest.createResponse(HttpStatusCode.Forbidden) {
+            "Test bounds [${bounds.handle}] has no matching recordings."
         }
 
         val hostTape = findTapeByQuery(callRequest)

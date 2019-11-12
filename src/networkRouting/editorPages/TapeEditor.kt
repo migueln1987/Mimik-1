@@ -10,6 +10,7 @@ import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import tapeItems.BlankTape
+import kotlin.math.abs
 import kotlin.math.max
 
 object TapeEditor : EditorModule() {
@@ -42,7 +43,7 @@ object TapeEditor : EditorModule() {
                 table {
                     tr {
                         th(classes = "center") {
-                            appendStyles("width: 15%;")
+                            appendStyles("width: 15%")
                             a {
                                 href = "edit?tape=${t.name}"
                                 +t.name
@@ -83,7 +84,7 @@ object TapeEditor : EditorModule() {
                         }
 
                         td {
-                            appendStyles("width: 15%;")
+                            appendStyles("width: 15%")
                             postForm(
                                 action = TapeRouting.RoutePaths.ACTION.path,
                                 encType = FormEncType.multipartFormData
@@ -397,15 +398,15 @@ object TapeEditor : EditorModule() {
                                     }
 
                                     pData.tape?.attractors.also { attr ->
-                                        addMatcherRow(attr?.queryParamMatchers) {
+                                        addMatcherRow(attr?.queryMatchers) {
                                             it.matcherName = "Parameter"
                                         }
 
-                                        addMatcherRow(attr?.queryHeaderMatchers) {
+                                        addMatcherRow(attr?.headerMatchers) {
                                             it.matcherName = "Header"
                                         }
 
-                                        addMatcherRow(attr?.queryBodyMatchers) {
+                                        addMatcherRow(attr?.bodyMatchers) {
                                             it.matcherName = "Body"
                                             it.valueIsBody = true
                                         }
@@ -639,8 +640,8 @@ object TapeEditor : EditorModule() {
                             else -> "1"
                         }
                     }
-                    td { +attr.queryParamMatchers?.count().toString() }
-                    td { +attr.queryHeaderMatchers?.count().toString() }
+                    td { +attr.queryMatchers?.count().toString() }
+                    td { +attr.headerMatchers?.count().toString() }
                 }
             }
         }
@@ -664,10 +665,32 @@ object TapeEditor : EditorModule() {
             return
         linebreak()
 
+        script {
+            unsafe {
+                +"""
+                    function setupHoverStat(row, hvItem, hvContent){
+                        hvContent.style.height = row.cells[0].clientHeight + 'px';
+
+                        hvItem.onmouseenter = function() {
+                            hvContent.style.left = row.cells[0].getBoundingClientRect().right + 'px';
+                            hvContent.style.opacity = 1.0;
+                            hvContent.style.display = "unset";
+                        }
+                        hvItem.onmouseleave = function() {
+                            hvContent.style.opacity = 0;
+                            hvContent.style.display = "none";
+                        }
+                    }
+                """.trimIndent()
+            }
+        }
         table {
             thead {
                 tr {
-                    th { +"Name" }
+                    th {
+                        style = "width: 15%"
+                        +"Name"
+                    }
                     th { +"Live Result" }
                     th { +"Attractors" }
                     th { +"Uses" }
@@ -686,9 +709,17 @@ object TapeEditor : EditorModule() {
 
     private fun TBODY.addChapterRow(data: ActiveData, chap: RecordedInteractions) {
         val tape = data.hardTapeName()
+        val chapID = abs(chap.hashCode())
+
+        val chapRow = "chapRow_$chapID"
+        val namePreview = "namePrev_$chapID"
+        val itemPrev = "itemPrev_$chapID"
+
         tr {
+            id = chapRow
             td {
                 a {
+                    id = namePreview
                     href = data.hrefEdit(hChapter = chap.name)
                     +chap.name
                 }
@@ -711,15 +742,15 @@ object TapeEditor : EditorModule() {
                             tr {
                                 td { +(attr.routingPath?.value != null).toString() }
                                 td {
-                                    +(attr.queryParamMatchers
+                                    +(attr.queryMatchers
                                         ?.count { it.value != null }).toString()
                                 }
                                 td {
-                                    +(attr.queryHeaderMatchers
+                                    +(attr.headerMatchers
                                         ?.count { it.value != null }).toString()
                                 }
                                 td {
-                                    +(attr.queryBodyMatchers
+                                    +(attr.bodyMatchers
                                         ?.count { it.value != null }).toString()
                                 }
                             }
@@ -786,6 +817,61 @@ object TapeEditor : EditorModule() {
                         +"Delete"
                     }
                 }
+            }
+
+            td {
+                style = "display: contents;"
+                div {
+                    id = itemPrev
+                    style = """
+                            position: absolute;
+                            overflow-y: hidden;
+                            transition: opacity 0.2s;
+                            right: 31px;
+                            background: aliceblue;
+                            opacity: 0;
+                            display: none
+                        """.trimIndent()
+                    table {
+                        style = "border-width: 3px;"
+                        tr {
+                            th { +"URL" }
+                            td { +chap.requestData?.url.orEmpty() }
+                        }
+                        tr {
+                            th { +"Response" }
+                            td {
+                                +when {
+                                    chap.alwaysLive.isTrue() -> "Live"
+                                    chap.awaitResponse -> "Await"
+                                    else -> (chap.responseData?.code ?: 0).toString()
+                                }
+                            }
+                        }
+                        tr {
+                            th { +"Uses" }
+                            td { +MockUseStates(chap.mockUses).asString }
+                        }
+                    }
+                }
+                script {
+                    unsafe { +"setupHoverStat($chapRow, $namePreview, $itemPrev);" }
+                }
+//                script {
+//                    unsafe {
+//                        +"""
+//                            $itemPrev.style.height = $chapRow.cells[0].clientHeight + 'px';
+//
+//                            $namePreview.onmouseenter = function() {
+//                                $itemPrev.style.left = $chapRow.cells[0].getBoundingClientRect().right + 'px';
+//                                $itemPrev.style.opacity = 1.0;
+//                            }
+//                            $namePreview.onmouseleave = function() {
+//                                $itemPrev.style.opacity = 0;
+//                            }
+//                            """.trimIndent()
+//                    }
+//                }
             }
         }
     }

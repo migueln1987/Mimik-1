@@ -142,9 +142,12 @@ class MockTests {
         }
     }
 
-    @Test // This test filters each call (noParam, newParam, matchParam) into the respected tapes
+    @Test // This test filters each call (queryNone, queryNew, queryMatch) into the respected tapes
     fun requiredFilterPriority() {
         val testingTapes = arrayOf("TestingTape1", "TestingTape2")
+        val queryNone = "queryNone"
+        val queryNew = "queryNew"
+        val queryMatch = "queryMatch"
 
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -152,7 +155,7 @@ class MockTests {
                 addHeader("mockTape_Only", "true")
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
-                addHeader("mockFilter_Param", "Param")
+                addHeader("mockFilter_Query", "Query")
             }
 
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -160,19 +163,19 @@ class MockTests {
                 addHeader("mockTape_Only", "true")
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
-                addHeader("mockFilter_Param", "Param=Value")
+                addHeader("mockFilter_Query", "Query=Value")
             }
 
             handleRequest(HttpMethod.Post, "/long/path/name", Ports.live) {
-                setBody("noParam")
+                setBody(queryNone)
             }
 
-            handleRequest(HttpMethod.Post, "/long/path/name?Param=New", Ports.live) {
-                setBody("newParam")
+            handleRequest(HttpMethod.Post, "/long/path/name?Query=New", Ports.live) {
+                setBody(queryNew)
             }
 
-            handleRequest(HttpMethod.Post, "/long/path/name?Param=Value", Ports.live) {
-                setBody("matchParam")
+            handleRequest(HttpMethod.Post, "/long/path/name?Query=Value", Ports.live) {
+                setBody(queryMatch)
             }
 
             val tapes = TapeCatalog.Instance.tapes
@@ -186,18 +189,18 @@ class MockTests {
             requireNotNull(tape2)
 
             // check that tape 1 and tape 2 have the expected calls by filter
-            Assert.assertTrue(tape1.chapters.any { it.requestData?.body == "newParam" })
-            Assert.assertTrue(tape2.chapters.any { it.requestData?.body == "matchParam" })
+            Assert.assertTrue(tape1.chapters.any { it.requestData?.body == queryNew })
+            Assert.assertTrue(tape2.chapters.any { it.requestData?.body == queryMatch })
 
             // tape 1 and 2 should not have the non-filtering call
-            Assert.assertTrue(tape1.chapters.none { it.requestData?.body == "noParam" })
-            Assert.assertTrue(tape2.chapters.none { it.requestData?.body == "noParam" })
+            Assert.assertTrue(tape1.chapters.none { it.requestData?.body == queryNone })
+            Assert.assertTrue(tape2.chapters.none { it.requestData?.body == queryNone })
 
-            val hasNoParamCall = tapes.any { tape ->
-                tape.chapters.any { it.requestData?.body == "noParam" }
+            val hasNoQueryCall = tapes.any { tape ->
+                tape.chapters.any { it.requestData?.body == queryNone }
             }
             // new call should have created it's own tape
-            Assert.assertTrue(hasNoParamCall)
+            Assert.assertTrue(hasNoQueryCall)
         }
     }
 

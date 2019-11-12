@@ -23,6 +23,10 @@ class RecordedInteractions {
         get() = field ?: Date()
     var modifiedDate: Date? = Date()
         get() = field ?: recordedDate ?: Date()
+        set(value) {
+            field = if (value == recordedDate)
+                null else value
+        }
 
     var chapterName: String? = null
         set(value) {

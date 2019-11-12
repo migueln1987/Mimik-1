@@ -86,4 +86,19 @@ class MockUseStates(val state: Int) {
     @Suppress("RemoveRedundantQualifierName")
     val asDisabled: MockUseStates
         get() = if (isLimited) DISABLEDLIMITED else DISABLE
+
+    val asString: String
+        get() {
+            return if (isLimited) {
+                if (state == DISABLEDLIMITED.state)
+                    "Limited (Disabled)"
+                else
+                    state.toString()
+            } else {
+                if (state == ALWAYS.state)
+                    "Always"
+                else
+                    "Disabled"
+            }
+        }
 }

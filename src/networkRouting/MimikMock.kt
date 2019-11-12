@@ -135,10 +135,10 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         // Method will have a body and filter isn't allowing bodies
         if (HttpMethod.requiresRequestBody(mockParams["method"].orEmpty()) &&
-            (attractors.queryBodyMatchers.isNullOrEmpty().isTrue() ||
-                    attractors.queryBodyMatchers?.all { it.hardValue.isBlank() }.isTrue())
+            (attractors.bodyMatchers.isNullOrEmpty().isTrue() ||
+                    attractors.bodyMatchers?.all { it.hardValue.isBlank() }.isTrue())
         ) // add the default "accept all bodies" to calls requiring a body
-            attractors.queryBodyMatchers = listOf(RequestAttractorBit(".*"))
+            attractors.bodyMatchers = listOf(RequestAttractorBit(".*"))
 
         chapter.also { updateChapter ->
             updateChapter.alwaysLive = alwaysLive
@@ -216,7 +216,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         val urlPath = filters["path"]?.firstOrNull()
 
-        val paramAttractors = filters.filterAttractorKeys("param") {
+        val queryAttractors = filters.filterAttractorKeys("query") {
             it.split("&")
         }
 
@@ -231,11 +231,11 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         return RequestAttractors { attr ->
             if (urlPath != null)
                 attr.routingPath = RequestAttractorBit(urlPath)
-            if (paramAttractors.isNotEmpty())
-                attr.queryParamMatchers = paramAttractors
+            if (queryAttractors.isNotEmpty())
+                attr.queryMatchers = queryAttractors
             if (bodyAttractors.isNotEmpty())
-                attr.queryBodyMatchers = bodyAttractors
-            attr.queryHeaderMatchers = headAttractors
+                attr.bodyMatchers = bodyAttractors
+            attr.headerMatchers = headAttractors
         }
     }
 

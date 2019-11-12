@@ -18,7 +18,7 @@ m->>g: Find tape by "tape_name"
 alt Tape exists
 	g-->>m: Tape
 else No tape found
-	m->>g: Query by route path & params
+	m->>g: Query by route path & queries
 	alt Qualifying tape found
 		g-->>m: Tape
 	else No matching tape
@@ -94,7 +94,7 @@ participant q as Param
 participant b as Body
 
 a->>f: request
-Note over a,f: {Source<Map>, path?, params?, body?, custom?}
+Note over a,f: {Source<Map>, path?, queries?, body?, custom?}
 opt Source is empty
 	f-->>a: NotFound (404)
 end

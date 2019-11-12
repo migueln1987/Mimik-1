@@ -237,11 +237,11 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             else -> null
         }
             ?.also { nData ->
-                val params = data["reqParams"].orEmpty()
+                val queries = data["reqQuery"].orEmpty()
                     .toPairs(removeCommentFilter)
 
                 if (nData is Requestdata) {
-                    nData.url = nData.httpUrl.reQuery(params).toString()
+                    nData.url = nData.httpUrl.reQuery(queries).toString()
 
                     if (nData.url.isNullOrBlank())
                         nData.url = null

@@ -119,7 +119,7 @@ object NetworkDataEditor : EditorModule() {
                                     tooltipText("Info", "genKVDataField")
                                     br()
                                     paramTextArea(nData?.httpUrl.toParameters) {
-                                        name = "reqParams"
+                                        name = "reqQuery"
                                     }
                                 }
                             }

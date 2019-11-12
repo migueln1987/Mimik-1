@@ -655,9 +655,9 @@ abstract class EditorModule {
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryParamMatchers = filterFindData("Parameter")
-                    attr.queryHeaderMatchers = filterFindData("Header")
-                    attr.queryBodyMatchers = filterFindData("Body")
+                    attr.queryMatchers = filterFindData("Parameter")
+                    attr.headerMatchers = filterFindData("Header")
+                    attr.bodyMatchers = filterFindData("Body")
                 }
             }
 
@@ -692,9 +692,9 @@ abstract class EditorModule {
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryParamMatchers = filterFindData("Parameter")
-                    attr.queryHeaderMatchers = filterFindData("Header")
-                    attr.queryBodyMatchers = filterFindData("Body")
+                    attr.queryMatchers = filterFindData("Parameter")
+                    attr.headerMatchers = filterFindData("Header")
+                    attr.bodyMatchers = filterFindData("Body")
                 }
             }
 
@@ -841,7 +841,7 @@ abstract class EditorModule {
         table {
             id = info.tableId
             if (isAllowAny)
-                appendStyles("color: #A0A0A0;")
+                appendStyles("color: #A0A0A0")
 
             script {
                 unsafe {
@@ -1094,10 +1094,12 @@ abstract class EditorModule {
                     tr {
                         th {
                             resizableCol
+                            appendStyles("width: 15%")
                             +"Specific"
                         }
                         th {
                             resizableCol
+                            appendStyles("width: 40%")
                             +"Headers"
                         }
                         th { +"Body" }
