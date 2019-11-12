@@ -655,9 +655,9 @@ abstract class EditorModule {
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryParamMatchers = filterFindData("Parameter")
-                    attr.queryHeaderMatchers = filterFindData("Header")
-                    attr.queryBodyMatchers = filterFindData("Body")
+                    attr.queryMatchers = filterFindData("Parameter")
+                    attr.headerMatchers = filterFindData("Header")
+                    attr.bodyMatchers = filterFindData("Body")
                 }
             }
 
@@ -692,9 +692,9 @@ abstract class EditorModule {
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryParamMatchers = filterFindData("Parameter")
-                    attr.queryHeaderMatchers = filterFindData("Header")
-                    attr.queryBodyMatchers = filterFindData("Body")
+                    attr.queryMatchers = filterFindData("Parameter")
+                    attr.headerMatchers = filterFindData("Header")
+                    attr.bodyMatchers = filterFindData("Body")
                 }
             }
 

@@ -3,6 +3,7 @@ package helpers.attractors
 import helpers.anyTrue
 import helpers.isNotTrue
 import helpers.isTrue
+import helpers.toStringPairs
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.Requestdata
@@ -10,9 +11,9 @@ import okhttp3.internal.http.HttpMethod
 
 class RequestAttractors {
     var routingPath: RequestAttractorBit? = null
-    var queryParamMatchers: List<RequestAttractorBit>? = null
-    var queryHeaderMatchers: List<RequestAttractorBit>? = null
-    var queryBodyMatchers: List<RequestAttractorBit>? = null
+    var queryMatchers: List<RequestAttractorBit>? = null
+    var headerMatchers: List<RequestAttractorBit>? = null
+    var bodyMatchers: List<RequestAttractorBit>? = null
 
     constructor(config: (RequestAttractors) -> Unit = {}) {
         config.invoke(this)
@@ -24,19 +25,23 @@ class RequestAttractors {
             if (routingPath?.value?.isEmpty().isTrue())
                 routingPath = null
 
-            queryParamMatchers = url.queryParameterNames().flatMap { key ->
+            queryMatchers = url.queryParameterNames().flatMap { key ->
                 url.queryParameterValues(key).map { value ->
                     RequestAttractorBit("$key=$value")
                 }
             }
-            if (queryParamMatchers?.isEmpty().isTrue())
-                queryParamMatchers = null
+            if (queryMatchers?.isEmpty().isTrue())
+                queryMatchers = null
+        }
+
+        request?.headers?.toStringPairs()?.also {
+            headerMatchers = it.map { RequestAttractorBit(it) }
         }
 
         // If the call always has a body, but a matcher wasn't set
         // then add a compliance matcher
         if (HttpMethod.requiresRequestBody(request?.method))
-            queryBodyMatchers = listOf(RequestAttractorBit(".*"))
+            bodyMatchers = listOf(RequestAttractorBit(".*"))
     }
 
     companion object {
@@ -112,17 +117,17 @@ class RequestAttractors {
         get() {
             return anyTrue(
                 routingPath?.hardValue?.isNotBlank().isTrue(),
-                queryParamMatchers?.isNotEmpty().isTrue(),
-                queryHeaderMatchers?.isNotEmpty().isTrue(),
-                queryBodyMatchers?.isNotEmpty().isTrue()
+                queryMatchers?.isNotEmpty().isTrue(),
+                headerMatchers?.isNotEmpty().isTrue(),
+                bodyMatchers?.isNotEmpty().isTrue()
             )
         }
 
     fun clone() = RequestAttractors {
         it.routingPath = routingPath?.clone()
-        it.queryParamMatchers = queryParamMatchers?.map { it.clone() }
-        it.queryHeaderMatchers = queryParamMatchers?.map { it.clone() }
-        it.queryBodyMatchers = queryParamMatchers?.map { it.clone() }
+        it.queryMatchers = queryMatchers?.map { it.clone() }
+        it.headerMatchers = queryMatchers?.map { it.clone() }
+        it.bodyMatchers = queryMatchers?.map { it.clone() }
     }
 
     /**
@@ -134,19 +139,19 @@ class RequestAttractors {
         if (routingPath == null && data.routingPath != null)
             routingPath = data.routingPath?.clone()
 
-        queryParamMatchers = matchAppender {
-            from = data.queryParamMatchers
-            to = queryParamMatchers
+        queryMatchers = matchAppender {
+            from = data.queryMatchers
+            to = queryMatchers
         }
 
-        queryHeaderMatchers = matchAppender {
-            from = data.queryHeaderMatchers
-            to = queryHeaderMatchers
+        headerMatchers = matchAppender {
+            from = data.headerMatchers
+            to = headerMatchers
         }
 
-        queryBodyMatchers = matchAppender {
-            from = data.queryBodyMatchers
-            to = queryBodyMatchers
+        bodyMatchers = matchAppender {
+            from = data.bodyMatchers
+            to = bodyMatchers
         }
     }
 
@@ -256,27 +261,27 @@ class RequestAttractors {
         }, source)
 
     private fun getParamMatches(source: String?) =
-        getMatchCount(queryParamMatchers, source)
+        getMatchCount(queryMatchers, source)
 
     private fun getHeaderMatches(source: List<String>?): AttractorMatches {
-        if (queryHeaderMatchers?.isNullOrEmpty().isTrue())
+        if (headerMatchers?.isNullOrEmpty().isTrue())
             return AttractorMatches().also {
                 if (!source.isNullOrEmpty()) it.Required = 1
             }
 
-        if (queryHeaderMatchers?.any { it.allowAllInputs.isTrue() }.isTrue())
+        if (headerMatchers?.any { it.allowAllInputs.isTrue() }.isTrue())
             return AttractorMatches(1, 1, 0)
 
-        if (queryHeaderMatchers?.all { it.hardValue.isBlank() }.isTrue())
+        if (headerMatchers?.all { it.hardValue.isBlank() }.isTrue())
             return AttractorMatches()
 
         return AttractorMatches().apply {
             source?.forEach {
-                appendValues(getMatchCount(queryHeaderMatchers, it))
+                appendValues(getMatchCount(headerMatchers, it))
             }
         }
     }
 
     private fun getBodyMatches(source: String?) =
-        getMatchCount(queryBodyMatchers, source)
+        getMatchCount(bodyMatchers, source)
 }

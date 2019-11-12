@@ -158,16 +158,16 @@ object ChapterEditor : EditorModule() {
                                     }
 
                                     pData.chapter?.attractors.also { attr ->
-                                        addMatcherRow(attr?.queryParamMatchers) {
+                                        addMatcherRow(attr?.queryMatchers) {
                                             it.matcherName = "Parameter"
                                         }
 
-                                        addMatcherRow(attr?.queryHeaderMatchers) {
+                                        addMatcherRow(attr?.headerMatchers) {
                                             it.matcherName = "Header"
-                                            it.allowAnyCheckState = attr?.queryHeaderMatchers.isNullOrEmpty()
+                                            it.allowAnyCheckState = attr?.headerMatchers.isNullOrEmpty()
                                         }
 
-                                        addMatcherRow(attr?.queryBodyMatchers) {
+                                        addMatcherRow(attr?.bodyMatchers) {
                                             it.matcherName = "Body"
                                             it.valueIsBody = true
                                         }
