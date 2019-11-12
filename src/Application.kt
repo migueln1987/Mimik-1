@@ -88,6 +88,8 @@ private fun Application.installFeatures() {
 
     install(CallId) {
         retrieve {
+            if (it.request.local.port == Ports.config)
+                return@retrieve ""
             var result = it.request.headers["x-dcmguid"]
             result = result ?: it.request.headers["x-up-subno"]
             result = result ?: it.request.headers["x-jphone-uid"]

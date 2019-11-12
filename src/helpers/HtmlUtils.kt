@@ -257,14 +257,14 @@ fun FlowContent.refreshWatchWindow(
 
     div(classes = "callout") {
         id = "refreshWatch_$fileID"
-        appendStyles("z-index: 18;", "opacity: 0.4;")
+        appendStyles("z-index: 18", "opacity: 0.4")
         onMouseOver = "this.style.opacity = 1;"
         onMouseOut = "this.style.opacity = 0.4;"
 
         div(classes = "callout-container") {
             checkBoxInput {
                 id = "refreshOn_$fileID"
-                checked = true
+                checked = false
                 onChange = "if(checked) runWatcher();"
             }
             +" Observing $watchType: $watchName"

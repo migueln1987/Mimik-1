@@ -42,7 +42,7 @@ object TapeEditor : EditorModule() {
                 table {
                     tr {
                         th(classes = "center") {
-                            appendStyles("width: 15%;")
+                            appendStyles("width: 15%")
                             a {
                                 href = "edit?tape=${t.name}"
                                 +t.name
@@ -83,7 +83,7 @@ object TapeEditor : EditorModule() {
                         }
 
                         td {
-                            appendStyles("width: 15%;")
+                            appendStyles("width: 15%")
                             postForm(
                                 action = TapeRouting.RoutePaths.ACTION.path,
                                 encType = FormEncType.multipartFormData
