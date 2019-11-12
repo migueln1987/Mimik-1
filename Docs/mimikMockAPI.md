@@ -35,7 +35,7 @@ will apply the filter only to the mock plus append the tape's filters.
 | Param | Type  | Default | Action |
 |-------|-------|---------|--------|
 | Path  | Regex | `null`  | Sub-path of the url<br> Example: `/route/sub/path/` |
-| Param<sup>1</sup> | Regex<sup>2</sup> | `null`| Parameter(s) in the url<br> Example: `Key1=Value1&Key2=Value2` |
+| Query<sup>1</sup> | Regex<sup>2</sup> | `null`| Queries(s) in the url<br> Example: `Key1=Value1&Key2=Value2` |
 | ~~Header~~<sup>1,3</sup> | Regex | `null` | Headers in the request<br>Example: `HeaderKey : Value`|
 | Body<sup>1</sup> | Regex | `null`/ `.*`<sup>4</sup> | Text to search for within the message body<br> Example: `countryCode.{0,8}US` |
 

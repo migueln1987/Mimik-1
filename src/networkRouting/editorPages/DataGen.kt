@@ -394,7 +394,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         }
 
                         tr {
-                            th { +"Params" }
+                            th { +"Queries" }
                             td {
                                 toggleArea {
                                     tooltipText("Info", "genKVDataField")
@@ -404,12 +404,12 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         val data = actChap.requestData?.url.asHttpUrl.toParameters
                                         val isValid = data?.isEmpty().isFalse()
                                         useCustom = !isValid
-                                        radioInput(name = "reqParams") {
+                                        radioInput(name = "reqQuery") {
                                             checked = isValid
                                             disabled = !isValid
                                             value = (data ?: "").toString()
                                         }
-                                        infoText("Chapter Params") {
+                                        infoText("Chapter Queries") {
                                             inlineDiv
                                             if (!isValid) disabledText
                                         }
@@ -424,17 +424,17 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                                     div(classes = "radioDiv") {
                                         val data = actChap.recentRequest?.url.asHttpUrl.toParameters
-                                        radioInput(name = "reqParams") {
-                                            id = "reqCustomParams"
+                                        radioInput(name = "reqQuery") {
+                                            id = "reqCustomQuery"
                                             checked = data?.isEmpty().isFalse() || useCustom
                                             value = (data ?: "").toString()
                                         }
-                                        infoText("Custom Params") { inlineDiv }
+                                        infoText("Custom Queries") { inlineDiv }
                                         br()
 
                                         paramTextArea(data) {
                                             onKeyPress = "keypressNewlineEnter(this);"
-                                            onKeyUp = "reqCustomParams.value = value;"
+                                            onKeyUp = "reqCustomQuery.value = value;"
                                         }
                                     }
                                 }
@@ -717,7 +717,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
     fun Parameters.asResponseCall(): ResponseResultOf<String> {
         val method = this["reqMethod"].orEmpty().toUpperCase()
         val url = this["reqUrl"].orEmpty().ensureHttpPrefix
-        val params = this["reqParams"]
+        val params = this["reqQuery"]
             .toPairs(removeCommentFilter)?.toList()
         val headers = this["reqHeaders"].toPairs(removeCommentFilter)
             ?.filter { it.second != null }

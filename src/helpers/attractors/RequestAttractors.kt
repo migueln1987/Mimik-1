@@ -56,7 +56,7 @@ class RequestAttractors {
         fun <T> findBest(
             source: Map<T, RequestAttractors?>,
             path: String?,
-            params: String?,
+            queries: String?,
             headers: List<String>?,
             body: String? = null,
             custom: (T) -> AttractorMatches = { AttractorMatches() }
@@ -77,7 +77,7 @@ class RequestAttractors {
                     it.value.second.matchingRequired
                 }
                 .filter {
-                    it.value.second.appendValues(it.value.first?.getParamMatches(params))
+                    it.value.second.appendValues(it.value.first?.getQueryMatches(queries))
                     it.value.second.matchingRequired
                 }
                 .filter {
@@ -260,7 +260,7 @@ class RequestAttractors {
             listOf(it)
         }, source)
 
-    private fun getParamMatches(source: String?) =
+    private fun getQueryMatches(source: String?) =
         getMatchCount(queryMatchers, source)
 
     private fun getHeaderMatches(source: List<String>?): AttractorMatches {

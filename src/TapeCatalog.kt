@@ -68,7 +68,7 @@ class TapeCatalog : OkReplayInterceptor() {
         if (tapes.isEmpty()) return QueryResponse()
 
         val path = request.url().encodedPath().removePrefix("/")
-        val params = request.url().query()
+        val queries = request.url().query()
         val headers = request.headers().toStringPairs()
         val body = request.body()?.content()
 
@@ -80,7 +80,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val foundChapter = RequestAttractors.findBest(
             validChapters,
-            path, params, headers, body
+            path, queries, headers, body
         )
 
         val foundTape = tapes.firstOrNull {
@@ -103,7 +103,7 @@ class TapeCatalog : OkReplayInterceptor() {
      */
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
         val path = request.url().encodedPath().removePrefix("/")
-        val params = request.url().query()
+        val queries = request.url().query()
         val headers = request.headers().toStringPairs()
 
         val validTapes = tapes.asSequence()
@@ -112,7 +112,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
         return RequestAttractors.findBest(
             validTapes,
-            path, params, headers
+            path, queries, headers
         )
     }
 
