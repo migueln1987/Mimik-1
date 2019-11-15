@@ -364,7 +364,7 @@ object TapeEditor : EditorModule() {
                                         +when (val url = pData.tape?.routingUrl?.trim()) {
                                             null -> "{ empty }"
                                             "" -> "" // isBlank()
-                                            else -> if (url.isValidJSON)
+                                            else -> if (url.isValidURL)
                                                 url else "{ no match }"
                                         }
                                     }
@@ -399,7 +399,7 @@ object TapeEditor : EditorModule() {
 
                                     pData.tape?.attractors.also { attr ->
                                         addMatcherRow(attr?.queryMatchers) {
-                                            it.matcherName = "Parameter"
+                                            it.matcherName = "Query"
                                         }
 
                                         addMatcherRow(attr?.headerMatchers) {
@@ -567,7 +567,7 @@ object TapeEditor : EditorModule() {
                 tbody {
                     tr {
                         th { +"Enabled" }
-                        td { +tape.chapters.count { MockUseStates.isEnabled(it.mockUses) } }
+                        td { text(tape.chapters.count { MockUseStates.isEnabled(it.mockUses) }) }
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isEnabled(it.mockUses) &&
@@ -590,7 +590,7 @@ object TapeEditor : EditorModule() {
 
                     tr {
                         th { +"Disabled" }
-                        td { +tape.chapters.count { MockUseStates.isDisabled(it.mockUses) } }
+                        td { text(tape.chapters.count { MockUseStates.isDisabled(it.mockUses) }) }
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isDisabled(it.mockUses) &&
@@ -673,8 +673,10 @@ object TapeEditor : EditorModule() {
 
                         hvItem.onmouseenter = function() {
                             hvContent.style.left = row.cells[0].getBoundingClientRect().right + 'px';
-                            hvContent.style.opacity = 1.0;
                             hvContent.style.display = "unset";
+                            setTimeout(function() {
+                                hvContent.style.opacity = 1.0;
+                            }, 10);
                         }
                         hvItem.onmouseleave = function() {
                             hvContent.style.opacity = 0;
@@ -691,10 +693,13 @@ object TapeEditor : EditorModule() {
                         style = "width: 15%"
                         +"Name"
                     }
-                    th { +"Live Result" }
+                    th { +"Mock type" }
                     th { +"Attractors" }
                     th { +"Uses" }
-                    th { +"" }
+                    th {
+                        colSpan = "2"
+                        +""
+                    }
                 }
             }
             tbody {
@@ -725,7 +730,13 @@ object TapeEditor : EditorModule() {
                 }
             }
 
-            td { +(chap.alwaysLive.orFalse).toString() }
+            td {
+                +when {
+                    chap.alwaysLive.orFalse -> "Live"
+                    chap.awaitResponse -> "Await"
+                    else -> "Recorded"
+                }
+            }
 
             td {
                 chap.attractors?.also { attr ->
@@ -767,12 +778,26 @@ object TapeEditor : EditorModule() {
                 }
                 br()
 
+                val usesTypes = chap.name + "_usesType"
                 numberInput {
                     id = chap.name + "_usesValue"
                     min = MockUseStates.ALWAYS.state.toString()
                     max = Int.MAX_VALUE.toString()
                     value = (if (chap.mockUses == MockUseStates.DISABLE.state)
                         MockUseStates.ALWAYS.state else chap.mockUses).toString()
+                    onChange = """
+                        if (value == -1)
+                            $usesTypes.innerText = "'Always on'";
+                            else $usesTypes.innerText = "'Limited'";
+                    """.trimIndent()
+                }
+                br()
+                a {
+                    id = usesTypes
+                    +"'%s'".format(
+                        if (chap.mockUses == -1)
+                            "Always on" else "Limited"
+                    )
                 }
             }
 
@@ -827,7 +852,7 @@ object TapeEditor : EditorModule() {
                             position: absolute;
                             overflow-y: hidden;
                             transition: opacity 0.2s;
-                            right: 31px;
+                            right: 28px;
                             background: aliceblue;
                             opacity: 0;
                             display: none
@@ -835,8 +860,11 @@ object TapeEditor : EditorModule() {
                     table {
                         style = "border-width: 3px;"
                         tr {
-                            th { +"URL" }
-                            td { +chap.requestData?.url.orEmpty() }
+                            th {
+                                style = "width: 13%;"
+                                +"URL"
+                            }
+                            td { +(chap.requestData?.url ?: noData) }
                         }
                         tr {
                             th { +"Response" }
@@ -849,8 +877,8 @@ object TapeEditor : EditorModule() {
                             }
                         }
                         tr {
-                            th { +"Uses" }
-                            td { +MockUseStates(chap.mockUses).asString }
+                            th { +"" }
+                            td { +"" }
                         }
                     }
                 }

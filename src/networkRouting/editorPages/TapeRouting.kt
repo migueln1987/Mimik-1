@@ -237,18 +237,15 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             else -> null
         }
             ?.also { nData ->
-                val queries = data["reqQuery"].orEmpty()
-                    .toPairs(removeCommentFilter)
-
                 if (nData is Requestdata) {
+                    val queries = data["reqQuery"].toPairs()
                     nData.url = nData.httpUrl.reQuery(queries).toString()
 
                     if (nData.url.isNullOrBlank())
                         nData.url = null
                 }
 
-                val headersData = data["netHeaders"].orEmpty()
-                    .toPairs(removeCommentFilter)
+                val headersData = data["netHeaders"].toPairs()
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
                     headersData?.filter { it.second != null }
                         ?.forEach {

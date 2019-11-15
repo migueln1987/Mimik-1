@@ -172,6 +172,7 @@ class TapeCatalog : OkReplayInterceptor() {
                         mock.requestData = callRequest.toTapeData
                         mock.attractors = RequestAttractors(mock.requestData)
                         mock.alwaysLive = it.alwaysLive
+                        println("Creating New Chapter: ${mock.name}")
                     }
                     it.saveFile()
 

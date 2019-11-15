@@ -93,6 +93,12 @@ val String?.isValidJSON: Boolean
     }
 
 /**
+ * Tries to [beautifyJson] the input if it's a valid json, else returns the input
+ */
+val String?.tryAsJson: String?
+    get() = if (isValidJSON) beautifyJson else this
+
+/**
  * Returns an empty string if the json is valid, or the error message
  */
 val String?.isValidJSONMsg: String
@@ -161,9 +167,11 @@ val String.valueOrIsEmpty: String
 
 /** Prints the given [message], with optional formatting [args],
  * and the line separator to the standard output stream. */
-@Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
-fun println(message: String, vararg args: Any? = arrayOf()) =
-    System.out.println(message.format(*args))
+fun printlnFmt(message: String, vararg args: Any? = arrayOf()) =
+    println(message.format(*args))
+
+fun printlnFmt(message: () -> String = { "" }, vararg args: Any? = arrayOf()) =
+    println(message.invoke().format(*args))
 
 /**
  * Filter for [toPairs] which removes lines starting with "//"
@@ -190,4 +198,18 @@ fun String?.toPairs(allowFilter: (List<String>) -> Boolean = { true }): Sequence
             }
         }
         .filter { (it.first.isNotBlank() && it.second != null) }
+}
+
+/**
+ * Appends [message] to this [StringBuffer] with the optional formatting [args]
+ */
+fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) {
+    appendln(message.format(*args))
+}
+
+/**
+ * Appends [message] to this [StringBuffer] with the optional formatting [args]
+ */
+fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) {
+    appendln(message.invoke().format(*args))
 }

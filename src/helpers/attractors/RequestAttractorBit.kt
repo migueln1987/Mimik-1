@@ -52,11 +52,19 @@ class RequestAttractorBit {
     }
 
     override fun toString(): String {
-        return "Req: %b %s {%s}".format(
+        return "Req: %b %s %s".format(
             required,
             if (except.isTrue()) "-!" else "+",
-            hardValue
+            if (allowAllInputs.isTrue())
+                "AllowAll" else "{$hardValue}"
         )
+    }
+
+    fun clearState() {
+        allowAllInputs = null
+        value = null
+        optional = null
+        except = null
     }
 
     override fun equals(other: Any?) =

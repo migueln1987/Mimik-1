@@ -25,6 +25,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8", kotlin_version))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("com.github.kittinunf.fuel:fuel:$fuel_version")
 

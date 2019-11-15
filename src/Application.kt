@@ -5,8 +5,6 @@ package com.fiserv.mimik
 import TapeCatalog
 import helpers.tryGetBody
 import io.ktor.application.*
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.features.CallId
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
@@ -51,7 +49,8 @@ fun Application.module(testing: Boolean = false) {
     TapeCatalog.Instance // +loads the tape data
 
 //    val client =
-    HttpClient(OkHttp) { engine {} }
+//    HttpClient(OkHttp) { engine {} }
+//    HttpClient(CIO) { engine {} }
 
     routing {
 

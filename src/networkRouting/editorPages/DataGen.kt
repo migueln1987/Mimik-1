@@ -21,8 +21,6 @@ import java.util.Date
 @Suppress("RemoveRedundantQualifierName")
 class DataGen : RoutingContract(RoutePaths.rootPath) {
 
-    private val noData = "{ no data }"
-
     enum class RoutePaths(val path: String) {
         Response("response"),
         ResponseGen("responseGen"),
@@ -718,14 +716,13 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val method = this["reqMethod"].orEmpty().toUpperCase()
         val url = this["reqUrl"].orEmpty().ensureHttpPrefix
         val params = this["reqQuery"]
-            .toPairs(removeCommentFilter)?.toList()
-        val headers = this["reqHeaders"].toPairs(removeCommentFilter)
+            .toPairs()?.toList()
+        val headers = this["reqHeaders"].toPairs()
             ?.filter { it.second != null }
             ?.map { it.first to it.second!! }?.toList()?.toTypedArray()
         val body = this["reqBody"]
 
         var request = when (HttpMethod.parse(method)) {
-            HttpMethod.Get -> url.httpGet(params)
             HttpMethod.Post -> url.httpPost(params)
             else -> url.httpGet(params)
         }

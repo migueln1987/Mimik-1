@@ -9,6 +9,7 @@ import com.google.gson.stream.JsonWriter
 import helpers.*
 import helpers.attractors.RequestAttractors
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
@@ -23,6 +24,7 @@ import java.io.Writer
 import java.nio.charset.Charset
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import kotlin.system.measureTimeMillis
 
 class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     class Builder(val reBuild: BlankTape? = null, config: (Builder) -> Unit = {}) {
@@ -92,10 +94,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     isHardTape = true
                     reBuild.file?.delete()
                 }
-                reBuild.file = File(
-                    VCRConfig.getConfig.tapeRoot.get(),
-                    reBuild.name.toJsonName
-                )
+                reBuild.file = null
                 if (isHardTape)
                     reBuild.saveFile()
                 reBuild
@@ -160,11 +159,11 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         get() = field ?: File(
             VCRConfig.getConfig.tapeRoot.get(),
             name.toJsonName
-        )
+        ).also { field = it }
 
     var recordedDate: Date? = Date()
         get() = field ?: Date()
-    var modifiedDate: Date? = Date()
+    var modifiedDate: Date? = null
         get() = field ?: recordedDate ?: Date()
 
     var attractors: RequestAttractors? = null
@@ -299,16 +298,26 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     override fun play(request: okreplay.Request): Response {
         val okRequest: okhttp3.Request = request.toOkRequest
+        val logBuilder = StringBuilder()
 
         val alwaysLive = findBestMatch(okRequest, SearchPreferences.AlwaysLive)
         if (alwaysLive.status == HttpStatusCode.Found) {
+            println("Starting Live call for: ${okRequest.url()}")
             alwaysLive.item?.also {
-                println(
-                    "== Live Request ==\n" +
-                            "-Name\n %s\n-Can Complete: %b\n" +
-                            "-Url: %s\n-Body:\n %s\n-Headers:\n %s%s\n",
+                logBuilder.appendlnFmt(
+                    {
+                        "== Live Request ==\n" +
+                                "-Name:\n %s\n" +
+                                "-Valid URL: %b\n" +
+                                "-Network: %b\n" +
+                                "-Url: %s\n" +
+                                "-Body:\n %s\n" +
+                                "-Headers:\n %s" +
+                                "%s\n"
+                    },
                     it.name,
                     isValidURL,
+                    hasNetworkAccess,
                     okRequest.url(),
                     okRequest.body().content("{null}").valueOrIsEmpty,
                     okRequest.headers().toString().valueOrIsEmpty,
@@ -318,62 +327,85 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
                 if (isValidURL) {
                     val responseData = getData(okRequest)
-                    println(
+                    logBuilder.appendlnFmt(
                         "== Live Response ==\n-Code %d from %s\n",
                         responseData.code(), okRequest.url()
                     )
                     if (responseData.isSuccessful) {
                         if (it.uses > 0) it.uses--
-                        println(
-                            "== Live Response Data ==\n-Body:\n %s\n-Headers:\n %s%s\n",
+                        logBuilder.appendlnFmt(
+                            {
+                                "== Live Response Data ==\n" +
+                                        "-Body:\n %s\n" +
+                                        "-Headers:\n %s" +
+                                        "%s\n"
+                            },
                             if (it.responseData.isImage)
-                                "[image]" else it.responseData?.body,
+                                "[image]" else it.responseData?.body.tryAsJson,
                             it.responseData?.headers.toString(),
                             if (it.uses >= 0)
                                 "\n-Remaining Uses: ${it.uses}" else ""
                         )
+                        println(logBuilder.toString())
                         return responseData.toReplayResponse
                     }
                 }
             }
 
+            println(logBuilder.toString())
             return miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
         }
 
         val awaitMock = findBestMatch(okRequest, SearchPreferences.AwaitOnly)
         if (awaitMock.status == HttpStatusCode.Found && isWritable) {
             awaitMock.item?.also {
-                println(
-                    "== Await Request ==\n-Name\n %s\n-Url: %s\n-Body:\n %s\n-Headers:\n %s%s",
+                println("Queued Await request for: ${okRequest.url()}")
+                logBuilder.appendlnFmt(
+                    {
+                        "== Await Request ==\n" +
+                                "-Name: %s\n" +
+                                "-Url: %s\n" +
+                                "-Body:\n %s\n" +
+                                "-Headers:\n %s" +
+                                "%s"
+                    },
                     it.name,
                     okRequest.url(),
-                    okRequest.body().content("{null}").valueOrIsEmpty,
-                    okRequest.headers().toString().valueOrIsEmpty,
+                    okRequest.body().content("null").tryAsJson,
+                    okRequest.headers().toStringPairs().joinToString("", " ", "\n"),
                     if (it.uses >= 0)
                         "\n-Uses: ${it.uses}" else ""
                 )
                 val responseData = getData(okRequest)
-                println(
+                logBuilder.appendlnFmt(
                     "== Await Response ==\n-Code (%d) from %s\n",
                     responseData.code(), okRequest.url()
                 )
+
                 return if (responseData.isSuccessful) {
+                    it.requestData = okRequest.toTapeData
                     it.response = responseData.toReplayResponse
                     if (it.uses > 0) it.uses--
                     saveFile()
 
-                    println(
-                        "== Await Response Data ==\n-Body:\n %s\n-Headers:\n %s%s",
+                    logBuilder.appendlnFmt(
+                        {
+                            "-Body:\n %s\n" +
+                                    "-Headers:\n %s" +
+                                    "%s"
+                        },
                         if (it.responseData.isImage)
-                            "[image]" else it.responseData?.body,
+                            "[image]" else it.responseData?.body.tryAsJson,
                         it.responseData?.headers.toString(),
                         if (it.uses >= 0)
                             "\n-Remaining Uses: ${it.uses}" else ""
                     )
 
+                    println(logBuilder.toString())
                     it.response
                         ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
                 } else {
+                    println(logBuilder.toString())
                     miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
                 }
             }
@@ -383,8 +415,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
                 it.uses--
-                println(
-                    "== Limited Mock ==\n-Name\n %s\n-Remaining Uses\n %s\n",
+                printlnFmt(
+                    "== Limited Mock ==\n" +
+                            "-Name\n %s\n" +
+                            "-Remaining Uses\n %s\n",
                     it.name, it.uses
                 )
                 return it.response
@@ -395,8 +429,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         val activeMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
         if (activeMock.status == HttpStatusCode.Found) {
             activeMock.item?.also {
-                println(
-                    "== Mock ==\n-Name\n %s\n",
+                printlnFmt(
+                    "== Mock ==\n" +
+                            "-Name\n %s\n",
                     it.name
                 )
                 return it.response
@@ -461,7 +496,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     override fun record(request: Request, response: Response) {
         chapters.add(RecordedInteractions(request, response))
-
         saveFile()
     }
 
@@ -477,45 +511,54 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
      * Saves the data to file. A new file will be created if one doesn't exist
      */
     fun saveFile() {
-        val tree = gson.toJsonTree(this).asJsonObject
-        val keepChapters = tree.getAsJsonArray("chapters")
-            .filter {
-                ((it as JsonObject)["mockUses"] as? JsonPrimitive)
-                    ?.let { jsonMockUses ->
-                        when (jsonMockUses.asInt) {
-                            MockUseStates.ALWAYS.state,
-                            MockUseStates.DISABLE.state
-                            -> true // export non memory-only chapters
-                            else -> false
+        GlobalScope.launch {
+            withContext(Dispatchers.IO) {
+                synchronized(this@BlankTape) {
+                    val time = measureTimeMillis {
+                        val tree = gson.toJsonTree(this@BlankTape).asJsonObject
+                        val keepChapters = tree.getAsJsonArray("chapters")
+                            .filter {
+                                ((it as JsonObject)["mockUses"] as? JsonPrimitive)
+                                    ?.let { jsonMockUses ->
+                                        when (jsonMockUses.asInt) {
+                                            MockUseStates.ALWAYS.state,
+                                            MockUseStates.DISABLE.state
+                                            -> true // export non memory-only chapters
+                                            else -> false
+                                        }
+                                    }.orFalse
+                            }
+                            .let { jsonList ->
+                                JsonArray().apply { jsonList.forEach { add(it) } }
+                            }
+
+                        tree.add("chapters", keepChapters)
+
+                        val outFile = file ?: return@synchronized
+
+                        if (outFile.exists().isTrue() && (file?.nameWithoutExtension != tapeName))
+                            outFile.delete()
+
+                        val canSaveFile = if (outFile.exists())
+                            outFile.canWrite()
+                        else {
+                            outFile.parentFile.mkdirs()
+                            outFile.createNewFile()
                         }
-                    }.orFalse
+
+                        if (canSaveFile)
+                            outFile.bufferedWriter().jWriter
+                                .also { gson.toJson(tree, it) }
+                                .close()
+                    }
+                    println(
+                        "Saved File (%d ms): %s".format(
+                            time,
+                            this@BlankTape.file?.path.orEmpty()
+                        )
+                    )
+                }
             }
-            .let { jsonList ->
-                JsonArray().apply { jsonList.forEach { add(it) } }
-            }
-
-        tree.add("chapters", keepChapters)
-        if (file?.exists().isTrue() && (file?.nameWithoutExtension != tapeName))
-            file?.delete()
-
-        if (file == null)
-            file = File(
-                VCRConfig.getConfig.tapeRoot.get(),
-                name.toJsonName
-            )
-
-        file?.also { outFile ->
-            val canSaveFile = if (outFile.exists())
-                outFile.canWrite()
-            else {
-                outFile.parentFile.mkdirs()
-                outFile.createNewFile()
-            }
-
-            if (canSaveFile)
-                outFile.bufferedWriter().jWriter
-                    .also { gson.toJson(tree, it) }
-                    .close()
         }
     }
 

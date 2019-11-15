@@ -159,7 +159,7 @@ object ChapterEditor : EditorModule() {
 
                                     pData.chapter?.attractors.also { attr ->
                                         addMatcherRow(attr?.queryMatchers) {
-                                            it.matcherName = "Parameter"
+                                            it.matcherName = "Query"
                                         }
 
                                         addMatcherRow(attr?.headerMatchers) {
@@ -348,7 +348,7 @@ object ChapterEditor : EditorModule() {
                                                 }
                                                 getButton {
                                                     formAction = "../" + DataGen.RoutePaths.Response.asSubPath
-                                                    disabled = pData.chapter == null
+                                                    disabled = !hasNetworkAccess || pData.chapter == null
                                                     +"Generate"
                                                 }
                                             }

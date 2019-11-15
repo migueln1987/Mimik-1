@@ -2,6 +2,7 @@ package helpers
 
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
+import com.github.kittinunf.fuel.httpGet
 import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -524,6 +525,13 @@ fun StringBuilder.toJson(): String {
 }
 
 fun NodeList.asList() = (0..length).mapNotNull(this::item)
+
+val hasNetworkAccess: Boolean
+    get() {
+        val response = "http://google.com"
+            .httpGet().responseString().second
+        return (response.statusCode != -1)
+    }
 
 // fuel
 val com.github.kittinunf.fuel.core.Headers.toOkHeaders: okhttp3.Headers

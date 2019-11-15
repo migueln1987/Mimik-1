@@ -19,7 +19,7 @@ abstract class EditorModule {
 
     private val filterKey = "filter"
     val loadFlag = "_load_"
-    private val noData = "{ no data }"
+    val noData = "{ no data }"
 
     companion object {
         val randomHost = RandomHost()
@@ -655,7 +655,7 @@ abstract class EditorModule {
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryMatchers = filterFindData("Parameter")
+                    attr.queryMatchers = filterFindData("Query")
                     attr.headerMatchers = filterFindData("Header")
                     attr.bodyMatchers = filterFindData("Body")
                 }
@@ -692,7 +692,7 @@ abstract class EditorModule {
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryMatchers = filterFindData("Parameter")
+                    attr.queryMatchers = filterFindData("Query")
                     attr.headerMatchers = filterFindData("Header")
                     attr.bodyMatchers = filterFindData("Body")
                 }
@@ -751,6 +751,17 @@ abstract class EditorModule {
                 it.value = values.getValue(key)
                 it.optional = if (optionals.getOrDefault(key, "") == "on") true else null
                 it.except = if (excepts.getOrDefault(key, "") == "on") true else null
+
+                val allowAll = allTrue(
+                    it.value == ".*",
+                    it.optional.isNotTrue(),
+                    it.except.isNotTrue()
+                )
+
+                if (allowAll) {
+                    it.clearState()
+                    it.allowAllInputs = true
+                }
             }
         }
         if (get(mKey.allowAny_ID) == "on") {

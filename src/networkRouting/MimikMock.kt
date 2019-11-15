@@ -257,10 +257,24 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
                         (valueSplitter.invoke(it) ?: listOf(it)).asSequence()
                     }
                     .map {
+                        val postfix = kvvm.key.takeLast(2)
+                        val isOpt = postfix.contains("~")
+                        val isAvd = postfix.contains("!")
+
+                        val allowAll = allTrue(
+                            it == ".*",
+                            !isOpt,
+                            !isAvd
+                        )
+
                         RequestAttractorBit { bit ->
-                            bit.optional = kvvm.key.contains("~")
-                            bit.except = kvvm.key.contains("!")
-                            bit.value = it
+                            if (allowAll) {
+                                bit.allowAllInputs = true
+                            } else {
+                                bit.optional = isOpt
+                                bit.except = isAvd
+                                bit.value = it
+                            }
                         }
                     }
             }
