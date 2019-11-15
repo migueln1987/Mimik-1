@@ -1,9 +1,9 @@
-package helpers
+package kotlinx.html
 
 import R
+import helpers.*
 import io.ktor.http.Parameters
 import io.ktor.util.toMap
-import kotlinx.html.*
 import okhttp3.Headers
 import java.io.File
 import kotlin.math.abs
@@ -397,3 +397,41 @@ val TH.resizableCol
 
 val DIV.inlineDiv: Unit
     get() = appendStyles("display: inline")
+
+/**
+ * 'Width' style of this html attribute
+ */
+var CommonAttributeGroupFacade.width: String
+    get() = styleProxy("width", null)
+    set(value) {
+        styleProxy("width", value)
+    }
+
+/**
+ * Lambda to Get/Set a property in the styles
+ */
+val styleProxy: CommonAttributeGroupFacade.(String, String?) -> String = { key, value ->
+    if (value == null) {
+        when {
+            isThrow { style } -> ""
+            else -> styleRegex(key).find(style)?.value ?: ""
+        }
+    } else {
+        when {
+            isThrow { style } -> style = "$key: $value".ensureSuffix(";")
+            else -> {
+                val grab = styleRegex(key).find(style)?.groups?.get(1)
+                if (grab == null)
+                    style += "$key: $value".ensureSuffix(";")
+                else
+                    style = style.replaceRange(grab.range, value)
+            }
+        }
+        ""
+    }
+}
+
+/**
+ * Creates a regex to find the requested key:value
+ */
+val styleRegex: (String) -> Regex = { "(?:^|[ ;])$it: *(.+?);".toRegex() }

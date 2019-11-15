@@ -22,7 +22,7 @@ class RequestAttractors {
     constructor(request: Requestdata?) {
         request?.httpUrl?.also { url ->
             routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
-            if (routingPath?.value?.isEmpty().isTrue())
+            if (routingPath?.value?.isBlank().isTrue())
                 routingPath = null
 
             queryMatchers = url.queryParameterNames().flatMap { key ->
@@ -35,7 +35,9 @@ class RequestAttractors {
         }
 
         request?.headers?.toStringPairs()?.also {
-            headerMatchers = it.map { RequestAttractorBit(it) }
+            headerMatchers = it.map { v ->
+                RequestAttractorBit(v)
+            }
         }
 
         // If the call always has a body, but a matcher wasn't set
@@ -228,13 +230,18 @@ class RequestAttractors {
 
     private fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
         val match = regex.find(source)
+        val literalMatch = hardValue.isNotBlank() && (source == hardValue)
         var matchVal = 0
         var matchRto = 0.0
 
-        if (match.hasMatch) {
+        if (literalMatch || match.hasMatch) {
             if (except.isNotTrue()) {
                 matchVal = 1
-                val matchLen = if (match.hasMatch) regex.pattern.length else 0
+                val matchLen = when {
+                    literalMatch -> hardValue.length
+                    match.hasMatch -> regex.pattern.length
+                    else -> 0
+                }
                 matchRto = matchLen / source.length.toDouble()
             }
         } else {
@@ -276,7 +283,10 @@ class RequestAttractors {
 
         return AttractorMatches().apply {
             source?.forEach {
-                appendValues(getMatchCount(headerMatchers, it))
+                if (it == "host : local.host")
+                    appendValues(AttractorMatches(1, 1, 0))
+                else
+                    appendValues(getMatchCount(headerMatchers, it))
             }
             Required = headerMatchers?.count { it.required } ?: 0
         }

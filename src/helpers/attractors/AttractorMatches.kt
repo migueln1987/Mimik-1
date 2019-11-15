@@ -1,5 +1,7 @@
 package helpers.attractors
 
+import helpers.allTrue
+
 data class AttractorMatches(
     var Required: Int = -1,
     var MatchesReq: Int = -1,
@@ -20,8 +22,18 @@ data class AttractorMatches(
     val satisfiesRequired: Boolean
         get() = Required > 0 && (Required == MatchesReq)
 
+    val isBlank: Boolean
+        get() {
+            return allTrue(
+                Required == -1,
+                MatchesReq == -1
+            )
+        }
+
     override fun toString(): String {
-        return "Required: %d ->{%d @ %.2f%%, %d @ %.2f%%} - %s".format(
+        return if (isBlank)
+            "No Data"
+        else "Required: %d ->{%d @ %.2f%%, %d @ %.2f%%} - %s".format(
             Required,
             MatchesReq, reqRatio,
             MatchesOpt, optRatio,
@@ -33,7 +45,7 @@ data class AttractorMatches(
      * Appends the current data, then returns a reference of this object
      */
     fun appendValues(data: AttractorMatches?): AttractorMatches {
-        if (data == null) return this
+        if (data == null || data.isBlank) return this
         if (data.Required > 0) {
             if (Required == -1) Required = 0
             Required += data.Required

@@ -23,9 +23,7 @@ class TapeCatalog : OkReplayInterceptor() {
     companion object {
         var isTestRunning = false
 
-        val Instance by lazy {
-            TapeCatalog().also { it.loadTapeData() }
-        }
+        val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
     }
 
     init {
@@ -165,16 +163,6 @@ class TapeCatalog : OkReplayInterceptor() {
             HttpStatusCode.Found -> {
                 hostTape.item?.let {
                     println("Using tape ${it.name}")
-                    if (it.isValidURL)
-                        callRequest = callRequest.reHost(it.httpRoutingUrl)
-
-                    it.createNewInteraction { mock ->
-                        mock.requestData = callRequest.toTapeData
-                        mock.attractors = RequestAttractors(mock.requestData)
-                        mock.alwaysLive = it.alwaysLive
-                        println("Creating New Chapter: ${mock.name}")
-                    }
-                    it.saveFile()
 
                     it.requestToChain(callRequest)?.let { chain ->
                         start(config, it)

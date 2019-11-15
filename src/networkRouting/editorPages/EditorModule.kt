@@ -649,9 +649,8 @@ abstract class EditorModule {
                 tape.routingURL = null
 
             tape.attractors = RequestAttractors { attr ->
-                get("filterPath")?.trim()?.also { path ->
-                    if (path.isNotEmpty())
-                        attr.routingPath?.value = path
+                attr.routingPath = get("filterPath")?.trim()?.let { path ->
+                    if (path.isBlank()) null else RequestAttractorBit(path)
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {
@@ -686,9 +685,8 @@ abstract class EditorModule {
         modChap.also { chap ->
             chap.chapterName = get("nameChap")
             chap.attractors = RequestAttractors { attr ->
-                get("filterPath")?.trim()?.also { path ->
-                    if (path.isNotEmpty())
-                        attr.routingPath?.value = path
+                attr.routingPath = get("filterPath")?.trim()?.let { path ->
+                    if (path.isBlank()) null else RequestAttractorBit(path)
                 }
 
                 if (keys.any { it.startsWith(filterKey) }) {

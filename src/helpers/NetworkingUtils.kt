@@ -449,8 +449,9 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         }
 
         // resolve what host would be taking to
-        if ((headerCache.get("Host").orEmpty()).startsWith("0.0.0.0"))
-            headerCache.set("Host", outboundHost)
+        val localHosts = listOf("0.0.0.0", "10.0.2.2")
+        if (localHosts.any { headerCache.get("host").orEmpty().startsWith(it) })
+            headerCache.set("host", outboundHost)
 
         build.headers(headerCache.build())
 

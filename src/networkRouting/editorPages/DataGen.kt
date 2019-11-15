@@ -283,7 +283,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         br()
 
                                         textInput {
-                                            style = "width: 6em;"
+                                            width = "6em"
                                             readonly = true
                                             disabled = true
                                             if (isValid) readonlyBG else disabledBG
@@ -319,7 +319,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                         tr {
                             th {
-                                style = "width: 20%"
+                                width = "20%"
                                 +"Request URL"
                             }
                             td {
@@ -641,7 +641,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             id = "resultTable"
                             tr {
                                 th {
-                                    style = "width: 20%;"
+                                    width = "20%"
                                     +"Response code"
                                 }
                                 td {

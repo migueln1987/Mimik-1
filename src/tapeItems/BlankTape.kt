@@ -495,7 +495,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     ) = findBestMatch(request.toOkRequest, preference)
 
     override fun record(request: Request, response: Response) {
-        chapters.add(RecordedInteractions(request, response))
+        val newChap = RecordedInteractions(request, response)
+
+        println("Creating New Chapter: ${newChap.name}")
+        chapters.add(newChap)
         saveFile()
     }
 

@@ -253,7 +253,7 @@ object TapeEditor : EditorModule() {
 
                     tr {
                         th {
-                            style = "width: 20%"
+                            width = "20%"
                             +"Name"
                         }
                         td {
@@ -381,7 +381,7 @@ object TapeEditor : EditorModule() {
                                 table {
                                     tr {
                                         th {
-                                            style = "width: 20%" // minimum-ish size + some padding
+                                            width = "20%" // minimum-ish size + some padding
                                             +"Path"
                                         }
                                         td {
@@ -690,7 +690,7 @@ object TapeEditor : EditorModule() {
             thead {
                 tr {
                     th {
-                        style = "width: 15%"
+                        width = "24%"
                         +"Name"
                     }
                     th { +"Mock type" }
@@ -708,8 +708,6 @@ object TapeEditor : EditorModule() {
                 }
             }
         }
-
-        infoText("Uses: Setting the value as '-1' will make it non-limited")
     }
 
     private fun TBODY.addChapterRow(data: ActiveData, chap: RecordedInteractions) {
@@ -861,7 +859,7 @@ object TapeEditor : EditorModule() {
                         style = "border-width: 3px;"
                         tr {
                             th {
-                                style = "width: 13%;"
+                                width = "13%"
                                 +"URL"
                             }
                             td { +(chap.requestData?.url ?: noData) }
@@ -877,8 +875,8 @@ object TapeEditor : EditorModule() {
                             }
                         }
                         tr {
-                            th { +"" }
-                            td { +"" }
+                            th { +"_" }
+                            td { +"_" }
                         }
                     }
                 }
