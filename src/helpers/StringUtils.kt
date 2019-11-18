@@ -213,3 +213,16 @@ fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) {
 fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) {
     appendln(message.invoke().format(*args))
 }
+
+/**
+ * Returns if this [String] is a type of Base64
+ *
+ * - length is a multiple of 4
+ * - chars are within the valid type range
+ */
+val String?.isBase64: Boolean
+    get() {
+        return if (this == null || (length % 4 != 0)) false
+        else "[a-z\\d/+]+={0,2}".toRegex(RegexOption.IGNORE_CASE)
+            .matches(this)
+    }

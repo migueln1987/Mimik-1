@@ -4,6 +4,7 @@ import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
 import io.ktor.application.ApplicationCall
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -22,6 +23,7 @@ import okio.Buffer
 import org.w3c.dom.NodeList
 import java.io.IOException
 import java.nio.charset.Charset
+import javax.xml.bind.DatatypeConverter
 
 // == okHttp3
 val okhttp3.Response.toJson: String
@@ -49,9 +51,20 @@ fun RequestBody?.content(default: String = ""): String {
     } ?: default
 }
 
+/**
+ * Returns the [ResponseBody]'s body as a string. Images are converted to Base64 (if not already)
+ */
 fun ResponseBody?.content(default: String = ""): String {
+    if (this == null) return default
     return try {
-        this?.string().orEmpty()
+        val data = bytes()
+        val dataStr = String(data)
+        val isBase64 = dataStr.isBase64
+
+        if (!isBase64 && contentType()?.type() == "image")
+            DatatypeConverter.printBase64Binary(data)
+        else
+            dataStr
     } catch (e: Exception) {
         default
     }
@@ -361,6 +374,9 @@ val okhttp3.Request.contentHash: Int
         ).hashCode()
     }
 
+val String.asMediaType: MediaType?
+    get() = MediaType.parse(this)
+
 // == okreplay
 
 /**
@@ -509,6 +525,9 @@ suspend fun ApplicationCall.anyParameters(): Parameters? {
 val Parameters.toSingleMap: Map<String, String>
     get() = toMap().mapValues { it.value.firstOrNull().orEmpty() }
 
+val String.asContentType: ContentType
+    get() = ContentType.parse(this)
+
 // == mimik
 /**
  * Returns if the response
@@ -555,5 +574,11 @@ val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
     get() = Responsedata {
         it.code = statusCode
         it.headers = headers.toOkHeaders
-        it.body = body().toByteArray().toString(Charset.defaultCharset())
+
+        val data = body().toByteArray()
+        val isImage = headers[HttpHeaders.ContentType].any { it.startsWith("image") }
+        it.body = if (isImage)
+            DatatypeConverter.printBase64Binary(data)
+        else
+            data.toString(Charset.defaultCharset())
     }

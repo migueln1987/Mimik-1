@@ -6,6 +6,7 @@ import com.github.kittinunf.fuel.httpPost
 import helpers.*
 import io.ktor.application.call
 import io.ktor.html.respondHtml
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -690,7 +691,13 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             }
 
                             tr {
-                                th { +"Body" }
+                                th {
+                                    +"Body"
+                                    val isBase64 = actItem.tapeHeaders[HttpHeaders.ContentType]
+                                        ?.startsWith("image").isTrue()
+                                    if (isBase64)
+                                        infoText("[Base64]")
+                                }
                                 td {
                                     textArea {
                                         style = "width: -webkit-fill-available;$divStyle"
