@@ -431,6 +431,9 @@ val okreplay.Request.toTapeData: Requestdata
 val okreplay.Response.toTapeData: Responsedata
     get() = Responsedata(this)
 
+val okhttp3.Response.toTapeData: Responsedata
+    get() = toReplayResponse.toTapeData
+
 // ktor
 /**
  * Tries to get the body text from this request (if request supports hosting a body).

@@ -418,6 +418,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
 
@@ -434,6 +435,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         paramTextArea(data) {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "reqCustomQuery.value = value;"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
                                 }
@@ -466,6 +468,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
 
@@ -482,6 +485,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         headerTextArea(data) {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "customHeaders.value = value.trim();"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
                                 }
@@ -511,7 +515,15 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
-                                            +data.orEmpty()
+                                            val outStr = data.tryAsPrettyJson.orEmpty()
+                                            val longestStr = outStr.longestLine
+
+                                            width = "${(longestStr?.length ?: 18) - 6}em"
+                                            val lineCnt = outStr.lines().size
+                                            height = "${lineCnt + 2}em"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
+
+                                            +outStr
                                         }
                                     }
 
@@ -528,7 +540,16 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         textArea {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "reqBodyCustom.value = value;"
-                                            +data.orEmpty()
+
+                                            val outStr = data.tryAsPrettyJson.orEmpty()
+                                            val longestStr = outStr.longestLine
+
+                                            width = "${(longestStr?.length ?: 0) - 6}em"
+                                            val lineCnt = outStr.lines().size
+                                            height = "${lineCnt + 2}em"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
+
+                                            +outStr
                                         }
                                     }
                                 }

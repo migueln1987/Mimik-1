@@ -77,6 +77,15 @@ fun String.appendLines(vararg strings: String) =
     strings.fold(this) { acc, t -> "$acc\n$t" }
 
 /**
+ * Returns the longest line (separated line line breaks) in this string
+ */
+val String?.longestLine: String?
+    get() {
+        return if (this == null) this
+        else lines().maxBy { it.length }
+    }
+
+/**
  * Returns `true` if the contents of this string is equal to the word "true", ignoring case, and `false` otherwise.
  *
  * If the value is null, [default] is returned instead, which is initially 'false'
@@ -95,7 +104,7 @@ val String?.isValidJSON: Boolean
 /**
  * Tries to [beautifyJson] the input if it's a valid json, else returns the input
  */
-val String?.tryAsJson: String?
+val String?.tryAsPrettyJson: String?
     get() = if (isValidJSON) beautifyJson else this
 
 /**
@@ -201,18 +210,22 @@ fun String?.toPairs(allowFilter: (List<String>) -> Boolean = { true }): Sequence
 }
 
 /**
- * Appends [message] to this [StringBuffer] with the optional formatting [args]
+ * Appends multiple [lines] to this [StringBuilder]
  */
-fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) {
-    appendln(message.format(*args))
-}
+fun StringBuilder.appendlns(vararg lines: String) =
+    lines.forEach { appendln(it) }
 
 /**
  * Appends [message] to this [StringBuffer] with the optional formatting [args]
  */
-fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) {
+fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) =
+    appendln(message.format(*args))
+
+/**
+ * Appends [message] to this [StringBuffer] with the optional formatting [args]
+ */
+fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) =
     appendln(message.invoke().format(*args))
-}
 
 /**
  * Returns if this [String] is a type of Base64
@@ -226,3 +239,12 @@ val String?.isBase64: Boolean
         else "[a-z\\d/+]+={0,2}".toRegex(RegexOption.IGNORE_CASE)
             .matches(this)
     }
+
+fun String.limitLines(limit: Int): String {
+    val lines = lines()
+    return if (lines.size > limit)
+        lines.take(limit).joinToString(
+            separator = "",
+            transform = { "$it\n" }) + "...[${lines.size - limit} lines]"
+    else this
+}

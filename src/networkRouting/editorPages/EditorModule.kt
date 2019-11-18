@@ -19,10 +19,13 @@ abstract class EditorModule {
 
     private val filterKey = "filter"
     val loadFlag = "_load_"
-    val noData = "{ no data }"
 
     companion object {
         val randomHost = RandomHost()
+        /**
+         * "{ no data }"
+         */
+        const val noData = "{ no data }"
     }
 
     @Suppress("unused", "EnumEntryName")

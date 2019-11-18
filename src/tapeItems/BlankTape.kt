@@ -13,6 +13,8 @@ import kotlinx.coroutines.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.Responsedata
+import networkRouting.editorPages.EditorModule.Companion.noData
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -296,6 +298,57 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     override fun seek(request: okreplay.Request) =
         findBestMatch(request).status == HttpStatusCode.Found
 
+    /**
+     * Appends: [Name], Url, Headers, Body, and [Extras]
+     */
+    private val okhttp3.Request.logRequestData: (Name: String, Extras: String) -> String
+        get() {
+            return { name, extras ->
+                var bodyStr = body().content(noData).tryAsPrettyJson ?: noData
+
+                val requestStr =
+                    ("-Name: $name\n" +
+                            "-Url: ${url()}\n" +
+                            "-Headers:\n%s\n" +
+                            "-Body:\n%s%s\n").format(
+                        headers().toStringPairs()
+                            .joinToString(separator = "", limit = 20, transform = { " $it\n" }).trimEnd('\n'),
+                        bodyStr.limitLines(20).ensurePrefix(" "),
+                        if (extras.isNotBlank()) "\n$extras" else ""
+                    )
+                "== Request ==\n$requestStr"
+            }
+        }
+
+    /**
+     * Appends: Status [Code] from [Url], {Headers and Body} from [Data], and [Extras].
+     *
+     * - If the Body is an image, then ```"[image]"``` is displayed
+     * - Json bodies are formatted if possible
+     */
+    private val okhttp3.Request.logResponseData: (Data: Responsedata?, Extras: String) -> String
+        get() {
+            return { data, extras ->
+                val responseStr = if (data == null) extras
+                else {
+                    var bodyStr = if (data.isImage) " { image data }" else
+                        body().content(noData).tryAsPrettyJson ?: noData
+
+                    ("-Code (%d) from ${url()}\n" +
+                            "-Headers:\n%s\n" +
+                            "-Body:\n%s%s\n").format(
+                        data.code ?: 0,
+                        data.headers?.toStringPairs()
+                            ?.joinToString(separator = "", transform = { " $it\n" })?.trimEnd('\n') ?: noData,
+                        bodyStr.limitLines(20).ensurePrefix(" "),
+                        if (extras.isNotBlank()) "\n$extras" else ""
+                    )
+                }
+
+                "== Response ==\n$responseStr"
+            }
+        }
+
     override fun play(request: okreplay.Request): Response {
         val okRequest: okhttp3.Request = request.toOkRequest
         val logBuilder = StringBuilder()
@@ -304,50 +357,35 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         if (alwaysLive.status == HttpStatusCode.Found) {
             println("Starting Live call for: ${okRequest.url()}")
             alwaysLive.item?.also {
-                logBuilder.appendlnFmt(
-                    {
-                        "== Live Request ==\n" +
-                                "-Name:\n %s\n" +
-                                "-Valid URL: %b\n" +
-                                "-Network: %b\n" +
-                                "-Url: %s\n" +
-                                "-Body:\n %s\n" +
-                                "-Headers:\n %s" +
-                                "%s\n"
-                    },
-                    it.name,
-                    isValidURL,
-                    hasNetworkAccess,
-                    okRequest.url(),
-                    okRequest.body().content("{null}").valueOrIsEmpty,
-                    okRequest.headers().toString().valueOrIsEmpty,
-                    if (it.uses >= 0)
-                        "-Uses: ${it.uses}" else ""
+                logBuilder.appendlns(
+                    "=== Live ===",
+                    okRequest.logRequestData.invoke(
+                        it.name,
+                        ("-Valid URL: $isValidURL\n" +
+                                "-Network: $hasNetworkAccess%s").format(
+                            if (it.uses >= 0)
+                                "\n-Uses: ${it.uses}" else ""
+                        )
+                    )
                 )
 
                 if (isValidURL) {
-                    val responseData = getData(okRequest)
-                    logBuilder.appendlnFmt(
-                        "== Live Response ==\n-Code %d from %s\n",
-                        responseData.code(), okRequest.url()
+                    val response = getData(okRequest)
+                    val responseData = response.toTapeData
+
+                    logBuilder.appendln(
+                        okRequest.logResponseData.invoke(responseData, "")
                     )
-                    if (responseData.isSuccessful) {
+
+                    if (response.isSuccessful) {
                         if (it.uses > 0) it.uses--
-                        logBuilder.appendlnFmt(
-                            {
-                                "== Live Response Data ==\n" +
-                                        "-Body:\n %s\n" +
-                                        "-Headers:\n %s" +
-                                        "%s\n"
-                            },
-                            if (it.responseData.isImage)
-                                "[image]" else it.responseData?.body.tryAsJson,
-                            it.responseData?.headers.toString(),
+                        logBuilder.appendln(
                             if (it.uses >= 0)
-                                "\n-Remaining Uses: ${it.uses}" else ""
+                                "-Remaining Uses: ${it.uses}" else ""
                         )
+
                         println(logBuilder.toString())
-                        return responseData.toReplayResponse
+                        return responseData.replayResponse
                     }
                 }
             }
@@ -360,45 +398,34 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         if (awaitMock.status == HttpStatusCode.Found && isWritable) {
             awaitMock.item?.also {
                 println("Queued Await request for: ${okRequest.url()}")
-                logBuilder.appendlnFmt(
-                    {
-                        "== Await Request ==\n" +
-                                "-Name: %s\n" +
-                                "-Url: %s\n" +
-                                "-Body:\n %s\n" +
-                                "-Headers:\n %s" +
-                                "%s"
-                    },
-                    it.name,
-                    okRequest.url(),
-                    okRequest.body().content("null").tryAsJson,
-                    okRequest.headers().toStringPairs().joinToString("", " ", "\n"),
-                    if (it.uses >= 0)
-                        "\n-Uses: ${it.uses}" else ""
-                )
-                val responseData = getData(okRequest)
-                logBuilder.appendlnFmt(
-                    "== Await Response ==\n-Code (%d) from %s\n",
-                    responseData.code(), okRequest.url()
+                logBuilder.appendlns(
+                    "=== Await ===",
+                    okRequest.logRequestData.invoke(
+                        it.name,
+                        ("-Valid URL: $isValidURL\n" +
+                                "-Network: $hasNetworkAccess\n" +
+                                "%s").format(
+                            if (it.uses >= 0)
+                                "-Uses: ${it.uses}" else ""
+                        )
+                    )
                 )
 
-                return if (responseData.isSuccessful) {
+                val response = getData(okRequest)
+                val responseData = response.toTapeData
+                logBuilder.appendln(
+                    okRequest.logResponseData.invoke(responseData, "")
+                )
+
+                return if (response.isSuccessful) {
                     it.requestData = okRequest.toTapeData
-                    it.response = responseData.toReplayResponse
+                    it.responseData = responseData
                     if (it.uses > 0) it.uses--
                     saveFile()
 
-                    logBuilder.appendlnFmt(
-                        {
-                            "-Body:\n %s\n" +
-                                    "-Headers:\n %s" +
-                                    "%s"
-                        },
-                        if (it.responseData.isImage)
-                            "[image]" else it.responseData?.body.tryAsJson,
-                        it.responseData?.headers.toString(),
+                    logBuilder.appendln(
                         if (it.uses >= 0)
-                            "\n-Remaining Uses: ${it.uses}" else ""
+                            "-Remaining Uses: ${it.uses}" else ""
                     )
 
                     println(logBuilder.toString())
@@ -415,12 +442,16 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
                 it.uses--
-                printlnFmt(
-                    "== Limited Mock ==\n" +
-                            "-Name\n %s\n" +
-                            "-Remaining Uses\n %s\n",
-                    it.name, it.uses
+                logBuilder.appendlns(
+                    "=== Limited ===",
+                    okRequest.logRequestData.invoke(it.name, ""),
+                    okRequest.logResponseData.invoke(
+                        it.responseData,
+                        if (it.uses >= 0)
+                            "-Uses: ${it.uses}" else ""
+                    )
                 )
+
                 return it.response
                     ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
             }
@@ -429,11 +460,13 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         val activeMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
         if (activeMock.status == HttpStatusCode.Found) {
             activeMock.item?.also {
-                printlnFmt(
-                    "== Mock ==\n" +
-                            "-Name\n %s\n",
-                    it.name
+                logBuilder.appendlns(
+                    "=== Mock ===",
+                    okRequest.logRequestData.invoke(it.name, ""),
+                    okRequest.logResponseData.invoke(it.responseData, "")
                 )
+
+                println(logBuilder.toString())
                 return it.response
                     ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
             }
@@ -496,8 +529,16 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     override fun record(request: Request, response: Response) {
         val newChap = RecordedInteractions(request, response)
+        val okRequest = request.toOkRequest
 
-        println("Creating New Chapter: ${newChap.name}")
+        val logBuilder = StringBuilder()
+        logBuilder.appendlns(
+            "=== New Chapter ===",
+            okRequest.logRequestData.invoke(newChap.name, ""),
+            okRequest.logResponseData.invoke(newChap.responseData, "")
+        )
+
+        println(logBuilder.toString())
         chapters.add(newChap)
         saveFile()
     }

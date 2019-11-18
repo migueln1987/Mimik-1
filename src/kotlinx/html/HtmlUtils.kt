@@ -214,9 +214,19 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
         config.invoke(this)
         onKeyPress = "keypressNewlineEnter(this);"
         val builder = StringBuilder()
+        var maxWd = 0
+        var lines = 0
         data?.forEach {
-            builder.appendln("${it.first} : ${it.second}")
+            lines++
+            "${it.first} : ${it.second}".also { str ->
+                if (str.length > maxWd)
+                    maxWd = str.length
+                builder.appendln(str)
+            }
         }
+
+        width = "${maxWd - 6}em"
+        height = "${lines + 2}em"
         +builder.toString()
     }
 }
@@ -353,7 +363,8 @@ fun FlowContent.refreshWatchWindow(
 /**
  * Appends the data in [values] to the current [style].
  *
- * If an item in [values] does not end with ";", one will be added
+ * - Items are added in "key: value" format
+ * - If an item in [values] does not end with ";", one will be added
  */
 fun CommonAttributeGroupFacade.appendStyles(vararg values: String) {
     val builder = StringBuilder()
@@ -407,6 +418,12 @@ var CommonAttributeGroupFacade.width: String
         styleProxy("width", value)
     }
 
+var CommonAttributeGroupFacade.height: String
+    get() = styleProxy("height", null)
+    set(value) {
+        styleProxy("height", value)
+    }
+
 /**
  * Lambda to Get/Set a property in the styles
  */
@@ -435,3 +452,15 @@ val styleProxy: CommonAttributeGroupFacade.(String, String?) -> String = { key, 
  * Creates a regex to find the requested key:value
  */
 val styleRegex: (String) -> Regex = { "(?:^|[ ;])$it: *(.+?);".toRegex() }
+
+fun CommonAttributeGroupFacade.setMinMaxSizes(
+    widthMin: String,
+    widthMax: String,
+    heightMin: String,
+    heightMax: String
+) {
+    appendStyles(
+        "min-width: $widthMin", "max-width: $widthMax",
+        "min-height: $heightMin", "max-height: $heightMax"
+    )
+}

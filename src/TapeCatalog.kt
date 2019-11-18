@@ -115,7 +115,7 @@ class TapeCatalog : OkReplayInterceptor() {
     }
 
     suspend fun processCall(call: ApplicationCall): okhttp3.Response {
-        var callRequest: okhttp3.Request = call.toOkRequest()
+        val callRequest: okhttp3.Request = call.toOkRequest()
 
         val bounds = TestManager.getManagerByID(call.callId)
 
