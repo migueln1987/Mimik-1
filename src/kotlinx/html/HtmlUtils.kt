@@ -1,9 +1,9 @@
-package helpers
+package kotlinx.html
 
 import R
+import helpers.*
 import io.ktor.http.Parameters
 import io.ktor.util.toMap
-import kotlinx.html.*
 import okhttp3.Headers
 import java.io.File
 import kotlin.math.abs
@@ -214,9 +214,19 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
         config.invoke(this)
         onKeyPress = "keypressNewlineEnter(this);"
         val builder = StringBuilder()
+        var maxWd = 0
+        var lines = 0
         data?.forEach {
-            builder.appendln("${it.first} : ${it.second}")
+            lines++
+            "${it.first} : ${it.second}".also { str ->
+                if (str.length > maxWd)
+                    maxWd = str.length
+                builder.appendln(str)
+            }
         }
+
+        width = "${maxWd - 6}em"
+        height = "${lines + 2}em"
         +builder.toString()
     }
 }
@@ -353,7 +363,8 @@ fun FlowContent.refreshWatchWindow(
 /**
  * Appends the data in [values] to the current [style].
  *
- * If an item in [values] does not end with ";", one will be added
+ * - Items are added in "key: value" format
+ * - If an item in [values] does not end with ";", one will be added
  */
 fun CommonAttributeGroupFacade.appendStyles(vararg values: String) {
     val builder = StringBuilder()
@@ -397,3 +408,59 @@ val TH.resizableCol
 
 val DIV.inlineDiv: Unit
     get() = appendStyles("display: inline")
+
+/**
+ * 'Width' style of this html attribute
+ */
+var CommonAttributeGroupFacade.width: String
+    get() = styleProxy("width", null)
+    set(value) {
+        styleProxy("width", value)
+    }
+
+var CommonAttributeGroupFacade.height: String
+    get() = styleProxy("height", null)
+    set(value) {
+        styleProxy("height", value)
+    }
+
+/**
+ * Lambda to Get/Set a property in the styles
+ */
+val styleProxy: CommonAttributeGroupFacade.(String, String?) -> String = { key, value ->
+    if (value == null) {
+        when {
+            isThrow { style } -> ""
+            else -> styleRegex(key).find(style)?.value ?: ""
+        }
+    } else {
+        when {
+            isThrow { style } -> style = "$key: $value".ensureSuffix(";")
+            else -> {
+                val grab = styleRegex(key).find(style)?.groups?.get(1)
+                if (grab == null)
+                    style += "$key: $value".ensureSuffix(";")
+                else
+                    style = style.replaceRange(grab.range, value)
+            }
+        }
+        ""
+    }
+}
+
+/**
+ * Creates a regex to find the requested key:value
+ */
+val styleRegex: (String) -> Regex = { "(?:^|[ ;])$it: *(.+?);".toRegex() }
+
+fun CommonAttributeGroupFacade.setMinMaxSizes(
+    widthMin: String,
+    widthMax: String,
+    heightMin: String,
+    heightMax: String
+) {
+    appendStyles(
+        "min-width: $widthMin", "max-width: $widthMax",
+        "min-height: $heightMin", "max-height: $heightMax"
+    )
+}

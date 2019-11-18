@@ -22,7 +22,7 @@ class RequestAttractors {
     constructor(request: Requestdata?) {
         request?.httpUrl?.also { url ->
             routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
-            if (routingPath?.value?.isEmpty().isTrue())
+            if (routingPath?.value?.isBlank().isTrue())
                 routingPath = null
 
             queryMatchers = url.queryParameterNames().flatMap { key ->
@@ -35,13 +35,15 @@ class RequestAttractors {
         }
 
         request?.headers?.toStringPairs()?.also {
-            headerMatchers = it.map { RequestAttractorBit(it) }
+            headerMatchers = it.map { v ->
+                RequestAttractorBit(v)
+            }
         }
 
         // If the call always has a body, but a matcher wasn't set
         // then add a compliance matcher
         if (HttpMethod.requiresRequestBody(request?.method))
-            bodyMatchers = listOf(RequestAttractorBit(".*"))
+            bodyMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
     }
 
     companion object {
@@ -65,29 +67,15 @@ class RequestAttractors {
                 status = HttpStatusCode.NotFound
             }
 
+            Fails.clear()
             // Filter to early fail checks
             val options = source.mapValues { it.value to AttractorMatches() }
                 .asSequence()
-                .filter {
-                    it.value.second.appendValues(custom.invoke(it.key))
-                    it.value.second.matchingRequired
-                }
-                .filter {
-                    it.value.second.appendValues(it.value.first?.matchesPath(path))
-                    it.value.second.matchingRequired
-                }
-                .filter {
-                    it.value.second.appendValues(it.value.first?.getQueryMatches(queries))
-                    it.value.second.matchingRequired
-                }
-                .filter {
-                    it.value.second.appendValues(it.value.first?.getHeaderMatches(headers))
-                    it.value.second.matchingRequired
-                }
-                .filter {
-                    it.value.second.appendValues(it.value.first?.getBodyMatches(body))
-                    it.value.second.matchingRequired
-                }
+                .filter { it.parseMatch { _ -> custom.invoke(it.key) } }
+                .filter { it.parseMatch { it?.matchesPath(path) } }
+                .filter { it.parseMatch { it?.getQueryMatches(queries) } }
+                .filter { it.parseMatch { it?.getHeaderMatches(headers) } }
+                .filter { it.parseMatch { it?.getBodyMatches(body) } }
                 .filter { it.value.second.satisfiesRequired }
                 .associate { it.key to it.value.second }
 
@@ -107,6 +95,19 @@ class RequestAttractors {
             }
 
             return response
+        }
+
+        val Fails = mutableListOf<Pair<RequestAttractors?, AttractorMatches>>()
+
+        private fun Map.Entry<*, Pair<RequestAttractors?, AttractorMatches>>.parseMatch(
+            matcher: (RequestAttractors?) -> AttractorMatches?
+        ): Boolean {
+            val mResult = matcher.invoke(value.first)
+            value.second.appendValues(mResult)
+            if (!value.second.matchingRequired) {
+                Fails.add(value)
+            }
+            return value.second.matchingRequired
         }
     }
 
@@ -229,13 +230,18 @@ class RequestAttractors {
 
     private fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
         val match = regex.find(source)
+        val literalMatch = hardValue.isNotBlank() && (source == hardValue)
         var matchVal = 0
         var matchRto = 0.0
 
-        if (match.hasMatch) {
+        if (literalMatch || match.hasMatch) {
             if (except.isNotTrue()) {
                 matchVal = 1
-                val matchLen = if (match.hasMatch) regex.pattern.length else 0
+                val matchLen = when {
+                    literalMatch -> hardValue.length
+                    match.hasMatch -> regex.pattern.length
+                    else -> 0
+                }
                 matchRto = matchLen / source.length.toDouble()
             }
         } else {
@@ -277,8 +283,12 @@ class RequestAttractors {
 
         return AttractorMatches().apply {
             source?.forEach {
-                appendValues(getMatchCount(headerMatchers, it))
+                if (it == "host : local.host")
+                    appendValues(AttractorMatches(1, 1, 0))
+                else
+                    appendValues(getMatchCount(headerMatchers, it))
             }
+            Required = headerMatchers?.count { it.required } ?: 0
         }
     }
 

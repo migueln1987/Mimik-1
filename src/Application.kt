@@ -5,12 +5,7 @@ package com.fiserv.mimik
 import TapeCatalog
 import helpers.tryGetBody
 import io.ktor.application.*
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.features.CallId
-import io.ktor.features.CallLogging
-import io.ktor.features.ContentNegotiation
-import io.ktor.features.DoubleReceive
+import io.ktor.features.*
 import io.ktor.response.respondRedirect
 import io.ktor.routing.get
 import io.ktor.routing.routing
@@ -51,7 +46,8 @@ fun Application.module(testing: Boolean = false) {
     TapeCatalog.Instance // +loads the tape data
 
 //    val client =
-    HttpClient(OkHttp) { engine {} }
+//    HttpClient(OkHttp) { engine {} }
+//    HttpClient(CIO) { engine {} }
 
     routing {
 
@@ -83,6 +79,16 @@ fun Application.module(testing: Boolean = false) {
 
 @KtorExperimentalAPI
 private fun Application.installFeatures() {
+    install(Compression) {
+        gzip {
+            priority = 1.0
+        }
+        deflate {
+            priority = 10.0
+            minimumSize(1024) // condition
+        }
+    }
+
     val deviceIDReg = """uniqueid.*?":"(.+?)"""".toRegex(RegexOption.IGNORE_CASE)
     install(DoubleReceive) // https://ktor.io/servers/features/double-receive.html
 

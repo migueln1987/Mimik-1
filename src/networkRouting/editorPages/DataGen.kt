@@ -6,6 +6,7 @@ import com.github.kittinunf.fuel.httpPost
 import helpers.*
 import io.ktor.application.call
 import io.ktor.html.respondHtml
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -20,8 +21,6 @@ import java.util.Date
 
 @Suppress("RemoveRedundantQualifierName")
 class DataGen : RoutingContract(RoutePaths.rootPath) {
-
-    private val noData = "{ no data }"
 
     enum class RoutePaths(val path: String) {
         Response("response"),
@@ -285,7 +284,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         br()
 
                                         textInput {
-                                            style = "width: 6em;"
+                                            width = "6em"
                                             readonly = true
                                             disabled = true
                                             if (isValid) readonlyBG else disabledBG
@@ -321,7 +320,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                         tr {
                             th {
-                                style = "width: 20%"
+                                width = "20%"
                                 +"Request URL"
                             }
                             td {
@@ -419,6 +418,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
 
@@ -435,6 +435,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         paramTextArea(data) {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "reqCustomQuery.value = value;"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
                                 }
@@ -467,6 +468,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
 
@@ -483,6 +485,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         headerTextArea(data) {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "customHeaders.value = value.trim();"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
                                         }
                                     }
                                 }
@@ -512,7 +515,15 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = !isValid
                                             if (isValid) readonlyBG else disabledBG
-                                            +data.orEmpty()
+                                            val outStr = data.tryAsPrettyJson.orEmpty()
+                                            val longestStr = outStr.longestLine
+
+                                            width = "${(longestStr?.length ?: 18) - 6}em"
+                                            val lineCnt = outStr.lines().size
+                                            height = "${lineCnt + 2}em"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
+
+                                            +outStr
                                         }
                                     }
 
@@ -529,7 +540,16 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         textArea {
                                             onKeyPress = "keypressNewlineEnter(this);"
                                             onKeyUp = "reqBodyCustom.value = value;"
-                                            +data.orEmpty()
+
+                                            val outStr = data.tryAsPrettyJson.orEmpty()
+                                            val longestStr = outStr.longestLine
+
+                                            width = "${(longestStr?.length ?: 0) - 6}em"
+                                            val lineCnt = outStr.lines().size
+                                            height = "${lineCnt + 2}em"
+                                            setMinMaxSizes("12em", "100%", "4em", "20em")
+
+                                            +outStr
                                         }
                                     }
                                 }
@@ -643,7 +663,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             id = "resultTable"
                             tr {
                                 th {
-                                    style = "width: 20%;"
+                                    width = "20%"
                                     +"Response code"
                                 }
                                 td {
@@ -692,7 +712,13 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             }
 
                             tr {
-                                th { +"Body" }
+                                th {
+                                    +"Body"
+                                    val isBase64 = actItem.tapeHeaders[HttpHeaders.ContentType]
+                                        ?.startsWith("image").isTrue()
+                                    if (isBase64)
+                                        infoText("[Base64]")
+                                }
                                 td {
                                     textArea {
                                         style = "width: -webkit-fill-available;$divStyle"
@@ -718,14 +744,13 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val method = this["reqMethod"].orEmpty().toUpperCase()
         val url = this["reqUrl"].orEmpty().ensureHttpPrefix
         val params = this["reqQuery"]
-            .toPairs(removeCommentFilter)?.toList()
-        val headers = this["reqHeaders"].toPairs(removeCommentFilter)
+            .toPairs()?.toList()
+        val headers = this["reqHeaders"].toPairs()
             ?.filter { it.second != null }
             ?.map { it.first to it.second!! }?.toList()?.toTypedArray()
         val body = this["reqBody"]
 
         var request = when (HttpMethod.parse(method)) {
-            HttpMethod.Get -> url.httpGet(params)
             HttpMethod.Post -> url.httpPost(params)
             else -> url.httpGet(params)
         }

@@ -281,7 +281,7 @@ class MockTests {
                 addHeader("mockFilter_Path", "/path")
                 addHeader("mockFilter_Body!", "avoid")
                 // wild-card "all", to allow this mock to accept any body (addition to above filter)
-                addHeader("mockFilter_Body", ".*")
+                addHeader("mockFilter_Body", ".+")
                 setBody(avoidBody)
             }
 

@@ -77,6 +77,15 @@ fun String.appendLines(vararg strings: String) =
     strings.fold(this) { acc, t -> "$acc\n$t" }
 
 /**
+ * Returns the longest line (separated line line breaks) in this string
+ */
+val String?.longestLine: String?
+    get() {
+        return if (this == null) this
+        else lines().maxBy { it.length }
+    }
+
+/**
  * Returns `true` if the contents of this string is equal to the word "true", ignoring case, and `false` otherwise.
  *
  * If the value is null, [default] is returned instead, which is initially 'false'
@@ -91,6 +100,12 @@ val String?.isValidJSON: Boolean
         val adjustedString = this?.replace("\\n", "")
         Gson().fromJson(adjustedString, Any::class.java)
     }
+
+/**
+ * Tries to [beautifyJson] the input if it's a valid json, else returns the input
+ */
+val String?.tryAsPrettyJson: String?
+    get() = if (isValidJSON) beautifyJson else this
 
 /**
  * Returns an empty string if the json is valid, or the error message
@@ -161,9 +176,11 @@ val String.valueOrIsEmpty: String
 
 /** Prints the given [message], with optional formatting [args],
  * and the line separator to the standard output stream. */
-@Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
-fun println(message: String, vararg args: Any? = arrayOf()) =
-    System.out.println(message.format(*args))
+fun printlnFmt(message: String, vararg args: Any? = arrayOf()) =
+    println(message.format(*args))
+
+fun printlnFmt(message: () -> String = { "" }, vararg args: Any? = arrayOf()) =
+    println(message.invoke().format(*args))
 
 /**
  * Filter for [toPairs] which removes lines starting with "//"
@@ -190,4 +207,44 @@ fun String?.toPairs(allowFilter: (List<String>) -> Boolean = { true }): Sequence
             }
         }
         .filter { (it.first.isNotBlank() && it.second != null) }
+}
+
+/**
+ * Appends multiple [lines] to this [StringBuilder]
+ */
+fun StringBuilder.appendlns(vararg lines: String) =
+    lines.forEach { appendln(it) }
+
+/**
+ * Appends [message] to this [StringBuffer] with the optional formatting [args]
+ */
+fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) =
+    appendln(message.format(*args))
+
+/**
+ * Appends [message] to this [StringBuffer] with the optional formatting [args]
+ */
+fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) =
+    appendln(message.invoke().format(*args))
+
+/**
+ * Returns if this [String] is a type of Base64
+ *
+ * - length is a multiple of 4
+ * - chars are within the valid type range
+ */
+val String?.isBase64: Boolean
+    get() {
+        return if (this == null || (length % 4 != 0)) false
+        else "[a-z\\d/+]+={0,2}".toRegex(RegexOption.IGNORE_CASE)
+            .matches(this)
+    }
+
+fun String.limitLines(limit: Int): String {
+    val lines = lines()
+    return if (lines.size > limit)
+        lines.take(limit).joinToString(
+            separator = "",
+            transform = { "$it\n" }) + "...[${lines.size - limit} lines]"
+    else this
 }

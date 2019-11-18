@@ -55,7 +55,7 @@ object NetworkDataEditor : EditorModule() {
                 table {
                     tr {
                         th {
-                            style = "width: 15%"
+                            width = "15%"
                             +"Network type"
                         }
                         td { +networkType }
@@ -114,7 +114,7 @@ object NetworkDataEditor : EditorModule() {
                             }
 
                             tr {
-                                th { +"Params" }
+                                th { +"Query" }
                                 td {
                                     tooltipText("Info", "genKVDataField")
                                     br()

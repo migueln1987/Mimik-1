@@ -45,7 +45,7 @@ class Responsedata : Networkdata {
             val isJson = body.isValidJSON
             headers = tapeHeaders.newBuilder().set(
                 HttpHeaders.ContentType,
-                if (isJson) "application/json" else "text/plain"
+                if (isJson) "application/json" else (tapeHeaders[HttpHeaders.ContentType] ?: "text/plain")
             ).build()
 
             return object : okreplay.Response {

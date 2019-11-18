@@ -17,11 +17,13 @@ class RecordedInteractions {
     constructor(request: okreplay.Request, response: okreplay.Response) {
         requestData = request.toTapeData
         responseData = response.toTapeData
+        attractors = RequestAttractors(requestData)
+        origionalMockUses = mockUses
     }
 
     var recordedDate: Date? = Date()
         get() = field ?: Date()
-    var modifiedDate: Date? = Date()
+    var modifiedDate: Date? = null
         get() = field ?: recordedDate ?: Date()
         set(value) {
             field = if (value == recordedDate)

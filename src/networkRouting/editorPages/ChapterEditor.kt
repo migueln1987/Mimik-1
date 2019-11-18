@@ -66,7 +66,7 @@ object ChapterEditor : EditorModule() {
                 table {
                     tr {
                         th {
-                            style = "width: 15%"
+                            width = "15%"
                             +"Name"
                         }
                         td {
@@ -141,7 +141,7 @@ object ChapterEditor : EditorModule() {
                                 table {
                                     tr {
                                         th {
-                                            style = "width: 15%" // minimum-ish size + some padding
+                                            width = "15%" // minimum-ish size + some padding
                                             +"Path"
                                         }
                                         td {
@@ -159,7 +159,7 @@ object ChapterEditor : EditorModule() {
 
                                     pData.chapter?.attractors.also { attr ->
                                         addMatcherRow(attr?.queryMatchers) {
-                                            it.matcherName = "Parameter"
+                                            it.matcherName = "Query"
                                         }
 
                                         addMatcherRow(attr?.headerMatchers) {
@@ -237,7 +237,7 @@ object ChapterEditor : EditorModule() {
                                 if (isLive) appendClass("opacity50")
 
                                 table {
-                                    style = "width: auto;"
+                                    width = "auto"
                                     thead {
                                         tr {
                                             th {
@@ -313,7 +313,7 @@ object ChapterEditor : EditorModule() {
                                 if (isLive) appendClass("opacity50")
 
                                 table {
-                                    style = "width: auto;"
+                                    width = "auto"
                                     thead {
                                         tr {
                                             th {
@@ -348,7 +348,7 @@ object ChapterEditor : EditorModule() {
                                                 }
                                                 getButton {
                                                     formAction = "../" + DataGen.RoutePaths.Response.asSubPath
-                                                    disabled = pData.chapter == null
+                                                    disabled = !hasNetworkAccess || pData.chapter == null
                                                     +"Generate"
                                                 }
                                             }
