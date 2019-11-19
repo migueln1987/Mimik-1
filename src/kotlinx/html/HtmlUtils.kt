@@ -354,7 +354,9 @@ fun FlowContent.refreshWatchWindow(
                         });
                     }, 1000);
                 }
-                runWatcher();
+                
+                if (refreshOn_$fileID.checked)
+                    runWatcher();
             """.trimIndent()
         }
     }
@@ -369,7 +371,7 @@ fun FlowContent.refreshWatchWindow(
 fun CommonAttributeGroupFacade.appendStyles(vararg values: String) {
     val builder = StringBuilder()
     values.forEach {
-        builder.append(it.ensureSuffix(";"))
+        builder.append(it.trim().ensureSuffix(";"))
     }
 
     if (isThrow { style })

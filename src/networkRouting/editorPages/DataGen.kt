@@ -1,5 +1,6 @@
 package networkRouting.editorPages
 
+import com.fiserv.mimik.Ports
 import com.github.kittinunf.fuel.core.ResponseResultOf
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
@@ -99,7 +100,10 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         chap.recentRequest = request.toRequestData
                         if (chap.genResponses.isNullOrEmpty())
                             chap.genResponses = mutableListOf()
-                        val requestResponse = response.toResponseData
+                        val requestResponse = response.toResponseData.also {
+                            if (params["useLocalhost"] != null)
+                                it.isLocalhostCall = true
+                        }
                         chap.genResponses?.add(requestResponse)
 
                         call.respondRedirect {
@@ -570,6 +574,18 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                 formAction = RoutePaths.ResponseGen.path
                                 +"Make call"
                             }
+
+                            br()
+                            hiddenInput(name = "useLocalhost") {
+                                id = name
+                                disabled = true
+                            }
+                            postButton(name = "Action") {
+                                value = ResponseActions.Make.name
+                                formAction = RoutePaths.ResponseGen.path
+                                onClick = "useLocalhost.disabled = false;"
+                                +"Localhost call"
+                            }
                         }
 
                         td {
@@ -623,10 +639,12 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         }
 
                         td {
+                            val isLocalhostCall = actItem?.isLocalhostCall.isTrue()
+
                             postButton(name = "Action") {
                                 formAction = RoutePaths.ResponseGen.path
                                 value = ResponseActions.Use.name
-                                disabled = genResponses.isEmpty()
+                                disabled = isLocalhostCall || genResponses.isEmpty()
                                 +"Use call -> Chapter"
                             }
 
@@ -635,12 +653,12 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                 postButton(name = "Action") {
                                     formAction = RoutePaths.ResponseGen.path
                                     value = ResponseActions.NewChapter.name
-                                    disabled = genResponses.isEmpty()
+                                    disabled = isLocalhostCall || genResponses.isEmpty()
                                     +"Use call -> New Chapter"
                                 }
                                 +" "
                                 textInput(name = "newChapter") {
-                                    disabled = genResponses.isEmpty()
+                                    disabled = isLocalhostCall || genResponses.isEmpty()
                                     if (genResponses.isEmpty())
                                         disabledBG
                                     placeholder = "New Chapter name"
@@ -742,12 +760,21 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
     fun Parameters.asResponseCall(): ResponseResultOf<String> {
         val method = this["reqMethod"].orEmpty().toUpperCase()
-        val url = this["reqUrl"].orEmpty().ensureHttpPrefix
+        val isLocalhostCall = get("useLocalhost") != null
+        val url = get("reqUrl").orEmpty().ensureHttpPrefix.let {
+            if (isLocalhostCall) {
+                HttpUrl.parse(it).reHost("0.0.0.0").rePort(Ports.live).toString()
+            } else it
+        }
         val params = this["reqQuery"]
             .toPairs()?.toList()
         val headers = this["reqHeaders"].toPairs()
             ?.filter { it.second != null }
-            ?.map { it.first to it.second!! }?.toList()?.toTypedArray()
+            ?.map { it.first to it.second!! }?.toMutableList()
+            ?.apply {
+                if (isLocalhostCall) add(("localhost" to "true"))
+            }?.toTypedArray()
+
         val body = this["reqBody"]
 
         var request = when (HttpMethod.parse(method)) {

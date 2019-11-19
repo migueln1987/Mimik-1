@@ -1129,6 +1129,7 @@ abstract class EditorModule {
 
     private fun TR.tapeDataRow(data: Networkdata) {
         td {
+            style = "vertical-align: top;"
             div {
                 when (data) {
                     is Requestdata -> {
@@ -1157,6 +1158,7 @@ abstract class EditorModule {
         }
 
         td {
+            style = "vertical-align: top;"
             val divID = "resizingTapeData_${data.hashCode()}"
             val headers = data.headers
 
@@ -1210,15 +1212,25 @@ abstract class EditorModule {
         }
 
         td {
-            style = "vertical-align: top;"
+            style = """
+                vertical-align: top;
+                text-align: center;
+            """.trimIndent()
+
+            val bodyData = data.body
+            if (bodyData == null) {
+                +noData
+                return@td
+            }
+
+            if (data.isImage)
+                infoText("[Base64]")
+
             val areaID = when (data) {
                 is Requestdata -> "requestBody"
                 is Responsedata -> "responseBody"
                 else -> ""
             }
-
-            if (data.body == null)
-                +noData
 
             textArea {
                 id = areaID
@@ -1231,8 +1243,7 @@ abstract class EditorModule {
                     background-color: #EEE;
                 """.trimIndent()
                 readonly = true
-                hidden = data.body == null
-                +data.body.orEmpty()
+                +bodyData
             }
 
             script { unsafe { +"beautifyField($areaID);" } }

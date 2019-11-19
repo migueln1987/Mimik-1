@@ -55,8 +55,8 @@ fun RequestBody?.content(default: String = ""): String {
  * Returns the [ResponseBody]'s body as a string. Images are converted to Base64 (if not already)
  */
 fun ResponseBody?.content(default: String = ""): String {
-    if (this == null) return default
-    return try {
+    return if (this == null) default
+    else try {
         val data = bytes()
         val dataStr = String(data)
         val isBase64 = dataStr.isBase64
@@ -117,8 +117,17 @@ val Map<String, String>.toHeaders: Headers
 val Headers.valueOrNull: Headers?
     get() = if (size() > 0) this else null
 
-fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) {
-    headers.toMultimap().forEach { t, u ->
+/**
+ * Appends the data from [headers] to this [ResponseHeaders]
+ */
+fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) =
+    appendHeaders(headers.toMultimap())
+
+/**
+ * Appends the data from [headers] to this [ResponseHeaders]
+ */
+fun ResponseHeaders.appendHeaders(headers: Map<String, List<String>>) {
+    headers.forEach { t, u ->
         u.forEach {
             if (!HttpHeaders.isUnsafe(t))
                 append(t, it)
@@ -292,15 +301,25 @@ val HttpUrl.hostPath: String
  *
  * newHost can be in the format of "url.ext" or "http://url.ext"
  */
-fun HttpUrl?.reHost(newHost: String?): HttpUrl? {
-    val newHttpHost = HttpUrl.parse(
-        newHost.orEmpty().ensureHttpPrefix
-    )
+fun HttpUrl?.reHost(newHost: String): HttpUrl? {
+    val newHttpHost = HttpUrl.parse(newHost.ensureHttpPrefix)
+
     if (this == null || newHttpHost == null) return newHttpHost
     return newBuilder().also {
         it.scheme(newHttpHost.scheme())
         it.host(newHttpHost.host())
     }.build()
+}
+
+/**
+ * Replaces/ appends [newPort] to this [HttpUrl]
+ */
+fun HttpUrl?.rePort(newPort: Int): HttpUrl? {
+    return this?.let {
+        newBuilder().also {
+            it.port(newPort)
+        }.build()
+    }
 }
 
 /**
@@ -378,14 +397,26 @@ val String.asMediaType: MediaType?
     get() = MediaType.parse(this)
 
 // == okreplay
-
 /**
- * Returns the body, if any, or [default] when null
+ * Returns the body, if any (and required), or [default] when null.
+ *
+ * Images are converted to Base64
  */
-fun okreplay.Request.tryGetBody(default: String = ""): String? {
-    return if (HttpMethod.requiresRequestBody(method())) {
-        if (hasBody()) bodyAsText() else default
-    } else null
+fun okreplay.Request.content(default: String = ""): String? {
+    return when {
+        !HttpMethod.requiresRequestBody(method()) -> null
+        !hasBody() -> default
+        else -> {
+            val data = body()
+            val dataStr = String(data)
+            val isBase64 = dataStr.isBase64
+
+            if (!isBase64 && contentType.startsWith("image"))
+                DatatypeConverter.printBase64Binary(data)
+            else
+                dataStr
+        }
+    }
 }
 
 /**
@@ -396,7 +427,7 @@ fun okreplay.Request.asRequestBody(default: String = ""): RequestBody? {
     return if (HttpMethod.requiresRequestBody(method())) {
         RequestBody.create(
             MediaType.parse(contentType),
-            if (hasBody()) bodyAsText() else default
+            content() ?: default
         )
     } else null
 }
@@ -404,8 +435,18 @@ fun okreplay.Request.asRequestBody(default: String = ""): RequestBody? {
 /**
  * Returns the body, if any, or [default] when null
  */
-fun okreplay.Response.tryGetBody(default: String = ""): String =
-    if (hasBody()) bodyAsText() else default
+fun okreplay.Response.tryGetBody(default: String = ""): String {
+    return if (hasBody()) {
+        val data = body()
+        val dataStr = String(data)
+        val isBase64 = dataStr.isBase64
+
+        if (!isBase64 && contentType.startsWith("image"))
+            DatatypeConverter.printBase64Binary(data)
+        else
+            dataStr
+    } else default
+}
 
 /**
  * Converts the [okreplay.Request] to [okhttp3.Request]
@@ -532,12 +573,6 @@ val String.asContentType: ContentType
     get() = ContentType.parse(this)
 
 // == mimik
-/**
- * Returns if the response
- */
-val Responsedata?.isImage: Boolean
-    get() = if (this == null) false else
-        tapeHeaders.get(HttpHeaders.ContentType)?.contains("image").isTrue()
 
 // == Others
 fun StringBuilder.toJson(): String {
@@ -560,7 +595,10 @@ val hasNetworkAccess: Boolean
 val com.github.kittinunf.fuel.core.Headers.toOkHeaders: okhttp3.Headers
     get() = Headers.Builder().also { builder ->
         entries.forEach { hKV ->
-            hKV.value.forEach { builder.add(hKV.key, it) }
+            hKV.value.forEach {
+                if (builder.get(hKV.key) != it)
+                    builder.add(hKV.key, it)
+            }
         }
     }.build()
 
@@ -573,6 +611,9 @@ val com.github.kittinunf.fuel.core.Request.toRequestData: Requestdata
         it.body = body.asString(null)
     }
 
+/**
+ * Converts a (fuel) [Response] to [Responsedata]
+ */
 val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
     get() = Responsedata {
         it.code = statusCode

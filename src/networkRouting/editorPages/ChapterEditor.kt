@@ -147,6 +147,7 @@ object ChapterEditor : EditorModule() {
                                         td {
                                             textInput(name = "filterPath") {
                                                 disableEnterKey
+                                                appendStyles("width: 99%")
                                                 val path =
                                                     pData.chapter?.attractors?.routingPath?.value.orEmpty()
 

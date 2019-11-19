@@ -109,6 +109,8 @@ class RequestAttractors {
             }
             return value.second.matchingRequired
         }
+
+        private val skipHeaders = listOf("content-length :", "host : local.host", "accept :", "localhost :", "te :")
     }
 
     /**
@@ -283,7 +285,9 @@ class RequestAttractors {
 
         return AttractorMatches().apply {
             source?.forEach {
-                if (it == "host : local.host")
+                val isSkipHeaders = skipHeaders.any { hHeaders -> it.startsWith(hHeaders) }
+
+                if (isSkipHeaders)
                     appendValues(AttractorMatches(1, 1, 0))
                 else
                     appendValues(getMatchCount(headerMatchers, it))

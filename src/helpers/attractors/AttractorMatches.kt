@@ -14,13 +14,13 @@ data class AttractorMatches(
      * Returns true if [Required] equals [MatchesReq]
      */
     val matchingRequired: Boolean
-        get() = Required == MatchesReq
+        get() = MatchesReq >= Required
 
     /**
      * Returns true if [Required] is set, and [MatchesReq] equals [Required]
      */
     val satisfiesRequired: Boolean
-        get() = Required > 0 && (Required == MatchesReq)
+        get() = Required > 0 && matchingRequired
 
     val isBlank: Boolean
         get() {
