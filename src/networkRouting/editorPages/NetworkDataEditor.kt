@@ -16,7 +16,7 @@ object NetworkDataEditor : EditorModule() {
             script {
                 unsafe {
                     +"""
-                    function regexUrl(url) {
+                    function toParsedUrl(url) {
                         parsedUrl.innerText = preVerifyURL(url);
                     }
                 """.trimIndent().appendLines(JS.all)
@@ -61,8 +61,10 @@ object NetworkDataEditor : EditorModule() {
                         td { +networkType }
                     }
 
-                    when (pData.expectedNetworkType) {
-                        "request" -> {
+                    val isRequest = pData.expectedNetworkType == "request"
+
+                    when (isRequest) {
+                        true -> {
                             val nData = pData.networkData as? Requestdata
                             tr {
                                 th { +"Method" }
@@ -90,7 +92,25 @@ object NetworkDataEditor : EditorModule() {
                                         placeholder = nData?.httpUrl?.hostPath ?: R.getProperty("urlPlaceholderExample")
                                         value = nData?.httpUrl?.hostPath.orEmpty()
                                         size = "${placeholder.length + 20}"
-                                        onKeyUp = "regexUrl(value)"
+                                        onKeyUp = "toParsedUrl(value)"
+                                    }
+
+                                    script {
+                                        unsafe {
+                                            +"""
+                                            requestUrl.addEventListener('paste', (event) => {
+                                                var paste = event.clipboardData.getData('text');
+                                                
+                                                var query = extractQueryFromURL(paste);
+                                                if (query.length > 0) {
+                                                    reqQuery.value = query;
+                                                    requestUrl.value = preVerifyURL(paste);
+                                                    toParsedUrl(paste);
+                                                    event.preventDefault();
+                                                }
+                                            });
+                                        """.trimIndent()
+                                        }
                                     }
 
                                     br()
@@ -109,7 +129,7 @@ object NetworkDataEditor : EditorModule() {
                                             }
                                         }
                                     }
-                                    script { unsafe { +"regexUrl(requestUrl.value);" } }
+                                    script { unsafe { +"toParsedUrl(requestUrl.value);" } }
                                 }
                             }
 
@@ -120,12 +140,13 @@ object NetworkDataEditor : EditorModule() {
                                     br()
                                     paramTextArea(nData?.httpUrl.toParameters) {
                                         name = "reqQuery"
+                                        id = name
                                     }
                                 }
                             }
                         }
 
-                        "response" -> {
+                        false -> {
                             val nData = pData.networkData as? Responsedata
                             tr {
                                 th { +"Code" }
@@ -133,9 +154,7 @@ object NetworkDataEditor : EditorModule() {
                                     select {
                                         name = "responseCode"
                                         id = name
-                                        onChange = """
-                                                responseCodeDes.selectedIndex = responseCode.selectedIndex;
-                                            """.trimIndent()
+                                        onChange = "responseCodeDes.selectedIndex = responseCode.selectedIndex;"
 
                                         HttpStatusCode.allStatusCodes.forEach {
                                             option {
@@ -150,9 +169,7 @@ object NetworkDataEditor : EditorModule() {
 
                                     select {
                                         id = "responseCodeDes"
-                                        onChange = """
-                                                responseCode.selectedIndex = responseCodeDes.selectedIndex;
-                                            """.trimIndent()
+                                        onChange = "responseCode.selectedIndex = responseCodeDes.selectedIndex;"
                                         HttpStatusCode.allStatusCodes.forEach {
                                             option {
                                                 if (nData?.code == it.value)
@@ -160,6 +177,10 @@ object NetworkDataEditor : EditorModule() {
                                                 +it.description
                                             }
                                         }
+                                    }
+
+                                    script {
+                                        unsafe { +"responseCodeDes.selectedIndex = responseCode.selectedIndex;" }
                                     }
                                 }
                             }
@@ -173,6 +194,20 @@ object NetworkDataEditor : EditorModule() {
                             br()
                             headerTextArea(pData.networkData?.headers) {
                                 name = "netHeaders"
+                                id = name
+                            }
+
+                            script {
+                                unsafe {
+                                    +"""
+                                    netHeaders.addEventListener('paste', (event) => {
+                                        var paste = event.clipboardData.getData('text');
+                                        netHeaders.value = paste.replace(/ *: */g, ' : ')
+                                          .replace(/^\s*$(?:\r\n?|\n)?/gm, '');
+                                        event.preventDefault();
+                                    });
+                                """.trimIndent()
+                                }
                             }
                         }
                     }
@@ -199,6 +234,15 @@ object NetworkDataEditor : EditorModule() {
                                         script {
                                             unsafe {
                                                 +"""
+                                                    networkBody.addEventListener('paste', (event) => {
+                                                        var paste = event.clipboardData.getData('text');
+                                                        var formatted = prettyJson(paste);
+                                                        if (formatted != paste) {
+                                                            networkBody.value = formatted;
+                                                            networkBody.style.height = (networkBody.scrollHeight - 4) + 'px';
+                                                            event.preventDefault();
+                                                        }
+                                                    });
                                                     formatParentFieldWidth(networkBody);
                                                     beautifyField(networkBody);
                                                 """.trimIndent()
@@ -220,6 +264,16 @@ object NetworkDataEditor : EditorModule() {
                     tr {
                         th { +"Save" }
                         td {
+                            if (isRequest) {
+                                tooltipText(
+                                    "Parse Request to attractors: ",
+                                    "genReqParseAttr"
+                                )
+                                checkBoxInput(name = "parseAttractors") {
+                                    checked = pData.chapter?.attractors?.isInitial.isTrue()
+                                }
+                                linebreak()
+                            }
                             postButton(name = "Action") {
                                 value = "SaveNetworkData"
                                 +"Save"

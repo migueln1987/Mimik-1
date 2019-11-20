@@ -2,7 +2,7 @@ package mimikMockHelpers
 
 import helpers.asHttpUrl
 import helpers.attractors.RequestAttractors
-import helpers.tryGetBody
+import helpers.content
 import io.ktor.http.HttpHeaders
 import okhttp3.HttpUrl
 import okhttp3.internal.http.HttpMethod
@@ -14,7 +14,7 @@ class Requestdata : Networkdata {
         method = request.method()
         url = request.url().toString()
         headers = request.headers()
-        body = request.tryGetBody()
+        body = request.content()
     }
 
     constructor(builder: (Requestdata) -> Unit = {}) {

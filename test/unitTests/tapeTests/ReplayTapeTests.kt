@@ -69,11 +69,13 @@ class ReplayTapeTests {
                 attr.headerMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
             it.response = mockk {
+                every { body() } returns mockBodyMessage.toByteArray()
                 every { hasBody() } returns true
                 every { bodyAsText() } returns mockBodyMessage
                 every { code() } returns HttpStatusCode.OK.value
                 every { protocol() } returns Protocol.HTTP_1_1
                 every { headers() } returns Headers.of("key", "value")
+                every { contentType } returns ""
             }
         }
 
@@ -101,11 +103,13 @@ class ReplayTapeTests {
                 attr.headerMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
             it.response = mockk {
+                every { body() } returns mockBodyMessage.toByteArray()
                 every { hasBody() } returns true
                 every { bodyAsText() } returns mockBodyMessage
                 every { code() } returns HttpStatusCode.OK.value
                 every { protocol() } returns Protocol.HTTP_1_1
                 every { headers() } returns Headers.of("key", "value")
+                every { contentType } returns ""
             }
         }
 
@@ -117,11 +121,13 @@ class ReplayTapeTests {
                 attr.headerMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
             }
             it.response = mockk {
+                every { body() } returns liveBodyMessage.toByteArray()
                 every { hasBody() } returns true
                 every { bodyAsText() } returns liveBodyMessage
                 every { code() } returns HttpStatusCode.OK.value
                 every { protocol() } returns Protocol.HTTP_1_1
                 every { headers() } returns Headers.of("key", "value")
+                every { contentType } returns ""
             }
         }
 

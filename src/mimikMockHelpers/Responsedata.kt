@@ -40,6 +40,9 @@ class Responsedata : Networkdata {
     var protocol: Protocol? = null
         get() = field ?: Protocol.HTTP_1_1
 
+    @Transient
+    var isLocalhostCall: Boolean? = false
+
     val replayResponse: okreplay.Response
         get() {
             val isJson = body.isValidJSON

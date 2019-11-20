@@ -332,7 +332,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 val responseStr = if (data == null) extras
                 else {
                     var bodyStr = if (data.isImage) " { image data }" else
-                        body().content(noData).tryAsPrettyJson ?: noData
+                        data.body.tryAsPrettyJson ?: noData
 
                     ("-Code (%d) from ${url()}\n" +
                             "-Headers:\n%s\n" +
@@ -527,8 +527,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         preference: SearchPreferences = SearchPreferences.ALL
     ) = findBestMatch(request.toOkRequest, preference)
 
-    override fun record(request: Request, response: Response) {
+    override fun record(request: okreplay.Request, response: okreplay.Response) {
         val newChap = RecordedInteractions(request, response)
+        newChap.alwaysLive = alwaysLive
         val okRequest = request.toOkRequest
 
         val logBuilder = StringBuilder()

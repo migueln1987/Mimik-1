@@ -13,11 +13,7 @@ import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import io.mockk.unmockkObject
 import mimikMockHelpers.MockUseStates
-import org.junit.AfterClass
-import org.junit.Assert
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import org.junit.*
 
 class MockTests {
     companion object {
@@ -35,6 +31,7 @@ class MockTests {
     }
 
     @Before
+    @After
     fun clearTapes() {
         TapeCatalog.Instance.tapes.forEach { it.file?.delete() }
         TapeCatalog.Instance.tapes.clear()

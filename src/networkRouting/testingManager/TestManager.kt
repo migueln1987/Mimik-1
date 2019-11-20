@@ -1,7 +1,9 @@
-package networkRouting.TestingManager
+package networkRouting.testingManager
 
 import helpers.RandomHost
-import helpers.anyParameters
+import helpers.allTrue
+import helpers.appendHeaders
+import helpers.isTrue
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
@@ -31,7 +33,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
     }
 
     companion object {
-        val boundManager = mutableListOf<testBounds>()
+        val boundManager = mutableListOf<TestBounds>()
 
         /**
          * Returns if there are any enabled test bounds
@@ -41,11 +43,11 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         }
 
         /**
-         * Attempts to retrieve a [testBounds] which has the following [handle].
+         * Attempts to retrieve a [TestBounds] which has the following [handle].
          * - If none is found and a bound is [BoundStates.Ready], the [handle] is applied to that bound, then returned
          * - [null] is returned if none of the above is true
          */
-        fun getManagerByID(handle: String?): testBounds? {
+        fun getManagerByID(handle: String?): TestBounds? {
             if (handle == null) return null
             var bound = boundManager.firstOrNull { it.handle == handle }
             if (bound != null)
@@ -64,35 +66,48 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
     private val Route.start: Route
         get() = route(RoutePaths.START.path) {
             post {
-                val params = call.anyParameters()
+                val heads = call.request.headers
+                var handle = heads["handle"]
+                var allowedTapes = heads.getAll("tape")
+                val time = heads["time"]
 
-                if (params == null) {
-                    call.respondText(status = HttpStatusCode.BadRequest) { "No Parameters" }
+                val noConfigs = allTrue(
+                    handle == null,
+                    allowedTapes?.isEmpty().isTrue(),
+                    time == null
+                )
+
+                if (noConfigs) {
+                    call.respondText(status = HttpStatusCode.BadRequest) { "No config headers" }
                     return@post
                 }
-                var handle = params["handle"]
-                val allowedTapes = params.getAll("tape")
 
                 if (allowedTapes.isNullOrEmpty()) {
-                    call.respondText(status = HttpStatusCode.BadRequest) { "No [tape] parameters" }
+                    call.respondText(status = HttpStatusCode.BadRequest) { "No [tape] config data" }
                     return@post
                 }
+
+                val tapeCatNames = tapeCatalog.tapes.map { it.name }
+                allowedTapes = allowedTapes.filter { tapeCatNames.contains(it) }
 
                 handle = ensureUniqueName(handle)
 
                 boundManager.add(
-                    testBounds(handle, allowedTapes).also {
+                    TestBounds(handle, allowedTapes).also {
                         it.timeLimit = max(
                             it.timeLimit,
-                            params["time"]?.toIntOrNull() ?: 0
+                            time?.toIntOrNull() ?: 0
                         )
                     }
                 )
 
                 val status = when (handle) {
-                    params["handle"] -> HttpStatusCode.OK
+                    heads["handle"] -> HttpStatusCode.OK
                     else -> HttpStatusCode.SeeOther
                 }
+
+                val responseHeads = mapOf("tape" to allowedTapes)
+                call.response.headers.appendHeaders(responseHeads)
                 call.respondText(status = status) { handle }
             }
         }
@@ -100,14 +115,14 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
     private val Route.stop: Route
         get() = route(RoutePaths.STOP.path) {
             post {
-                val params = call.anyParameters()
+                val heads = call.request.headers
+                val handle = heads["handle"]
 
-                if (params == null) {
-                    call.respondText(status = HttpStatusCode.BadRequest) { "No Parameters" }
+                if (handle.isNullOrBlank()) {
+                    call.respondText(status = HttpStatusCode.BadRequest) { "No [handle] parameter" }
                     return@post
                 }
 
-                val handle = params["handle"].orEmpty()
                 var stoppedTest = false
                 boundManager.asSequence()
                     .filter { it.handle == handle }

@@ -55,6 +55,22 @@ abstract class EditorModule {
             """
         ),
 
+        extractQueryFromUrl_func("""
+            function extractQueryFromURL(url, asArray) {
+                asArray = asArray || false;
+                var partA = preVerifyURL(url);
+                var partB = preVerifyURL(url, true);
+                if (partA.length == partB.length) return (asArray ? [] : "");
+                
+                var query = partB.replace(partA, '').replace('?','').replace(/=/g, ' : ');
+                
+                if (asArray)
+                    return query.split('&');
+                else 
+                    return query.replace(/&/g,'\n');
+            }
+        """),
+
         PrettyJson(
             """
                 function prettyJson(uglyText) {
@@ -1129,6 +1145,7 @@ abstract class EditorModule {
 
     private fun TR.tapeDataRow(data: Networkdata) {
         td {
+            style = "vertical-align: top;"
             div {
                 when (data) {
                     is Requestdata -> {
@@ -1157,6 +1174,7 @@ abstract class EditorModule {
         }
 
         td {
+            style = "vertical-align: top;"
             val divID = "resizingTapeData_${data.hashCode()}"
             val headers = data.headers
 
@@ -1210,15 +1228,25 @@ abstract class EditorModule {
         }
 
         td {
-            style = "vertical-align: top;"
+            style = """
+                vertical-align: top;
+                text-align: center;
+            """.trimIndent()
+
+            val bodyData = data.body
+            if (bodyData == null) {
+                +noData
+                return@td
+            }
+
+            if (data.isImage)
+                infoText("[Base64]")
+
             val areaID = when (data) {
                 is Requestdata -> "requestBody"
                 is Responsedata -> "responseBody"
                 else -> ""
             }
-
-            if (data.body == null)
-                +noData
 
             textArea {
                 id = areaID
@@ -1231,8 +1259,7 @@ abstract class EditorModule {
                     background-color: #EEE;
                 """.trimIndent()
                 readonly = true
-                hidden = data.body == null
-                +data.body.orEmpty()
+                +bodyData
             }
 
             script { unsafe { +"beautifyField($areaID);" } }
@@ -1434,7 +1461,7 @@ abstract class EditorModule {
                         Array.from(document.getElementsByClassName('navHeader')).forEach(
                             function(item) {
                                 var next = item.nextElementSibling;
-                                if(next != null && next.classList.contains('subnav-content'))
+                                if (next != null && next.classList.contains('subnav-content'))
                                     item.classList.add('caret-down');
                             }
                         );

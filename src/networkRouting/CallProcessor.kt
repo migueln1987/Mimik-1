@@ -29,13 +29,12 @@ class CallProcessor : RoutingContract("{...}") {
 
         response.headers.appendHeaders(processResponse.headers())
         val content = processResponse.body().content()
-        when {
-            contentType.contentType == "image" -> {
+        when (contentType.contentType) {
+            "image" -> {
                 val data = DatatypeConverter.parseBase64Binary(content)
                 respondBytes(contentType, code) { data }
             }
-            else ->
-                respondText(contentType, code) { content }
+            else -> respondText(contentType, code) { content }
         }
     }
 }
