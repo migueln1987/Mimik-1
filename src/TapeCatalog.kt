@@ -9,8 +9,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
-import networkRouting.TestingManager.observe
-import networkRouting.TestingManager.TestManager
+import networkRouting.testingManager.observe
+import networkRouting.testingManager.TestManager
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
 import java.util.Collections
@@ -132,6 +132,7 @@ class TapeCatalog : OkReplayInterceptor() {
         println("Active Requests: ${processingRequests.size}")
 
         val bounds = TestManager.getManagerByID(call.callId)
+        val startTime = System.currentTimeMillis()
 
         try {
             if (bounds != null) {
@@ -206,7 +207,12 @@ class TapeCatalog : OkReplayInterceptor() {
                 }
             }
         } finally {
-            println("Releasing lock: ${callRequest.url()}")
+            val eTime = System.currentTimeMillis() - startTime
+            printlnFmt(
+                "Releasing lock (%d ms): %s",
+                System.currentTimeMillis() - startTime,
+                callRequest.url()
+            )
             processingRequests.remove(callUrl)
         }
     }

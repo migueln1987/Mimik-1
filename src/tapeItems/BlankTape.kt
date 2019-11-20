@@ -529,6 +529,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     override fun record(request: okreplay.Request, response: okreplay.Response) {
         val newChap = RecordedInteractions(request, response)
+        newChap.alwaysLive = alwaysLive
         val okRequest = request.toOkRequest
 
         val logBuilder = StringBuilder()

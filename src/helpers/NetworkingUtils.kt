@@ -411,7 +411,7 @@ fun okreplay.Request.content(default: String = ""): String? {
             val dataStr = String(data)
             val isBase64 = dataStr.isBase64
 
-            if (!isBase64 && contentType.startsWith("image"))
+            if (!isBase64 && (contentType.orEmpty()).startsWith("image"))
                 DatatypeConverter.printBase64Binary(data)
             else
                 dataStr
@@ -441,7 +441,7 @@ fun okreplay.Response.tryGetBody(default: String = ""): String {
         val dataStr = String(data)
         val isBase64 = dataStr.isBase64
 
-        if (!isBase64 && contentType.startsWith("image"))
+        if (!isBase64 && (contentType.orEmpty()).startsWith("image"))
             DatatypeConverter.printBase64Binary(data)
         else
             dataStr

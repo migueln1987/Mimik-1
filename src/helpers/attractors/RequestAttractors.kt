@@ -1,9 +1,7 @@
 package helpers.attractors
 
-import helpers.anyTrue
-import helpers.isNotTrue
-import helpers.isTrue
-import helpers.toStringPairs
+import helpers.*
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.Requestdata
@@ -35,9 +33,9 @@ class RequestAttractors {
         }
 
         request?.headers?.toStringPairs()?.also {
-            headerMatchers = it.map { v ->
-                RequestAttractorBit(v)
-            }
+            headerMatchers = it.asSequence()
+                .filterNot { avoidHeaders.any { s -> it.startsWith(s, true) } }
+                .map { v -> RequestAttractorBit(v) }.toList()
         }
 
         // If the call always has a body, but a matcher wasn't set
@@ -47,6 +45,8 @@ class RequestAttractors {
     }
 
     companion object {
+        private val avoidHeaders = listOf(HttpHeaders.ContentLength)
+
         /**
          * Returns the best match based on the given criteria from the [source] map
          *
@@ -123,6 +123,23 @@ class RequestAttractors {
                 queryMatchers?.isNotEmpty().isTrue(),
                 headerMatchers?.isNotEmpty().isTrue(),
                 bodyMatchers?.isNotEmpty().isTrue()
+            )
+        }
+
+    /**
+     * Returns true if this [RequestAttractors] has it's original (or near) data
+     */
+    val isInitial: Boolean
+        get() {
+            val maybeDefaultHeader = headerMatchers
+                ?.let { it.isEmpty() || (it.size == 1 && it[0].allowAllInputs.isTrue()) }
+                ?: false
+
+            return allTrue(
+                routingPath == null,
+                queryMatchers == null,
+                maybeDefaultHeader,
+                bodyMatchers == null
             )
         }
 

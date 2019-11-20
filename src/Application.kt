@@ -20,7 +20,7 @@ import networkRouting.FetchResponder
 import networkRouting.MimikMock
 import networkRouting.editorPages.DataGen
 import networkRouting.editorPages.TapeRouting
-import networkRouting.TestingManager.TestManager
+import networkRouting.testingManager.TestManager
 import networkRouting.port
 import org.slf4j.event.Level
 

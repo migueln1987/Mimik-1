@@ -55,6 +55,22 @@ abstract class EditorModule {
             """
         ),
 
+        extractQueryFromUrl_func("""
+            function extractQueryFromURL(url, asArray) {
+                asArray = asArray || false;
+                var partA = preVerifyURL(url);
+                var partB = preVerifyURL(url, true);
+                if (partA.length == partB.length) return (asArray ? [] : "");
+                
+                var query = partB.replace(partA, '').replace('?','').replace(/=/g, ' : ');
+                
+                if (asArray)
+                    return query.split('&');
+                else 
+                    return query.replace(/&/g,'\n');
+            }
+        """),
+
         PrettyJson(
             """
                 function prettyJson(uglyText) {
@@ -1445,7 +1461,7 @@ abstract class EditorModule {
                         Array.from(document.getElementsByClassName('navHeader')).forEach(
                             function(item) {
                                 var next = item.nextElementSibling;
-                                if(next != null && next.classList.contains('subnav-content'))
+                                if (next != null && next.classList.contains('subnav-content'))
                                     item.classList.add('caret-down');
                             }
                         );

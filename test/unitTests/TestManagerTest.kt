@@ -1,8 +1,8 @@
 package unitTests
 
 import mimikMockHelpers.RecordedInteractions
-import networkRouting.TestingManager.observe
-import networkRouting.TestingManager.testBounds
+import networkRouting.testingManager.observe
+import networkRouting.testingManager.TestBounds
 import org.junit.Assert
 import org.junit.Test
 import tapeItems.BlankTape
@@ -20,7 +20,7 @@ class TestManagerTest {
         val newVal = 8
         var inPost = 0
 
-        val bounds = testBounds("", listOf())
+        val bounds = TestBounds("", listOf())
         bounds.observe(tape) {
             tape.apply {
                 inPre = chap.uses
@@ -46,7 +46,7 @@ class TestManagerTest {
         chap.mockUses = 1
         var obsData = 0
 
-        val bounds = testBounds("", listOf())
+        val bounds = TestBounds("", listOf())
         bounds.observe(tape) {
             tape.apply {
                 obsData = chap.uses

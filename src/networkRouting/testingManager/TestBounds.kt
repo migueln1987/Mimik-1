@@ -1,11 +1,11 @@
-package networkRouting.TestingManager
+package networkRouting.testingManager
 
 import helpers.add
 import tapeItems.BlankTape
 import java.util.Calendar
 import java.util.Date
 
-data class testBounds(var handle: String, val tapes: List<String>) {
+data class TestBounds(var handle: String, val tapes: List<String>) {
     var boundSource: String? = null
         set(value) {
             field = value
@@ -49,9 +49,9 @@ enum class BoundStates {
 }
 
 /**
- * Observes changes to [tape] and routes the interactions to this [testBounds].
+ * Observes changes to [tape] and routes the interactions to this [TestBounds].
  */
-inline fun <reified T : Any?> testBounds?.observe(tape: BlankTape, watch: () -> T?): T? {
+inline fun <reified T : Any?> TestBounds?.observe(tape: BlankTape, watch: () -> T?): T? {
     if (this == null) return watch.invoke()
     if (!stateUses.containsKey(tape.name))
         stateUses[tape.name] = mutableListOf()

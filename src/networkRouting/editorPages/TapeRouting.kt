@@ -257,8 +257,11 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             }
 
         when (data["network"]) {
-            "request" ->
+            "request" -> {
                 foundChap.requestData = network as? Requestdata
+                if (data["parseAttractors"] == "on")
+                    foundChap.attractors = foundChap.requestData?.toAttractors
+            }
             "response" ->
                 foundChap.responseData = network as? Responsedata
         }
