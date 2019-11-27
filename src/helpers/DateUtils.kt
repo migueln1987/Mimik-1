@@ -1,5 +1,7 @@
 package helpers
 
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.Calendar
 import java.util.Date
 
@@ -20,3 +22,20 @@ fun Date.add(field: Int, amount: Int): Date {
         it.add(field, amount)
     }.time
 }
+
+operator fun Date.plus(amount: Duration): Date {
+    return Calendar.getInstance().also {
+        it.time = this
+        it.add(Calendar.SECOND, amount.seconds.toInt())
+    }.time
+}
+
+operator fun Date.minus(amount: Duration): Date {
+    return Calendar.getInstance().also {
+        it.time = this
+        it.add(Calendar.SECOND, -amount.seconds.toInt())
+    }.time
+}
+
+operator fun Date.minus(amount: Date?) =
+    Duration.between(this.toInstant(), (amount ?: this).toInstant())

@@ -79,9 +79,7 @@ class RequestAttractors {
                 .filter { it.value.second.satisfiesRequired }
                 .associate { it.key to it.value.second }
 
-            val response = QueryResponse<T> {
-                status = HttpStatusCode.NotFound
-            }
+            val response = QueryResponse<T> { status = HttpStatusCode.NotFound }
 
             if (options.isEmpty()) return response
 

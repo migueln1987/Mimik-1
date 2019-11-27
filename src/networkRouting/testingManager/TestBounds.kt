@@ -1,15 +1,76 @@
 package networkRouting.testingManager
 
-import helpers.add
+import helpers.plus
+import helpers.printlnF
+import java.time.Duration
+import java.util.*
+import kolor.red
+import kolor.yellow
+import kotlin.concurrent.schedule
 import tapeItems.BlankTape
-import java.util.Calendar
-import java.util.Date
 
-data class TestBounds(var handle: String, val tapes: List<String>) {
+data class TestBounds(var handle: String, val tapes: MutableList<String>) {
+    var expireTimer: TimerTask? = null
+        @Synchronized get
+        @Synchronized private set
+
     var boundSource: String? = null
+        @Synchronized
         set(value) {
-            field = value
-            expireTime = Date().add(Calendar.SECOND, timeLimit)
+            when (value) {
+                null -> {
+                    field = null
+                    expireTime = null
+                    isEnabled = false
+                }
+                field -> {
+                    println("Re-assigning test bound -> Resetting time".yellow())
+                    expireTimer?.cancel()
+
+                    val startTime = Date()
+                    val startStr = startTime.toString()
+                    expireTime = (startTime + timeLimit).also {
+                        expireTimer = Timer("Handle: $handle", false).schedule(it) {
+                            println("Test bounds ($handle) has expired".red())
+                        }
+                    }
+
+                    printlnF(
+                        ("Reset test bounds\n" +
+                                "- Handle: %s\n" +
+                                "- Target ID: (%s)\n" +
+                                "- From: %s\n" +
+                                "- To:   %s").yellow(),
+                        handle,
+                        value,
+                        startStr,
+                        expireTime.toString()
+                    )
+                }
+                else -> {
+                    field = value
+                    expireTimer?.cancel()
+                    val startTime = Date()
+                    val startStr = startTime.toString()
+                    expireTime = (startTime + timeLimit).also {
+                        expireTimer = Timer("Handle: $handle", false).schedule(it) {
+                            println("Test bounds ($handle) has expired".red())
+                        }
+                    }
+
+                    printlnF(
+                        ("Starting test bounds\n" +
+                                "- Handle: %s\n" +
+                                "- Target ID: (%s)\n" +
+                                "- From: %s\n" +
+                                "- To:   %s").yellow(),
+                        handle,
+                        value,
+                        startStr,
+                        expireTime.toString()
+                    )
+                }
+            }
         }
 
     /**
@@ -17,7 +78,7 @@ data class TestBounds(var handle: String, val tapes: List<String>) {
      *
      * Value is in seconds
      */
-    var timeLimit = 5
+    var timeLimit: Duration = Duration.ofSeconds(5)
 
     /**
      * Time of when this bounds expires

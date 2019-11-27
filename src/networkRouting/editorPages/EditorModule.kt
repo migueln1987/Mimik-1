@@ -55,7 +55,8 @@ abstract class EditorModule {
             """
         ),
 
-        extractQueryFromUrl_func("""
+        extractQueryFromUrl_func(
+            """
             function extractQueryFromURL(url, asArray) {
                 asArray = asArray || false;
                 var partA = preVerifyURL(url);
@@ -69,7 +70,8 @@ abstract class EditorModule {
                 else 
                     return query.replace(/&/g,'\n');
             }
-        """),
+        """
+        ),
 
         PrettyJson(
             """

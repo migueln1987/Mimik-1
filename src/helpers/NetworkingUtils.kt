@@ -127,13 +127,19 @@ fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) =
  * Appends the data from [headers] to this [ResponseHeaders]
  */
 fun ResponseHeaders.appendHeaders(headers: Map<String, List<String>>) {
-    headers.forEach { t, u ->
-        u.forEach {
-            if (!HttpHeaders.isUnsafe(t))
-                append(t, it)
-        }
+    headers.forEach { (t, u) ->
+        u.forEach { isThrow { append(t, it) } }
     }
 }
+
+fun ResponseHeaders.append(vararg values: Pair<String, String>) =
+    values.forEach { isThrow { append(it.first, it.second) } }
+
+fun ResponseHeaders.append(key: String, vararg values: String) =
+    values.forEach { isThrow { append(key, it) } }
+
+fun ResponseHeaders.append(key: String, values: List<String>) =
+    isThrow { values.forEach { isThrow { append(key, it) } } }
 
 fun Headers.contains(key: String, value: String) = values(key).contains(value)
 
@@ -396,6 +402,10 @@ val okhttp3.Request.contentHash: Int
 val String.asMediaType: MediaType?
     get() = MediaType.parse(this)
 
+val okhttp3.Response.toTapeData: Responsedata
+    get() = toReplayResponse.toTapeData
+// == end okHttp3
+
 // == okreplay
 /**
  * Returns the body, if any (and required), or [default] when null.
@@ -471,11 +481,9 @@ val okreplay.Request.toTapeData: Requestdata
  */
 val okreplay.Response.toTapeData: Responsedata
     get() = Responsedata(this)
+// == end okreplay
 
-val okhttp3.Response.toTapeData: Responsedata
-    get() = toReplayResponse.toTapeData
-
-// ktor
+// == ktor
 /**
  * Tries to get the body text from this request (if request supports hosting a body).
  * [default] is returned if the body is expected, but can't be recieved.
@@ -571,8 +579,7 @@ val Parameters.toSingleMap: Map<String, String>
 
 val String.asContentType: ContentType
     get() = ContentType.parse(this)
-
-// == mimik
+// == end ktor
 
 // == Others
 fun StringBuilder.toJson(): String {
@@ -591,7 +598,9 @@ val hasNetworkAccess: Boolean
         return (response.statusCode != -1)
     }
 
-// fuel
+// == end Others
+
+// == fuel
 val com.github.kittinunf.fuel.core.Headers.toOkHeaders: okhttp3.Headers
     get() = Headers.Builder().also { builder ->
         entries.forEach { hKV ->
@@ -626,3 +635,5 @@ val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
         else
             data.toString(Charset.defaultCharset())
     }
+
+// == end fuel

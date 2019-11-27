@@ -249,6 +249,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
 
     @Transient
     var useWatcher: ((RecordedInteractions, Int?) -> Int)? = null
+        @Synchronized
         get() {
             return field ?: { chap, value ->
                 if (value != null)

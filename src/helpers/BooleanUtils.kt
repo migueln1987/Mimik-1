@@ -34,7 +34,8 @@ fun allTrue(vararg states: Boolean) = states.all { it }
 fun anyTrue(vararg states: Boolean) = states.any { it }
 
 /**
- * Tests if the following [action] would throw an [Exception]
+ * Tests if the following [action] would throw an [Exception].
+ * Also safely handles throws.
  */
 fun isThrow(action: () -> Unit = {}): Boolean {
     return try {
