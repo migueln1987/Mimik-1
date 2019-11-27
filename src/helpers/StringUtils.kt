@@ -175,11 +175,16 @@ val String.valueOrIsEmpty: String
     get() = if (this.isEmpty()) "{empty}" else this
 
 /** Prints the given [message], with optional formatting [args],
+ *  to the standard output stream. */
+fun printF(message: String, vararg args: Any? = arrayOf()) =
+    print(message.format(*args))
+
+/** Prints the given [message], with optional formatting [args],
  * and the line separator to the standard output stream. */
-fun printlnFmt(message: String, vararg args: Any? = arrayOf()) =
+fun printlnF(message: String, vararg args: Any? = arrayOf()) =
     println(message.format(*args))
 
-fun printlnFmt(message: () -> String = { "" }, vararg args: Any? = arrayOf()) =
+fun printlnF(message: () -> String = { "" }, vararg args: Any? = arrayOf()) =
     println(message.invoke().format(*args))
 
 /**

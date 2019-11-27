@@ -4,6 +4,7 @@ import helpers.attractors.RequestAttractors
 import io.ktor.application.ApplicationCall
 import io.ktor.features.callId
 import io.ktor.http.HttpStatusCode
+import kolor.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -13,6 +14,8 @@ import networkRouting.testingManager.observe
 import networkRouting.testingManager.TestManager
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.Collections
 import java.util.Date
 import kotlin.io.println
@@ -74,8 +77,10 @@ class TapeCatalog : OkReplayInterceptor() {
         val headers = request.headers().toStringPairs()
         val body = request.body()?.content()
 
-        val validChapters = tapes.asSequence()
+        val tapeSeq = tapes.asSequence()
             .filter { tapeLimit?.contains(it.name) ?: true }
+
+        val validChapters = tapeSeq
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
             .associateWith { it.attractors }
@@ -85,9 +90,8 @@ class TapeCatalog : OkReplayInterceptor() {
             path, queries, headers, body
         )
 
-        val foundTape = tapes.firstOrNull {
-            it.chapters.contains(foundChapter.item)
-        }
+        val foundTape = tapeSeq
+            .firstOrNull { it.chapters.contains(foundChapter.item) }
 
         return QueryResponse {
             item = foundTape
@@ -122,14 +126,14 @@ class TapeCatalog : OkReplayInterceptor() {
         val callRequest: okhttp3.Request = call.toOkRequest()
         val callUrl = callRequest.url().toString()
 
-        println("Requests: ${processingRequests.size}")
+        println("Requests: ${processingRequests.size}".cyan())
         while (processingRequests.contains(callUrl)) {
-            println("... waiting for request $callUrl to finish")
+            println("... waiting for request $callUrl to finish".blue())
             delay(20)
         }
 
         processingRequests.add(callUrl)
-        println("Active Requests: ${processingRequests.size}")
+        println("Active Requests: ${processingRequests.size}".cyan())
 
         val bounds = TestManager.getManagerByID(call.callId)
         val startTime = System.currentTimeMillis()
@@ -137,25 +141,37 @@ class TapeCatalog : OkReplayInterceptor() {
         try {
             if (bounds != null) {
                 val response = when {
-                    bounds.expireTime?.after(Date()).isTrue() ->
-                        callRequest.createResponse(HttpStatusCode.Forbidden) {
-                            "Testing bounds expired"
-                        }
+                    Date().after(bounds.expireTime) -> {
+                        val timeOver = ChronoUnit.SECONDS.between(
+                            Date().toInstant(),
+                            (bounds.expireTime ?: Date()).toInstant()
+                        )
+                        "Testing bounds for (%s) is expired. %s past".format(
+                            bounds.handle,
+                            Duration.ofSeconds(timeOver).toString().removePrefix("PT")
+                        )
+                    }
                     !bounds.isEnabled ->
-                        callRequest.createResponse(HttpStatusCode.Forbidden) {
-                            "Test with handle ${bounds.handle} is stopped."
-                        }
+                        "Test with handle ${bounds.handle} is stopped."
                     bounds.tapes.isEmpty() ->
-                        callRequest.createResponse(HttpStatusCode.Forbidden) {
-                            "Test with handle ${bounds.handle} has no tapes."
-                        }
-                    else -> null
+                        "Test with handle ${bounds.handle} has no tapes."
+                    else -> {
+                        printlnF(
+                            "Using test bounds (%s) towards device (%s)".green(),
+                            bounds.handle,
+                            bounds.boundSource
+                        )
+                        null
+                    }
                 }
-                if (response != null) return response
+                if (response != null) {
+                    println(response.red())
+                    return callRequest.createResponse(HttpStatusCode.Forbidden) { response }
+                }
             }
 
             findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
-                println("Using response tape ${tape.name}")
+                println("Using response tape ${tape.name}".green())
                 tape.requestToChain(callRequest)?.also ChainAlso@{ chain ->
                     start(config, tape)
                     withContext(Dispatchers.IO) {
@@ -167,35 +183,39 @@ class TapeCatalog : OkReplayInterceptor() {
 
                 return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
                     R.getProperty("processCall_InvalidUrl")
+                        .also { println(it.red()) }
                 }
             }
 
             if (bounds != null) return callRequest.createResponse(HttpStatusCode.Forbidden) {
                 "Test bounds [${bounds.handle}] has no matching recordings."
+                    .also { println(it.red()) }
             }
 
             val hostTape = findTapeByQuery(callRequest)
             return when (hostTape.status) {
                 HttpStatusCode.Found -> {
                     hostTape.item?.let {
-                        println("Using tape ${it.name}")
+                        println("Using tape ${it.name}".cyan())
 
                         it.requestToChain(callRequest)?.let { chain ->
                             start(config, it)
                             withContext(Dispatchers.IO) { intercept(chain) }
                         } ?: callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
                             R.getProperty("processCall_InvalidUrl")
+                                .also { println(it.red()) }
                         }
                     } ?: let {
                         callRequest.createResponse(HttpStatusCode.Conflict) {
                             R.getProperty("processCall_ConflictingTapes")
+                                .also { println(it.red()) }
                         }
                     }
                 }
 
                 else -> {
                     BlankTape.Builder().build().also { tape ->
-                        println("Creating new tape/mock of ${tape.name}")
+                        println("Creating new tape/mock of ${tape.name}".green())
                         tape.createNewInteraction { mock ->
                             mock.requestData = callRequest.toTapeData
                             mock.attractors = RequestAttractors(mock.requestData)
@@ -208,8 +228,8 @@ class TapeCatalog : OkReplayInterceptor() {
             }
         } finally {
             val eTime = System.currentTimeMillis() - startTime
-            printlnFmt(
-                "Releasing lock (%d ms): %s",
+            printlnF(
+                "Releasing lock (%d ms): %s".blue(),
                 System.currentTimeMillis() - startTime,
                 callRequest.url()
             )

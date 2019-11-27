@@ -79,17 +79,20 @@ fun Application.module(testing: Boolean = false) {
 
 @KtorExperimentalAPI
 private fun Application.installFeatures() {
-    install(Compression) {
-        gzip {
-            priority = 1.0
-        }
-        deflate {
-            priority = 10.0
-            minimumSize(1024) // condition
-        }
-    }
+//    install(Compression) {
+//        gzip {
+//            priority = 1.0
+//        }
+//        deflate {
+//            priority = 5.0
+//            minimumSize(1024) // condition
+//        }
+//        identity{
+//            priority = 10.0
+//        }
+//    }
 
-    val deviceIDReg = """uniqueid.*?":"(.+?)"""".toRegex(RegexOption.IGNORE_CASE)
+    val deviceIDReg = """uniqueid.*?".+?"(.+?)"""".toRegex(RegexOption.IGNORE_CASE)
     install(DoubleReceive) // https://ktor.io/servers/features/double-receive.html
 
     install(CallId) {
@@ -102,21 +105,16 @@ private fun Application.installFeatures() {
             result = result ?: it.request.headers["x-em-uid"]
             if (result != null) return@retrieve result
 
-            val deviceID = runBlocking {
+            runBlocking {
                 val body = it.tryGetBody()
-                deviceIDReg.find(body.orEmpty())?.run { groups[1]?.value }
-            }
-
-            if (deviceID != null)
-                return@retrieve deviceID
-
-            ""
+                deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
+            }.orEmpty()
         }
     }
 
-    install(ContentNegotiation) {
+//    install(ContentNegotiation) {
         // gson {}
-    }
+//    }
 
     install(CallLogging) {
         level = Level.DEBUG
