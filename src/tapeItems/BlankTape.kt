@@ -259,7 +259,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         }
 
     var RecordedInteractions.uses
+        @Synchronized
         get() = useWatcher!!.invoke(this, null)
+        @Synchronized
         set(value) {
             useWatcher!!.invoke(this, value)
         }
