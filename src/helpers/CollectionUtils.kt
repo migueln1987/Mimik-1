@@ -45,7 +45,7 @@ fun <T, R : Comparable<R>> Sequence<T>.filterByMax(selector: (T) -> R): Sequence
         if (maxValue == null || v >= maxValue!!)
             maxValue = v
         it to v
-    }
+    }.toList().asSequence()
         .filter { maxValue != null && it.second >= maxValue!! }
         .map { it.first }
 }

@@ -24,26 +24,26 @@ object MatchFilter {
     /**
      * Returns the best match based on the [AttractorMatches] Required/Optional contents
      */
-    fun <T> findBestMatch(source: Map<T, AttractorMatches>): AttractorMatches? {
+    fun <T> findBestMatch(source: Map<T, AttractorMatches>): Map<T, AttractorMatches>? {
         // filter by "Required" matchers
         val byReq = findBestByGroup(source) { it.MatchesReq }
         if (byReq.isEmpty()) return null
-        if (byReq.size == 1) return byReq.values.first()
+        if (byReq.size == 1) return byReq
 
         // filter by how well the "Required" matchers match
         val byReqR = findBestByGroup(byReq) { it.reqRatio }
         if (byReqR.isEmpty()) return null
-        if (byReqR.size == 1) return byReqR.values.first()
+        if (byReqR.size == 1) return byReqR
 
         // filter by "Optional" matchers
         val byOpt = findBestByGroup(byReqR) { it.MatchesOpt }
         if (byOpt.isEmpty()) return null
-        if (byOpt.size == 1) return byOpt.values.first()
+        if (byOpt.size == 1) return byOpt
 
         // filter by how well the "Optional" matchers match
         val byOptR = findBestByGroup(byOpt) { it.optRatio }
         if (byOptR.isEmpty()) return null
-        if (byOptR.size == 1) return byOptR.values.first()
+        if (byOptR.size == 1) return byOptR
 
         // give up, too much conflict
         return null

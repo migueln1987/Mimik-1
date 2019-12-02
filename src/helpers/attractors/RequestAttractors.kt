@@ -34,7 +34,7 @@ class RequestAttractors {
 
         request?.headers?.toStringPairs()?.also {
             headerMatchers = it.asSequence()
-                .filterNot { avoidHeaders.any { s -> it.startsWith(s, true) } }
+                .filterNot { skipHeaders.any { s -> it.startsWith(s, true) } }
                 .map { v -> RequestAttractorBit(v) }.toList()
         }
 
@@ -45,8 +45,8 @@ class RequestAttractors {
     }
 
     companion object {
-        private val avoidHeaders = listOf(HttpHeaders.ContentLength)
-        private val skipHeaders = listOf("content-length :", "host : local.host", "accept :", "localhost :", "te :")
+        private val skipHeaders =
+            listOf(HttpHeaders.ContentLength, HttpHeaders.Host, "localhost", HttpHeaders.Accept, HttpHeaders.TE)
 
         enum class GuessType {
             /**
@@ -58,8 +58,6 @@ class RequestAttractors {
              */
             Exact
         }
-
-        val guessType = GuessType.Any
 
         /**
          * Returns the best match based on the given criteria from the [source] map
@@ -77,7 +75,11 @@ class RequestAttractors {
             body: String? = null,
             custom: (T) -> AttractorMatches = { AttractorMatches() }
         ): QueryResponse<T> {
-            val options = findMany(source, path, queries, headers, body, custom)
+            val options = findMany(
+                source, path, queries, headers, body,
+                GuessType.Exact,
+                custom
+            )
 
             return QueryResponse {
                 if (options.isEmpty()) {
@@ -87,8 +89,7 @@ class RequestAttractors {
                     if (bestMatch == null)
                         status = HttpStatusCode.Conflict
                     else {
-                        item = options
-                            .filter { it.value.toString() == bestMatch.toString() }.keys.first()
+                        item = bestMatch.keys.first()
                         status = HttpStatusCode.Found
                     }
                 }
@@ -104,6 +105,7 @@ class RequestAttractors {
             queries: String? = null,
             headers: List<String>? = null,
             body: String? = null,
+            guessType: GuessType = GuessType.Exact,
             custom: (T) -> AttractorMatches = { AttractorMatches() }
         ): Map<T, AttractorMatches> {
             if (source.isEmpty()) return linkedMapOf()
