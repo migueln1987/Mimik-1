@@ -34,7 +34,7 @@ class RequestAttractors {
 
         request?.headers?.toStringPairs()?.also {
             headerMatchers = it.asSequence()
-                .filterNot { avoidHeaders.any { s -> it.startsWith(s, true) } }
+                .filterNot { skipHeaders.any { s -> it.startsWith(s, true) } }
                 .map { v -> RequestAttractorBit(v) }.toList()
         }
 
@@ -45,7 +45,19 @@ class RequestAttractors {
     }
 
     companion object {
-        private val avoidHeaders = listOf(HttpHeaders.ContentLength)
+        private val skipHeaders =
+            listOf(HttpHeaders.ContentLength, HttpHeaders.Host, "localhost", HttpHeaders.Accept, HttpHeaders.TE)
+
+        enum class GuessType {
+            /**
+             * Must have matched at least 1 required value
+             */
+            Any,
+            /**
+             * Must match at least the required times
+             */
+            Exact
+        }
 
         /**
          * Returns the best match based on the given criteria from the [source] map
@@ -63,36 +75,56 @@ class RequestAttractors {
             body: String? = null,
             custom: (T) -> AttractorMatches = { AttractorMatches() }
         ): QueryResponse<T> {
-            if (source.isEmpty()) return QueryResponse {
-                status = HttpStatusCode.NotFound
-            }
+            val options = findMany(
+                source, path, queries, headers, body,
+                GuessType.Exact,
+                custom
+            )
 
-            Fails.clear()
+            return QueryResponse {
+                if (options.isEmpty()) {
+                    status = HttpStatusCode.NotFound
+                } else {
+                    val bestMatch = MatchFilter.findBestMatch(options)
+                    if (bestMatch == null)
+                        status = HttpStatusCode.Conflict
+                    else {
+                        item = bestMatch.keys.first()
+                        status = HttpStatusCode.Found
+                    }
+                }
+            }
+        }
+
+        /**
+         * Returns the matching results from [source] which have at least 1 [AttractorMatches.MatchesReq]
+         */
+        fun <T> findMany(
+            source: Map<T, RequestAttractors?>,
+            path: String? = null,
+            queries: String? = null,
+            headers: List<String>? = null,
+            body: String? = null,
+            guessType: GuessType = GuessType.Exact,
+            custom: (T) -> AttractorMatches = { AttractorMatches() }
+        ): Map<T, AttractorMatches> {
+            if (source.isEmpty()) return linkedMapOf()
+
             // Filter to early fail checks
-            val options = source.mapValues { it.value to AttractorMatches() }
+            return source.mapValues { it.value to AttractorMatches() }
                 .asSequence()
                 .filter { it.parseMatch { _ -> custom.invoke(it.key) } }
                 .filter { it.parseMatch { it?.matchesPath(path) } }
                 .filter { it.parseMatch { it?.getQueryMatches(queries) } }
                 .filter { it.parseMatch { it?.getHeaderMatches(headers) } }
                 .filter { it.parseMatch { it?.getBodyMatches(body) } }
-                .filter { it.value.second.satisfiesRequired }
+                .filter {
+                    when (guessType) {
+                        GuessType.Any -> true
+                        GuessType.Exact -> it.value.second.satisfiesRequired
+                    }
+                }
                 .associate { it.key to it.value.second }
-
-            val response = QueryResponse<T> { status = HttpStatusCode.NotFound }
-
-            if (options.isEmpty()) return response
-
-            val bestMatch = MatchFilter.findBestMatch(options)
-            if (bestMatch == null)
-                response.status = HttpStatusCode.Conflict
-            else {
-                response.item = options
-                    .filter { it.value.toString() == bestMatch.toString() }.keys.first()
-                response.status = HttpStatusCode.Found
-            }
-
-            return response
         }
 
         val Fails = mutableListOf<Pair<RequestAttractors?, AttractorMatches>>()
@@ -102,13 +134,20 @@ class RequestAttractors {
         ): Boolean {
             val mResult = matcher.invoke(value.first)
             value.second.appendValues(mResult)
-            if (!value.second.matchingRequired) {
-                Fails.add(value)
-            }
-            return value.second.matchingRequired
+            return value.second.hasMatches
         }
+    }
 
-        private val skipHeaders = listOf("content-length :", "host : local.host", "accept :", "localhost :", "te :")
+    override fun toString(): String {
+        return if (isInitial)
+            "{Initial}"
+        else
+            "{%s,%s,%s,%s}".format(
+                routingPath?.let { "1" } ?: "_",
+                queryMatchers?.size?.toString() ?: "_",
+                headerMatchers?.size?.toString() ?: "_",
+                bodyMatchers?.size?.toString() ?: "_"
+            )
     }
 
     /**

@@ -15,7 +15,7 @@ class RequestAttractorsTests {
     }
 
     @Test
-    fun testReqRatio() {
+    fun matchCountReqRatio() {
         val bitA = RequestAttractorBit("matchevery.*")
         val bitB = RequestAttractorBit("match.*")
         val input = "matcheverything"
@@ -37,7 +37,7 @@ class RequestAttractorsTests {
     }
 
     @Test
-    fun testOptRatio() {
+    fun matchCountOptRatio() {
         val dummyReq = RequestAttractorBit(".*")
         val bitA = RequestAttractorBit("matchevery.*") { it.optional = true }
         val bitB = RequestAttractorBit("match.*") { it.optional = true }

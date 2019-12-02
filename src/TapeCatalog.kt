@@ -132,6 +132,7 @@ class TapeCatalog : OkReplayInterceptor() {
             delay(20)
         }
 
+        println("Adding url lock for $callUrl".blue())
         processingRequests.add(callUrl)
         println("Active Requests: ${processingRequests.size}".cyan())
 

@@ -11,16 +11,17 @@ data class AttractorMatches(
     var optRatio = 0.0
 
     /**
-     * Returns true if [Required] equals [MatchesReq]
+     * Returns if this has a [Required] and any [MatchesReq] matches
      */
-    val matchingRequired: Boolean
-        get() = MatchesReq >= Required
+    val hasMatches
+        get() = isBlank || MatchesReq > 0
 
     /**
-     * Returns true if [Required] is set, and [MatchesReq] equals [Required]
+     * Returns true if [Required] is set and [Required] is in range of [MatchesReq]
      */
     val satisfiesRequired: Boolean
-        get() = Required > 0 && matchingRequired
+        get() = Required in 1..MatchesReq
+    // Required > 0 && MatchesReq >= Required
 
     val isBlank: Boolean
         get() {
@@ -33,11 +34,10 @@ data class AttractorMatches(
     override fun toString(): String {
         return if (isBlank)
             "No Data"
-        else "Required: %d ->{%d @ %.2f%%, %d @ %.2f%%} - %s".format(
+        else "Required: %d ->{%d @ %.2f%%, %d @ %.2f%%}".format(
             Required,
             MatchesReq, reqRatio,
-            MatchesOpt, optRatio,
-            if (satisfiesRequired) "Pass" else "Fail"
+            MatchesOpt, optRatio
         )
     }
 

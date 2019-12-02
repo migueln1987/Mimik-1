@@ -13,3 +13,39 @@ fun <T> Iterable<T>.eachHasNext(action: (T) -> Unit, hasNext: () -> Unit = {}) {
             hasNext.invoke()
     }
 }
+
+/**
+ * Returns a map containing only the non-null results of applying the given [transform] function
+ * to each entry in the original map.
+ */
+fun <T, V, R> Map<T, V>.mapNotNullToMap(transform: (Map.Entry<T, V>) -> R?): Map<T, R> {
+    val result = mutableMapOf<T, R>()
+    forEach { element ->
+        transform(element)?.also { result[element.key] = it }
+    }
+    return result
+}
+
+/**
+ * Subtracts [other] from this, then remaps the values based on [transform]
+ */
+fun <T, V, oV, R> Map<T, V>.subtractMap(
+    other: Map<T, oV>,
+    transform: (Map.Entry<T, V>) -> R?
+) = filterNot { other.keys.contains(it.key) }.mapNotNullToMap(transform)
+
+/**
+ * Returns the elements yielding the largest value of the given function.
+ */
+fun <T, R : Comparable<R>> Sequence<T>.filterByMax(selector: (T) -> R): Sequence<T> {
+    var maxValue: R? = null
+
+    return map {
+        val v = selector(it)
+        if (maxValue == null || v >= maxValue!!)
+            maxValue = v
+        it to v
+    }.toList().asSequence()
+        .filter { maxValue != null && it.second >= maxValue!! }
+        .map { it.first }
+}

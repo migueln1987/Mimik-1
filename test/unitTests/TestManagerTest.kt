@@ -20,7 +20,7 @@ class TestManagerTest {
         val newVal = 8
         var inPost = 0
 
-        val bounds = TestBounds("", listOf())
+        val bounds = TestBounds("")
         bounds.observe(tape) {
             tape.apply {
                 inPre = chap.uses
@@ -37,7 +37,7 @@ class TestManagerTest {
     }
 
     @Test
-    fun observerUsesOrigionalData() {
+    fun observerUsesOriginalData() {
         val tape = BlankTape.Builder().build()
         val chap = RecordedInteractions {
             it.mockUses = 3
@@ -46,7 +46,7 @@ class TestManagerTest {
         chap.mockUses = 1
         var obsData = 0
 
-        val bounds = TestBounds("", listOf())
+        val bounds = TestBounds("")
         bounds.observe(tape) {
             tape.apply {
                 obsData = chap.uses
