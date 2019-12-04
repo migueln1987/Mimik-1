@@ -77,10 +77,10 @@ class TapeCatalog : OkReplayInterceptor() {
         val headers = request.headers().toStringPairs()
         val body = request.body()?.content()
 
-        val tapeSeq = tapes.asSequence()
-            .filter { tapeLimit?.contains(it.name) ?: true }
+        val allowedTapes = tapes.asSequence()
+            .filter { tapeLimit?.contains(it.name) ?: true }.toList()
 
-        val validChapters = tapeSeq
+        val validChapters = allowedTapes.asSequence()
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
             .associateWith { it.attractors }
@@ -90,7 +90,7 @@ class TapeCatalog : OkReplayInterceptor() {
             path, queries, headers, body
         )
 
-        val foundTape = tapeSeq
+        val foundTape = allowedTapes
             .firstOrNull { it.chapters.contains(foundChapter.item) }
 
         return QueryResponse {
@@ -173,7 +173,7 @@ class TapeCatalog : OkReplayInterceptor() {
 
             findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
                 println("Using response tape ${tape.name}".green())
-                tape.requestToChain(callRequest)?.also ChainAlso@{ chain ->
+                tape.requestToChain(callRequest)?.also { chain ->
                     start(config, tape)
                     withContext(Dispatchers.IO) {
                         bounds.observe(tape) {
@@ -197,7 +197,7 @@ class TapeCatalog : OkReplayInterceptor() {
             return when (hostTape.status) {
                 HttpStatusCode.Found -> {
                     hostTape.item?.let {
-                        println("Using tape ${it.name}".cyan())
+                        println("Response not found; Using tape ${it.name}".cyan())
 
                         it.requestToChain(callRequest)?.let { chain ->
                             start(config, it)

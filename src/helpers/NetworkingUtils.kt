@@ -156,10 +156,10 @@ val Headers.toPairs: List<Pair<String, String>>
         }.toList()
 
 /**
- * Returns this [Headers] as a list of "Key : Value", or user defined [format]
+ * Returns this [Headers] as a list of "Key: Value", or user defined [format]
  */
 fun Headers.toStringPairs(
-    format: (Pair<String, String>) -> String = { "${it.first} : ${it.second}" }
+    format: (Pair<String, String>) -> String = { "${it.first}: ${it.second}" }
 ) = toPairs.map { format.invoke(it) }
 
 fun HttpUrl.containsPath(vararg path: String) =
@@ -404,6 +404,16 @@ val String.asMediaType: MediaType?
 
 val okhttp3.Response.toTapeData: Responsedata
     get() = toReplayResponse.toTapeData
+
+/**
+ * Returns a list of this HttpUrl's query items in a "item=value" format
+ */
+fun okhttp3.HttpUrl?.queryItems(): List<String> {
+    return if (this == null) listOf()
+    else queryParameterNames().flatMap { name ->
+        queryParameterValues(name).map { value -> "$name=$value" }
+    }
+}
 // == end okHttp3
 
 // == okreplay

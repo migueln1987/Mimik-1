@@ -7,7 +7,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import helpers.*
-import helpers.attractors.RequestAttractors
+import helpers.attractors.*
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.*
 import mimikMockHelpers.MockUseStates
@@ -174,6 +174,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     var alwaysLive: Boolean? = null
 
     var chapters: MutableList<RecordedInteractions> = mutableListOf()
+
+    var byUnique: List<List<UniqueBit>>? = null
 
     private var tapeMode: TapeMode? = TapeMode.READ_WRITE
         get() = if (field == null) TapeMode.READ_WRITE else field
@@ -625,10 +627,52 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
      * Creates a new Recorded Interaction and adds it to this tape
      */
     fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
-        RecordedInteractions {
-            interaction.invoke(it) // in case we want to change anything
-            chapters.add(it)
+        RecordedInteractions { nChap ->
+            interaction.invoke(nChap)
+            appendIfUnique(nChap)
+            chapters.add(nChap)
         }
+
+    private fun appendIfUnique(chap: RecordedInteractions) {
+        /* List of actions:
+        1. Loop through each byUnique list {known as "uList"}
+          - Look for first list who's contents (all) match this chapter's requestData
+        2. Map uList's search string(s) to literal result string(s) {known as litList}
+        3. Determine if any existing chapters (requestData) contain any of the unique literal strings
+          - exit if any pass
+        4. Append uList's contents to chap's attractors
+          - if chap doesn't already contain uList's items (exact value)
+        */
+
+        byUnique?.firstNotNullResult { uList ->
+            uList.uniqueAllOrNull(chap)?.also findDupChaps@{ litList ->
+                val notUnique = chapters.any { litList.uniqueAllOrNull(it) != null }
+                if (notUnique) return@findDupChaps
+
+                val queryMatchers = mutableListOf<RequestAttractorBit>()
+                val headerMatchers = mutableListOf<RequestAttractorBit>()
+                val bodyMatchers = mutableListOf<RequestAttractorBit>()
+
+                uList.forEach {
+                    when (it.uniqueType) {
+                        UniqueTypes.Query -> queryMatchers.add(RequestAttractorBit(it.searchStr!!))
+                        UniqueTypes.Header -> headerMatchers.add(RequestAttractorBit(it.searchStr!!))
+                        UniqueTypes.Body -> bodyMatchers.add(RequestAttractorBit(it.searchStr!!))
+                        else -> Unit
+                    }
+                }
+
+                if (chap.attractors == null)
+                    chap.attractors = RequestAttractors()
+
+                chap.attractors?.also { attrs ->
+                    attrs.queryMatchers = attrs.queryMatchers.append(queryMatchers)
+                    attrs.headerMatchers = attrs.headerMatchers.append(headerMatchers)
+                    attrs.bodyMatchers = attrs.bodyMatchers.append(bodyMatchers)
+                }
+            }
+        }
+    }
 
     init {
         config.invoke(this)

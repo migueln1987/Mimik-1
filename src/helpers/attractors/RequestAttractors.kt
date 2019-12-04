@@ -279,42 +279,41 @@ class RequestAttractors {
             }
 
         return AttractorMatches(reqCount, required, optional).also {
-            it.reqRatio = reqRatio
-            it.optRatio = optRatio
+            it.reqSub = reqRatio
+            it.optSub = optRatio
         }
     }
 
     private fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
-        val match = regex.find(source)
-        val literalMatch = hardValue.isNotBlank() && (source == hardValue)
+        val (match, literal) = value.match(source)
         var matchVal = 0
-        var matchRto = 0.0
+        var matchSub = 0.0
 
-        if (literalMatch || match.hasMatch) {
+        if (match != null) {
             if (except.isNotTrue()) {
                 matchVal = 1
-                val matchLen = when {
-                    literalMatch -> hardValue.length
-                    match.hasMatch -> regex.pattern.length
-                    else -> 0
-                }
-                matchRto = matchLen / source.length.toDouble()
+//                val len = when {
+//                    match.range.last > source.length -> (match.range.last - source.length)
+//                    else -> match.range.last
+//                }
+                // todo; determine how(if any) to different regex to literal match and regex to more literal regex match
+                // Ex-1: "matcheverything" -> "matcheverything" vs ".+"
+                // Ex-2: "matcheverything" -> "matcheverything" vs "match.+"
+                // Ex-3: "matcheverything" -> "matchevery.+" vs "match.+
+                // For now, it'll just different literal to non-literal
+                // might need to switch Pair to Triple<match, literal matches, reg matches>
+
+                matchSub = if (literal) 1.0 else 0.0
             }
         } else {
             if (except.isTrue()) {
                 matchVal = 1
-                matchRto = 1.0
+                matchSub = 1.0
             }
         }
 
-        return (matchVal to matchRto)
+        return (matchVal to matchSub)
     }
-
-    /**
-     * Returns true if this [MatchResult] contains any matching groups
-     */
-    private val MatchResult?.hasMatch: Boolean
-        get() = this?.groups?.isNotEmpty().isTrue()
 
     private fun matchesPath(source: String?) =
         getMatchCount(routingPath?.let {
@@ -322,8 +321,23 @@ class RequestAttractors {
             listOf(it)
         }, source)
 
-    private fun getQueryMatches(source: String?) =
-        getMatchCount(queryMatchers, source)
+    private fun getQueryMatches(source: String?): AttractorMatches {
+        if (queryMatchers?.isNullOrEmpty().isTrue()) return AttractorMatches().also {
+            if (!source.isNullOrEmpty()) it.Required = 1
+        }
+
+        if (queryMatchers?.any { it.allowAllInputs.isTrue() }.isTrue())
+            return AttractorMatches(1, 1, 0)
+
+        if (queryMatchers?.all { it.hardValue.isBlank() }.isTrue())
+            return AttractorMatches()
+
+        return AttractorMatches().apply {
+            source.orEmpty().split('&').forEach {
+                appendValues(getMatchCount(queryMatchers, it))
+            }
+        }
+    }
 
     private fun getHeaderMatches(source: List<String>?): AttractorMatches {
         if (headerMatchers?.isNullOrEmpty().isTrue())
@@ -352,4 +366,25 @@ class RequestAttractors {
 
     private fun getBodyMatches(source: String?) =
         getMatchCount(bodyMatchers, source)
+}
+
+fun List<RequestAttractorBit>?.append(
+    newData: List<RequestAttractorBit>,
+    haveSameRequired: Boolean = true
+): List<RequestAttractorBit> {
+    val toData = (this ?: listOf()).toMutableList()
+
+    newData.forEach { nChk ->
+        val sameValue = toData.firstOrNull {
+            it.hardValue.isNotBlank() && it.hardValue == nChk.hardValue
+        }
+
+        if (sameValue == null) {
+            toData.add(nChk)
+        } else if (haveSameRequired && (nChk.required != sameValue.required)) {
+            toData.remove(sameValue)
+            toData.add(nChk)
+        }
+    }
+    return toData
 }

@@ -7,8 +7,8 @@ data class AttractorMatches(
     var MatchesReq: Int = -1,
     var MatchesOpt: Int = -1
 ) {
-    var reqRatio = 0.0
-    var optRatio = 0.0
+    var reqSub = 0.0
+    var optSub = 0.0
 
     /**
      * Returns if this has a [Required] and any [MatchesReq] matches
@@ -34,10 +34,10 @@ data class AttractorMatches(
     override fun toString(): String {
         return if (isBlank)
             "No Data"
-        else "Required: %d ->{%d @ %.2f%%, %d @ %.2f%%}".format(
+        else "Required: %d ->{%d @ %.2f, %d @ %.2f}".format(
             Required,
-            MatchesReq, reqRatio,
-            MatchesOpt, optRatio
+            MatchesReq, reqSub,
+            MatchesOpt, optSub
         )
     }
 
@@ -55,13 +55,13 @@ data class AttractorMatches(
             if (MatchesReq == -1) MatchesReq = 0
             MatchesReq += data.MatchesReq
         }
-        reqRatio += data.reqRatio
+        reqSub += data.reqSub
 
         if (data.MatchesOpt > 0) {
             if (MatchesOpt == -1) MatchesOpt = 0
             MatchesOpt += data.MatchesOpt
         }
-        optRatio += data.optRatio
+        optSub += data.optSub
         return this
     }
 }

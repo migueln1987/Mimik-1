@@ -9,11 +9,9 @@ import io.ktor.routing.post
 import io.ktor.routing.route
 import kolor.green
 import kolor.magenta
-import kolor.red
 import kolor.yellow
 import networkRouting.RoutingContract
 import java.time.Duration
-import java.time.temporal.ChronoUnit
 import java.util.Date
 
 @Suppress("RemoveRedundantQualifierName")
@@ -107,7 +105,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-
                 val tapeCatNames = tapeCatalog.tapes.map { it.name }
                 allowedTapes = (allowedTapes ?: listOf()).filter { tapeCatNames.contains(it) } as MutableList
 
@@ -200,7 +197,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 val tapeCatNames = tapeCatalog.tapes.map { it.name }
                 appendTapes = appendTapes?.filter { tapeCatNames.contains(it) } ?: listOf()
-
 
                 if (appendTapes.isEmpty()) {
                     call.respondText(status = HttpStatusCode.NotModified) { "No [tape] data to append" }

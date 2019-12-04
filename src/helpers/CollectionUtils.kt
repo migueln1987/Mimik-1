@@ -49,3 +49,17 @@ fun <T, R : Comparable<R>> Sequence<T>.filterByMax(selector: (T) -> R): Sequence
         .filter { maxValue != null && it.second >= maxValue!! }
         .map { it.first }
 }
+
+val <T> List<T>?.nonNull: List<T>
+    get() = this ?: listOf()
+
+/**
+ * Returns the first element matching the given [predicate], or `null` if element was not found.
+ */
+inline fun <T, R : Any> Iterable<T>.firstNotNullResult(predicate: (T) -> R?): R? {
+    for (element in this) {
+        val result = predicate(element)
+        if (result != null) return result
+    }
+    return null
+}

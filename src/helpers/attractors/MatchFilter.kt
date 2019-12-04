@@ -31,7 +31,7 @@ object MatchFilter {
         if (byReq.size == 1) return byReq
 
         // filter by how well the "Required" matchers match
-        val byReqR = findBestByGroup(byReq) { it.reqRatio }
+        val byReqR = findBestByGroup(byReq) { it.reqSub }
         if (byReqR.isEmpty()) return null
         if (byReqR.size == 1) return byReqR
 
@@ -41,7 +41,7 @@ object MatchFilter {
         if (byOpt.size == 1) return byOpt
 
         // filter by how well the "Optional" matchers match
-        val byOptR = findBestByGroup(byOpt) { it.optRatio }
+        val byOptR = findBestByGroup(byOpt) { it.optSub }
         if (byOptR.isEmpty()) return null
         if (byOptR.size == 1) return byOptR
 
