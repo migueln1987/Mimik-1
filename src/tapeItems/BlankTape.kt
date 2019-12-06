@@ -26,6 +26,7 @@ import java.io.Writer
 import java.nio.charset.Charset
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.measureTimeMillis
 
 class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
@@ -162,6 +163,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             VCRConfig.getConfig.tapeRoot.get(),
             name.toJsonName
         ).also { field = it }
+
+    @Transient
+    var savingFile: AtomicBoolean = AtomicBoolean(false)
+        get() = field
 
     var recordedDate: Date? = Date()
         get() = field ?: Date()
@@ -301,7 +306,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     override fun seek(request: okreplay.Request) =
-        findBestMatch(request).status == HttpStatusCode.Found
+        findBestMatches(request.toOkRequest).status == HttpStatusCode.Found
 
     /**
      * Appends: [Name], Url, Headers, Body, and [Extras]
@@ -484,6 +489,27 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         request: okhttp3.Request,
         preference: SearchPreferences = SearchPreferences.ALL
     ): QueryResponse<RecordedInteractions> {
+        return findBestMatches(request, preference)
+            .let {
+                QueryResponse {
+                    when {
+                        it.item == null ->
+                            status = HttpStatusCode.NotFound
+                        it.item?.size == 1 -> {
+                            status = HttpStatusCode.Found
+                            item = it.item?.first()
+                        }
+                        else ->
+                            status = HttpStatusCode.Conflict
+                    }
+                }
+            }
+    }
+
+    private fun findBestMatches(
+        request: okhttp3.Request,
+        preference: SearchPreferences = SearchPreferences.ALL
+    ): QueryResponse<List<RecordedInteractions>> {
         val filteredChapters = chapters.asSequence()
             .filter {
                 when (it.uses) {
@@ -511,13 +537,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         it.uses in (1..Int.MAX_VALUE)
                 }
             }
-            .associateWith { it.attractors }
+            .filter { it.attractors != null }
+            .associateWith { it.attractors!! }
 
         if (filteredChapters.isEmpty()) return QueryResponse {
             status = HttpStatusCode.NotFound
         }
 
-        return RequestAttractors.findBest(
+        return RequestAttractors.findBest_many(
             filteredChapters,
             request.url().encodedPath(),
             request.url().query(),
@@ -526,11 +553,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 request.body().content() else null
         )
     }
-
-    private fun findBestMatch(
-        request: okreplay.Request,
-        preference: SearchPreferences = SearchPreferences.ALL
-    ) = findBestMatch(request.toOkRequest, preference)
 
     override fun record(request: okreplay.Request, response: okreplay.Response) {
         val newChap = RecordedInteractions(request, response)
@@ -564,6 +586,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         GlobalScope.launch {
             withContext(Dispatchers.IO) {
                 synchronized(this@BlankTape) {
+                    savingFile.set(true)
                     val time = measureTimeMillis {
                         val tree = gson.toJsonTree(this@BlankTape).asJsonObject
                         val keepChapters = tree.getAsJsonArray("chapters")
@@ -601,6 +624,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                                 .also { gson.toJson(tree, it) }
                                 .close()
                     }
+                    savingFile.set(false)
                     println(
                         "Saved File (%d ms): %s".format(
                             time,
@@ -666,9 +690,12 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     chap.attractors = RequestAttractors()
 
                 chap.attractors?.also { attrs ->
-                    attrs.queryMatchers = attrs.queryMatchers.append(queryMatchers)
-                    attrs.headerMatchers = attrs.headerMatchers.append(headerMatchers)
-                    attrs.bodyMatchers = attrs.bodyMatchers.append(bodyMatchers)
+                    if (queryMatchers.isNotEmpty())
+                        attrs.queryMatchers = attrs.queryMatchers.append(queryMatchers)
+                    if (headerMatchers.isNotEmpty())
+                        attrs.headerMatchers = attrs.headerMatchers.append(headerMatchers)
+                    if (bodyMatchers.isNotEmpty())
+                        attrs.bodyMatchers = attrs.bodyMatchers.append(bodyMatchers)
                 }
             }
         }

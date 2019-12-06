@@ -32,20 +32,20 @@ class UniqueBit(var searchStr: String? = null, var uniqueType: UniqueTypes? = Un
             UniqueTypes.Query -> {
                 chapReq.httpUrl.queryItems().any {
                     val (m, _) = searchStr.match(it)
-                    matchStr = m?.value
+                    matchStr = m
                     m != null
                 }
             }
             UniqueTypes.Header -> {
                 chapReq.headers?.toStringPairs()?.any {
                     val (m, _) = searchStr.match(it)
-                    matchStr = m?.value
+                    matchStr = m
                     m != null
                 }
             }
             UniqueTypes.Body -> {
                 chapReq.body?.also {
-                    matchStr = searchStr.match(it).first?.value
+                    matchStr = searchStr.match(it).first
                 }
             }
             else -> Unit

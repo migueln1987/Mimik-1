@@ -68,9 +68,6 @@ object TapeEditor : EditorModule() {
                                 }
                             }
 
-                            displayTapeRecInfo(t)
-                            br()
-
                             p {
                                 +"Routing URL: %s".format(
                                     when {
@@ -80,7 +77,10 @@ object TapeEditor : EditorModule() {
                                     }
                                 )
                             }
+
                             displayTapeAttrInfo(t.attractors)
+                            br()
+                            displayTapeRecInfo(t)
                         }
 
                         td {
@@ -557,7 +557,7 @@ object TapeEditor : EditorModule() {
             table {
                 thead {
                     tr {
-                        td()
+                        td(classes = "center") { +"Chapters" }
                         th { +"Total" }
                         th { +"Live" }
                         th { +"Mock" }
@@ -577,7 +577,7 @@ object TapeEditor : EditorModule() {
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isEnabled(it.mockUses) &&
-                                        !MockUseStates.isLimitedMock(it.mockUses)
+                                        !it.awaitResponse
                             }.toString()
                         }
                         td {

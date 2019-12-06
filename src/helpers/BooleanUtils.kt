@@ -61,14 +61,15 @@ val MatchResult?.hasMatch: Boolean
  * - Literal (which may include regex items)
  * - Regex
  */
-fun String?.match(input: String): Pair<MatchGroup?, Boolean> {
+fun String?.match(input: String): Pair<String?, Boolean> {
     if (this == null) return null to true
-    val asReg = toRegex().find(input)?.groups?.first()
+    val asReg = this.ensurePrefix("^.*(").ensureSuffix(").*$")
+        .toRegex().find(input)?.groups?.get(1)
     val asLiteral = isNotBlank() && (input == this)
 
     return when {
-        asLiteral -> MatchGroup(input, (0..input.length)) to true
-        asReg != null -> MatchGroup(input, (0..length)) to false
+        asLiteral -> input to true
+        asReg != null -> asReg.value to false
         else -> null to true
     }
 }

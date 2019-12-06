@@ -63,3 +63,14 @@ inline fun <T, R : Any> Iterable<T>.firstNotNullResult(predicate: (T) -> R?): R?
     }
     return null
 }
+
+/**
+ * Returns the first item in [this] which matches a [predicates]
+ */
+fun <T> Iterable<T>.firstMatchNotNull(vararg predicates: (T) -> Boolean): T? {
+    for (p in predicates) {
+        val element = firstOrNull { p.invoke(it) }
+        if (element != null) return element
+    }
+    return null
+}

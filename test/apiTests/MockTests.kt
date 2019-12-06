@@ -14,6 +14,7 @@ import io.ktor.server.testing.setBody
 import io.mockk.unmockkObject
 import mimikMockHelpers.MockUseStates
 import org.junit.*
+import java.lang.Thread.sleep
 
 class MockTests {
     companion object {
@@ -30,10 +31,19 @@ class MockTests {
         }
     }
 
+
     @Before
     @After
     fun clearTapes() {
-        TapeCatalog.Instance.tapes.forEach { it.file?.delete() }
+        TapeCatalog.Instance.tapes.forEach {
+            if (it.savingFile.get())
+                println("Waiting to delete file: ${it.name}")
+            while (it.savingFile.get()) {
+                sleep(2)
+            }
+            println("Deleting tape: ${it.name}")
+            it.file?.delete()
+        }
         TapeCatalog.Instance.tapes.clear()
     }
 
@@ -152,7 +162,7 @@ class MockTests {
                 addHeader("mockTape_Only", "true")
                 addHeader("mockTape_Url", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
-                addHeader("mockFilter_Query", "Query")
+                addHeader("mockFilter_Query", "Query.+")
             }
 
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -164,7 +174,7 @@ class MockTests {
             }
 
             handleRequest(HttpMethod.Post, "/long/path/name", Ports.live) {
-                setBody(queryNone)
+                setBody(queryNone) // should create a new tape & chapter
             }
 
             handleRequest(HttpMethod.Post, "/long/path/name?Query=New", Ports.live) {
@@ -276,6 +286,7 @@ class MockTests {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
                 addHeader("mockMethod", "POST")
                 addHeader("mockFilter_Path", "/path")
+                // avoid a body which contains "avoid" anywhere in the string
                 addHeader("mockFilter_Body!", "avoid")
                 // wild-card "all", to allow this mock to accept any body (addition to above filter)
                 addHeader("mockFilter_Body", ".+")
@@ -399,9 +410,11 @@ class MockTests {
                 addHeader("mockLive", "true")
                 addHeader("mockFilter_Path", "/mail")
                 addHeader("mockUse", MockUseStates.SINGLEMOCK.state.toString())
+                addHeader("mockMethod", "POST")
+                setBody("mock_limited")
             }
 
-            val mockBody = "TestBody"
+            val mockBody = "mock_full"
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
                 addHeader("mockTape_Name", "liveTape")
                 addHeader("mockName", "mock_full")
@@ -411,7 +424,7 @@ class MockTests {
             }
 
             val mock = TapeCatalog.Instance.tapes.firstOrNull()
-                ?.chapters?.firstOrNull()
+                ?.chapters?.firstOrNull { it.name == "mock_limited" }
 
             Assert.assertNotNull(mock)
             requireNotNull(mock)

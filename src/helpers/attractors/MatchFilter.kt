@@ -4,7 +4,7 @@ import helpers.filterByMax
 
 object MatchFilter {
     /**
-     * Returns the best fit match from [source], based on [keyGroupBy]
+     * Returns the best fit match(s) from [source], based on [keyGroupBy]
      *
      * @return (in length)
      * - null = [source] is null/ empty
@@ -31,7 +31,7 @@ object MatchFilter {
         if (byReq.size == 1) return byReq
 
         // filter by how well the "Required" matchers match
-        val byReqR = findBestByGroup(byReq) { it.reqSub }
+        val byReqR = findBestByGroup(byReq) { it.reqLiterals }
         if (byReqR.isEmpty()) return null
         if (byReqR.size == 1) return byReqR
 
@@ -41,11 +41,10 @@ object MatchFilter {
         if (byOpt.size == 1) return byOpt
 
         // filter by how well the "Optional" matchers match
-        val byOptR = findBestByGroup(byOpt) { it.optSub }
+        val byOptR = findBestByGroup(byOpt) { it.optLiterals }
         if (byOptR.isEmpty()) return null
         if (byOptR.size == 1) return byOptR
 
-        // give up, too much conflict
-        return null
+        return byReq
     }
 }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
+import mimikMockHelpers.RecordedInteractions
 import networkRouting.testingManager.observe
 import networkRouting.testingManager.TestManager
 import okreplay.OkReplayInterceptor
@@ -80,18 +81,35 @@ class TapeCatalog : OkReplayInterceptor() {
         val allowedTapes = tapes.asSequence()
             .filter { tapeLimit?.contains(it.name) ?: true }.toList()
 
-        val validChapters = allowedTapes.asSequence()
+        val readyChapters = allowedTapes.asSequence()
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
-            .associateWith { it.attractors }
+            .filter { it.attractors != null }
+            .associateWith { it.attractors!! }
 
-        val foundChapter = RequestAttractors.findBest(
-            validChapters,
+        val validChapters = RequestAttractors.findBest_many(
+            readyChapters,
             path, queries, headers, body
         )
 
+        fun useMatchesTest(chap: RecordedInteractions, test: (Int) -> Boolean) =
+            allowedTapes.first { it.chapters.contains(chap) }
+                .run { test.invoke(chap.uses) }
+
+        val items = validChapters.item
+        val bestChapter = when {
+            items == null -> null
+            items.size == 1 -> items.first()
+            else -> items.firstMatchNotNull(
+                { it.alwaysLive.isTrue() },
+                { it.awaitResponse },
+                { useMatchesTest(it) { uses -> uses == MockUseStates.ALWAYS.state } },
+                { useMatchesTest(it) { uses -> uses in (1..Int.MAX_VALUE) } }
+            )
+        }
+
         val foundTape = allowedTapes
-            .firstOrNull { it.chapters.contains(foundChapter.item) }
+            .firstOrNull { it.chapters.contains(bestChapter) }
 
         return QueryResponse {
             item = foundTape
@@ -114,7 +132,8 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val validTapes = tapes.asSequence()
             .filter { it.mode.isWritable }
-            .associateBy({ it }, { it.attractors })
+            .filter { it.attractors != null }
+            .associateBy({ it }, { it.attractors!! })
 
         return RequestAttractors.findBest(
             validTapes,
