@@ -74,3 +74,14 @@ fun <T> Iterable<T>.firstMatchNotNull(vararg predicates: (T) -> Boolean): T? {
     }
     return null
 }
+
+/**
+ * Appends each list in [lists] that isn't null
+ */
+fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> {
+    return toMutableList().apply {
+        lists.forEach {
+            if (it != null) addAll(it)
+        }
+    }
+}

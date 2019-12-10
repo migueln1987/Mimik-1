@@ -2,11 +2,13 @@ package networkRouting.testingManager
 
 import helpers.*
 import io.ktor.application.call
+import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.routing.post
 import io.ktor.routing.route
+import kolor.cyan
 import kolor.green
 import kolor.magenta
 import kolor.yellow
@@ -72,6 +74,24 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         }
     }
 
+    private fun Headers.getValidTapes(): List<String> {
+        val heads = getAll("tape")
+        if (heads.isNullOrEmpty()) return listOf()
+        val tapeCatNames = tapeCatalog.tapes.map { it.name }
+        val containsInit = heads.any { it.equals("init", true) }
+
+        return heads.flatMap { it.split(',') }.asSequence()
+            .filter { it.isBlank() }
+            .map { it.trim() }
+            .filter { tapeCatNames.contains(it) }
+            .toList()
+            .let {
+                if (containsInit)
+                    it.toMutableList().apply { add("Init") }
+                else it
+            }
+    }
+
     private val Route.start: Route
         get() = route(RoutePaths.START.path) {
             /**
@@ -84,14 +104,12 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             post {
                 val heads = call.request.headers
                 var handle = heads["handle"]
-                var allowedTapes = heads.getAll("tape")?.flatMap {
-                    it.split(',')
-                }
+                val allowedTapes = heads.getValidTapes()
                 val time = heads["time"]
 
                 val noConfigs = allTrue(
                     handle.isNullOrBlank(),
-                    allowedTapes?.isEmpty().isTrue(),
+                    allowedTapes.isEmpty(),
                     time.isNullOrBlank()
                 )
 
@@ -99,31 +117,32 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 when {
                     noConfigs ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No config headers" }
-                    allowedTapes.isNullOrEmpty() ->
+                    allowedTapes.isEmpty() ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No [tape] config data" }
                     else -> canContinue = true
                 }
                 if (!canContinue) return@post
 
                 val tapeCatNames = tapeCatalog.tapes.map { it.name }
-                allowedTapes = (allowedTapes ?: listOf()).filter { tapeCatNames.contains(it) } as MutableList
 
                 var testBounds = boundManager.firstOrNull { it.handle == handle }
                 var useExisting = false
 
                 if (testBounds == null) {
                     handle = ensureUniqueName(handle)
-                    printF(
-                        "No test named (%s).".magenta(),
-                        when (heads["handle"]) {
-                            null -> "{null}"
-                            "" -> "{empty string}"
-                            else -> heads["handle"]
-                        }
+                    printlnF(
+                        "%s -> %s",
+                        "No test named (%s).".magenta().format(
+                            when (heads["handle"]) {
+                                null -> "{null}"
+                                "" -> "{empty string}"
+                                else -> heads["handle"]
+                            }
+                        ),
+                        "Creating new test named: $handle".green()
                     )
-                    println(" -> " + "Creating new test named: $handle".green())
 
-                    testBounds = TestBounds(handle, allowedTapes)
+                    testBounds = TestBounds(handle, allowedTapes.toMutableList())
                     boundManager.add(testBounds)
                 } else {
                     useExisting = true
@@ -153,6 +172,16 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     }
                 }
 
+                printlnF(
+                    "Test Bounds (%s) ready with %d tapes:".green() + "%s".cyan(),
+                    testBounds.handle,
+                    allowedTapes.size,
+                    allowedTapes.joinToString(
+                        prefix = "\n- ",
+                        separator = "\n- "
+                    ) { it }
+                )
+
                 call.response.headers.apply {
                     append("tape", allowedTapes)
                     append("handle", handle.toString())
@@ -173,13 +202,11 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             post {
                 val heads = call.request.headers
                 val handle = heads["handle"]
-                var appendTapes = heads.getAll("tape")?.flatMap {
-                    it.split(',')
-                }
+                val appendTapes = heads.getValidTapes()
 
                 val noConfigs = allTrue(
                     handle.isNullOrBlank(),
-                    appendTapes?.isEmpty().isTrue()
+                    appendTapes.isEmpty()
                 )
                 val boundHandle = boundManager.firstOrNull { it.handle == handle }
 
@@ -187,7 +214,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 when {
                     noConfigs ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No config headers" }
-                    appendTapes.isNullOrEmpty() ->
+                    appendTapes.isEmpty() ->
                         call.respondText(status = HttpStatusCode.NotModified) { "No [tape] data to append" }
                     boundHandle == null ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No test bounds with the name '$handle'" }
@@ -195,22 +222,15 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-                val tapeCatNames = tapeCatalog.tapes.map { it.name }
-                appendTapes = appendTapes?.filter { tapeCatNames.contains(it) } ?: listOf()
-
-                if (appendTapes.isEmpty()) {
-                    call.respondText(status = HttpStatusCode.NotModified) { "No [tape] data to append" }
-                } else {
-                    printlnF(
-                        "Appending %s tape%s to test (%s)".green(),
-                        appendTapes.size,
-                        if (appendTapes.size > 1) "s" else "",
-                        handle
-                    )
-                    boundHandle?.tapes?.addAll(appendTapes)
-                    call.response.headers.append("tape", appendTapes)
-                    call.respondText(status = HttpStatusCode.OK) { "" }
-                }
+                printlnF(
+                    "Appending %s tape%s to test (%s)".green(),
+                    appendTapes.size,
+                    if (appendTapes.size > 1) "s" else "",
+                    handle
+                )
+                boundHandle?.tapes?.addAll(appendTapes)
+                call.response.headers.append("tape", appendTapes)
+                call.respondText(status = HttpStatusCode.OK) { "" }
             }
         }
 
@@ -225,13 +245,11 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             post {
                 val heads = call.request.headers
                 val handle = heads["handle"]
-                var disableTapes = heads.getAll("tape")?.flatMap {
-                    it.split(',')
-                }
+                val disableTapes = heads.getValidTapes()
 
                 val noConfigs = allTrue(
                     handle.isNullOrBlank(),
-                    disableTapes?.isEmpty().isTrue()
+                    disableTapes.isEmpty()
                 )
                 val boundHandle = boundManager.firstOrNull { it.handle == handle }
 
@@ -239,7 +257,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 when {
                     noConfigs ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No config headers" }
-                    disableTapes.isNullOrEmpty() ->
+                    disableTapes.isEmpty() ->
                         call.respondText(status = HttpStatusCode.NotModified) { "No requested [tape] to disable" }
                     boundHandle == null ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No test bounds with the name '$handle'" }
@@ -247,26 +265,19 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-                val tapeCatNames = tapeCatalog.tapes.map { it.name }
-                disableTapes = disableTapes?.filter { tapeCatNames.contains(it) } ?: listOf()
-
-                if (disableTapes.isEmpty()) {
-                    call.respondText(status = HttpStatusCode.NotModified) { "No requested [tape] to disable" }
-                } else {
-                    var dCount = 0
-                    disableTapes.forEach { t ->
-                        boundHandle?.tapes?.removeIf {
-                            (it == t).also { dCount++ }
-                        }
+                var dCount = 0
+                disableTapes.forEach { t ->
+                    boundHandle?.tapes?.removeIf {
+                        (it == t).also { dCount++ }
                     }
-                    printlnF(
-                        "Disabling %s tape%s in test (%s)".green(),
-                        dCount,
-                        if (dCount > 1) "s" else "",
-                        handle
-                    )
-                    call.respondText(status = HttpStatusCode.OK) { "" }
                 }
+                printlnF(
+                    "Disabling %s tape%s in test (%s)".green(),
+                    dCount,
+                    if (dCount > 1) "s" else "",
+                    handle
+                )
+                call.respondText(status = HttpStatusCode.OK) { "" }
             }
         }
 
@@ -292,7 +303,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     .filter { handles.contains(it.handle) }
                     .forEach {
                         val sb = StringBuilder()
-                        sb.appendln("Stopping test (${it.handle}...")
+                        sb.appendln("Stopping test bounds (${it.handle})...")
                         when (it.state) {
                             BoundStates.Ready -> sb.append("Test was idle. no change")
                             BoundStates.Stopped -> sb.append("Test was already stopped")
@@ -303,7 +314,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                         it.stopTest()
 
-                        val duration = (Date() - it.expireTime).toString().removePrefix("PT")
+                        val duration = (it.timeLimit - (Date() - it.expireTime)).toString().removePrefix("PT")
                         call.response.headers.append("${it.handle}_time", duration)
                         printlnF(
                             "Test bounds (%s) ran for %s".yellow(),

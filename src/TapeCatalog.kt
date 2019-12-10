@@ -192,14 +192,13 @@ class TapeCatalog : OkReplayInterceptor() {
 
             findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
                 println("Using response tape ${tape.name}".green())
-                tape.requestToChain(callRequest)?.also { chain ->
-                    start(config, tape)
-                    withContext(Dispatchers.IO) {
-                        bounds.observe(tape) {
-                            intercept(chain)
-                        }
-                    }?.also { return it }
-                }
+                val chain = tape.requestToChain(callRequest)
+                start(config, tape)
+                withContext(Dispatchers.IO) {
+                    bounds.observe(tape) {
+                        intercept(chain)
+                    }
+                }?.also { return it }
 
                 return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
                     R.getProperty("processCall_InvalidUrl")
@@ -208,7 +207,7 @@ class TapeCatalog : OkReplayInterceptor() {
             }
 
             if (bounds != null) return callRequest.createResponse(HttpStatusCode.Forbidden) {
-                "Test bounds [${bounds.handle}] has no matching recordings."
+                "Test bounds [${bounds.handle}] has no matching recordings for $callUrl."
                     .also { println(it.red()) }
             }
 
@@ -218,13 +217,9 @@ class TapeCatalog : OkReplayInterceptor() {
                     hostTape.item?.let {
                         println("Response not found; Using tape ${it.name}".cyan())
 
-                        it.requestToChain(callRequest)?.let { chain ->
-                            start(config, it)
-                            withContext(Dispatchers.IO) { intercept(chain) }
-                        } ?: callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
-                            R.getProperty("processCall_InvalidUrl")
-                                .also { println(it.red()) }
-                        }
+                        val chain = it.requestToChain(callRequest)
+                        start(config, it)
+                        withContext(Dispatchers.IO) { intercept(chain) }
                     } ?: let {
                         callRequest.createResponse(HttpStatusCode.Conflict) {
                             R.getProperty("processCall_ConflictingTapes")

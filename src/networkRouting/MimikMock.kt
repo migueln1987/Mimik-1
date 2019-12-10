@@ -22,6 +22,8 @@ import tapeItems.BlankTape
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
+    val arrayReg = "(?<!\\\\),".toRegex()
+
     private enum class RoutePaths(val path: String) {
         MOCK("");
 
@@ -250,7 +252,11 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             .filter { it.key.contains(filterKey, true) }
             .associateBy(
                 { it.key.toLowerCase().removePrefix(filterKey) },
-                { it.value.flatMap { it.split("(?<!\\\\),".toRegex()).map { it.trim() } } })
+                { vMap ->
+                    vMap.value.flatMap { it.split(arrayReg) }
+                        .filterNot { it.isBlank() }
+                        .map { it.trim() }
+                })
 
         val uQuery = filters["query"]?.map { UniqueBit(it, UniqueTypes.Query) }
         val uHead = filters["head"]?.map { UniqueBit(it, UniqueTypes.Header) }
@@ -275,7 +281,9 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             .flatMap { kvvm ->
                 kvvm.value.asSequence()
                     .filterNot { it.isEmpty() }
-                    .flatMap { it.split("(?<!\\\\),".toRegex()).map { it.trim() }.asSequence() }
+                    .flatMap { it.split(arrayReg).asSequence() }
+                    .filterNot { it.isBlank() }
+                    .map { it.trim() }
                     .flatMap {
                         (valueSplitter.invoke(it) ?: listOf(it)).asSequence()
                     }

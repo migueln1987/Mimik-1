@@ -55,6 +55,25 @@ abstract class EditorModule {
             """
         ),
 
+        pasteAtSection_func(
+            """
+                function getPasteResult(event) {
+                    var targetData = event.target;
+                    var paste = event.clipboardData.getData('text');
+                    var newText = ""
+                    if (targetData.selectionStart || targetData.selectionStart == '0') {
+                        var startPos = targetData.selectionStart;
+                        var endPos = targetData.selectionEnd;
+                        newText = targetData.value.substring(0, startPos)
+                            + paste
+                            + targetData.value.substring(endPos, targetData.value.length);
+                    } else
+                        newText = paste;
+                    return newText;
+                }
+            """
+        ),
+
         extractQueryFromUrl_func(
             """
             function extractQueryFromURL(url, asArray) {

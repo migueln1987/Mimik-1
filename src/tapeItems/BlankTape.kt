@@ -164,9 +164,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             name.toJsonName
         ).also { field = it }
 
+    @Suppress("USELESS_ELVIS")
     @Transient
     var savingFile: AtomicBoolean = AtomicBoolean(false)
-        get() = field
+        get() = field ?: AtomicBoolean(false)
 
     var recordedDate: Date? = Date()
         get() = field ?: Date()
@@ -276,7 +277,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     /**
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
-    fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
+    fun requestToChain(request: okhttp3.Request): Interceptor.Chain {
         return object : Interceptor.Chain {
             override fun request(): okhttp3.Request = if (httpRoutingUrl == null)
                 request else request.reHost(httpRoutingUrl)
@@ -555,8 +556,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     override fun record(request: okreplay.Request, response: okreplay.Response) {
-        val newChap = RecordedInteractions(request, response)
-        newChap.alwaysLive = alwaysLive
+        val newChap = createNewInteraction {
+            it.requestData = request.toTapeData
+            it.responseData = response.toTapeData
+            it.attractors = RequestAttractors(it.requestData)
+            it.origionalMockUses = it.mockUses
+            it.alwaysLive = alwaysLive
+        }
+
         val okRequest = request.toOkRequest
 
         val logBuilder = StringBuilder()
@@ -567,7 +574,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         )
 
         println(logBuilder.toString())
-        chapters.add(newChap)
         saveFile()
     }
 
@@ -668,35 +674,41 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
           - if chap doesn't already contain uList's items (exact value)
         */
 
-        byUnique?.firstNotNullResult { uList ->
-            uList.uniqueAllOrNull(chap)?.also findDupChaps@{ litList ->
-                val notUnique = chapters.any { litList.uniqueAllOrNull(it) != null }
-                if (notUnique) return@findDupChaps
+        val litList = byUnique?.firstNotNullResult { it.uniqueAllOrNull(chap) }
+        val notUnique = chapters.any { litList.uniqueAllOrNull(it) != null }
+        if (litList.isNullOrEmpty() || notUnique) return
 
-                val queryMatchers = mutableListOf<RequestAttractorBit>()
-                val headerMatchers = mutableListOf<RequestAttractorBit>()
-                val bodyMatchers = mutableListOf<RequestAttractorBit>()
+        val queryMatchers = mutableListOf<RequestAttractorBit>()
+        val headerMatchers = mutableListOf<RequestAttractorBit>()
+        val bodyMatchers = mutableListOf<RequestAttractorBit>()
 
-                uList.forEach {
-                    when (it.uniqueType) {
-                        UniqueTypes.Query -> queryMatchers.add(RequestAttractorBit(it.searchStr!!))
-                        UniqueTypes.Header -> headerMatchers.add(RequestAttractorBit(it.searchStr!!))
-                        UniqueTypes.Body -> bodyMatchers.add(RequestAttractorBit(it.searchStr!!))
-                        else -> Unit
-                    }
-                }
+        litList.forEach {
+            when (it.uniqueType) {
+                UniqueTypes.Query -> queryMatchers.add(RequestAttractorBit(it.searchStr!!))
+                UniqueTypes.Header -> headerMatchers.add(RequestAttractorBit(it.searchStr!!))
+                UniqueTypes.Body -> bodyMatchers.add(RequestAttractorBit(it.searchStr!!))
+                else -> Unit
+            }
+        }
 
-                if (chap.attractors == null)
-                    chap.attractors = RequestAttractors()
+        if (chap.attractors == null)
+            chap.attractors = RequestAttractors()
 
-                chap.attractors?.also { attrs ->
-                    if (queryMatchers.isNotEmpty())
-                        attrs.queryMatchers = attrs.queryMatchers.append(queryMatchers)
-                    if (headerMatchers.isNotEmpty())
-                        attrs.headerMatchers = attrs.headerMatchers.append(headerMatchers)
-                    if (bodyMatchers.isNotEmpty())
-                        attrs.bodyMatchers = attrs.bodyMatchers.append(bodyMatchers)
-                }
+        chap.attractors?.also { attrs ->
+            if (queryMatchers.isNotEmpty()) {
+                attrs.queryMatchers = attrs.queryMatchers.orEmpty().toMutableList()
+                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .append(queryMatchers)
+            }
+            if (headerMatchers.isNotEmpty()) {
+                attrs.headerMatchers = attrs.headerMatchers.orEmpty().toMutableList()
+                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .append(headerMatchers)
+            }
+            if (bodyMatchers.isNotEmpty()) {
+                attrs.bodyMatchers = attrs.bodyMatchers.orEmpty().toMutableList()
+                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .append(bodyMatchers)
             }
         }
     }

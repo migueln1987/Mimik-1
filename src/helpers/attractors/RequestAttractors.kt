@@ -48,6 +48,7 @@ class RequestAttractors {
         private val skipHeaders =
             listOf(
                 HttpHeaders.ContentLength, HttpHeaders.Host, HttpHeaders.Accept, HttpHeaders.TE,
+                HttpHeaders.UserAgent, HttpHeaders.Connection, HttpHeaders.CacheControl,
                 "localhost",
                 "ondotsessionid" // todo; move into "mockIgnore_header:ondotsessionid"
             )
@@ -363,8 +364,8 @@ class RequestAttractors {
     }
 
     private fun getHeaderMatches(source: List<String>?): AttractorMatches {
-        val inputs = source?.filter {
-            skipHeaders.any { hHeaders -> it.startsWith(hHeaders) }
+        val inputs = source?.filterNot {
+            skipHeaders.any { hHeaders -> it.startsWith(hHeaders, true) }
         }
         return headerMatchers.getMatches(inputs)
     }
@@ -434,10 +435,11 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
                 else -> 0
             }
 
+            val isType = v.key.required && scanReq
             Triple(
-                r.first + if (v.key.required && scanReq) 1 else 0, // is as requested type
+                r.first + if (isType) 1 else 0, // is as requested type
                 r.second + pass, // did it pass?
-                v.value.count { it.second } // was it a literal match?
+                v.value.count { isType && it.second } // was it a literal match?
             )
         }
     }

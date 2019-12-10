@@ -53,17 +53,19 @@ val MatchResult?.hasMatch: Boolean
     get() = this?.groups?.isNotEmpty().isTrue()
 
 /**
- * Returns the search of [input] in this string.
+ * Returns the search of [input] in [this] string.
  * Regex matches will have a range equal to the query length.
  * Second value of pair is "was the match a literal match".
  *
  * Searches (in order):
  * - Literal (which may include regex items)
  * - Regex
+ *
+ * If [this] is empty or blank, [null] is returned
  */
 fun String?.match(input: String): Pair<String?, Boolean> {
-    if (this == null) return null to true
-    val asReg = this.ensurePrefix("^.*(").ensureSuffix(").*$")
+    if (this.isNullOrBlank()) return null to true
+    val asReg = this.ensurePrefix(".*(").ensureSuffix(").*")
         .toRegex().find(input)?.groups?.get(1)
     val asLiteral = isNotBlank() && (input == this)
 

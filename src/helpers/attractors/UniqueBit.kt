@@ -1,8 +1,6 @@
 package helpers.attractors
 
-import helpers.match
-import helpers.queryItems
-import helpers.toStringPairs
+import helpers.*
 import mimikMockHelpers.RecordedInteractions
 
 enum class UniqueTypes {
@@ -25,33 +23,29 @@ class UniqueBit(var searchStr: String? = null, var uniqueType: UniqueTypes? = Un
      * Returns the matching content from [chap] based on [uniqueType]
      */
     fun uniqueMatching(chap: RecordedInteractions): String? {
-        val chapReq = chap.requestData ?: return null
+        val chapReq = chap.requestData
+        val chapAttrs = chap.attractors
 
-        var matchStr: String? = null
-        when (uniqueType) {
-            UniqueTypes.Query -> {
-                chapReq.httpUrl.queryItems().any {
-                    val (m, _) = searchStr.match(it)
-                    matchStr = m
-                    m != null
-                }
-            }
-            UniqueTypes.Header -> {
-                chapReq.headers?.toStringPairs()?.any {
-                    val (m, _) = searchStr.match(it)
-                    matchStr = m
-                    m != null
-                }
-            }
-            UniqueTypes.Body -> {
-                chapReq.body?.also {
-                    matchStr = searchStr.match(it).first
-                }
-            }
-            else -> Unit
+        return when (uniqueType) {
+            UniqueTypes.Query -> setOf<String>().appendNotNull(
+                chapReq?.httpUrl.queryItems(),
+                chapAttrs?.queryMatchers?.mapNotNull { it.value }
+            )
+
+            UniqueTypes.Header -> setOf<String>().appendNotNull(
+                chapReq?.headers?.toStringPairs(),
+                chapAttrs?.headerMatchers?.mapNotNull { it.value }
+            )
+
+            UniqueTypes.Body -> setOf<String>().appendNotNull(
+                listOf(chapReq?.body.orEmpty()),
+                chapAttrs?.bodyMatchers?.mapNotNull { it.value }
+            )
+
+            else -> null
+        }?.firstNotNullResult {
+            searchStr.match(it).first
         }
-
-        return matchStr
     }
 }
 
@@ -64,7 +58,6 @@ class UniqueBit(var searchStr: String? = null, var uniqueType: UniqueTypes? = Un
  * - null if not ALL of the uniqueBits match
  */
 fun List<UniqueBit>?.uniqueAllOrNull(chap: RecordedInteractions): List<UniqueBit>? {
-    if (!chap.hasRequestData) return null
     return this?.mapNotNull { uBit ->
         uBit.uniqueMatching(chap)?.let { UniqueBit(it, uBit.uniqueType!!) }
     }?.let {
