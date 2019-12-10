@@ -1,4 +1,4 @@
-package com.fiserv.mimik.tapeTests
+package unitTests.tapeTests
 
 import apiTests.assertContains
 import helpers.asHttpUrl

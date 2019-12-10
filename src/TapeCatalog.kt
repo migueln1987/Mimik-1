@@ -15,6 +15,7 @@ import networkRouting.testingManager.observe
 import networkRouting.testingManager.TestManager
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
+import java.io.File
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Collections
@@ -27,6 +28,9 @@ class TapeCatalog : OkReplayInterceptor() {
     val tapes: MutableList<BlankTape> = mutableListOf()
     val backingList = mutableListOf<String>()
     var processingRequests = Collections.synchronizedList(backingList)
+
+    val tapeFiles: List<File>?
+        get() = config.tapeRoot.get()?.jsonFiles()
 
     companion object {
         var isTestRunning = false
@@ -42,11 +46,11 @@ class TapeCatalog : OkReplayInterceptor() {
      * Loads all the *.json tapes within the okreplay.tapeRoot directory
      */
     fun loadTapeData() {
-        val root = config.tapeRoot.get() ?: return
+        val files = tapeFiles ?: return
         val gson = Gson()
 
         tapes.clear()
-        root.fileListing().asSequence()
+        files.asSequence()
             .map { it to it.readText() }
             .mapNotNull {
                 try {

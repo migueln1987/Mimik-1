@@ -17,10 +17,10 @@ fun File.getFolders(): List<String> {
 }
 
 /**
- * Retrieves a list of files form the input file/ directory
+ * Retrieves a list of json files form the input file/ directory
  */
-fun File.fileListing(): List<File> {
-    return (if (isFile) File(canonicalPath) else this@fileListing)
+fun File.jsonFiles(): List<File> {
+    return (if (isFile) File(canonicalPath) else this@jsonFiles)
         .walkTopDown()
         .filter { it.isFile && it.extension == "json" }
         .toList()

@@ -123,8 +123,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-                val tapeCatNames = tapeCatalog.tapes.map { it.name }
-
                 var testBounds = boundManager.firstOrNull { it.handle == handle }
                 var useExisting = false
 
