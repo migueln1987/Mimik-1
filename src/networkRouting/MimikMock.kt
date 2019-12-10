@@ -3,6 +3,8 @@ package networkRouting
 import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.attractors.UniqueBit
+import helpers.attractors.UniqueTypes
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers
@@ -19,6 +21,8 @@ import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock : RoutingContract(RoutePaths.rootPath) {
+
+    val arrayReg = "(?<!\\\\),".toRegex()
 
     private enum class RoutePaths(val path: String) {
         MOCK("");
@@ -63,10 +67,11 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         mockParams = mockParams
             .filterNot { it.key.startsWith("filter", true) }
         val attractors = createRequestAttractor(request.headers)
+        val uniqueFilters = createUniqueFilters(request.headers)
         val alwaysLive = if (mockParams["live"].isTrue()) true else null
 
         // Step 1: get existing tape or create a new tape
-        val query = putmockGetTape(mockParams)
+        val query = getTape(mockParams)
 
         val tape = query.item ?: return QueryResponse {
             status = HttpStatusCode.InternalServerError
@@ -77,6 +82,8 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             HttpStatusCode.Created -> { // set ONLY if this is a new tape
                 if (attractors.hasData)
                     tape.attractors = attractors
+                if (uniqueFilters != null)
+                    tape.byUnique = uniqueFilters
             }
             HttpStatusCode.Found -> { // apply the tape's attractors to this object
                 attractors.append(tape.attractors)
@@ -239,6 +246,27 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         }
     }
 
+    private fun createUniqueFilters(headers: Headers): List<List<UniqueBit>>? {
+        val filterKey = "mockunique_"
+        val filters = headers.entries()
+            .filter { it.key.contains(filterKey, true) }
+            .associateBy(
+                { it.key.toLowerCase().removePrefix(filterKey) },
+                { vMap ->
+                    vMap.value.flatMap { it.split(arrayReg) }
+                        .filterNot { it.isBlank() }
+                        .map { it.trim() }
+                })
+
+        val uQuery = filters["query"]?.map { UniqueBit(it, UniqueTypes.Query) }
+        val uHead = filters["head"]?.map { UniqueBit(it, UniqueTypes.Header) }
+        val uBody = filters["body"]?.map { UniqueBit(it, UniqueTypes.Body) }
+
+        return listOfNotNull(uQuery, uHead, uBody).let {
+            if (it.isEmpty()) null else it
+        }
+    }
+
     /**
      * Filters this [key, values] map into a list of Attractor bits.
      * Function also sets [optional] and [required] flags
@@ -253,6 +281,9 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             .flatMap { kvvm ->
                 kvvm.value.asSequence()
                     .filterNot { it.isEmpty() }
+                    .flatMap { it.split(arrayReg).asSequence() }
+                    .filterNot { it.isBlank() }
+                    .map { it.trim() }
                     .flatMap {
                         (valueSplitter.invoke(it) ?: listOf(it)).asSequence()
                     }
@@ -284,7 +315,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
     /**
      * Attempts to find an existing tape suitable tape (by name) or creates a new one.
      */
-    private fun putmockGetTape(mockParams: Map<String, String>): QueryResponse<BlankTape> {
+    private fun getTape(mockParams: Map<String, String>): QueryResponse<BlankTape> {
         val paramTapeName = mockParams["tape_name"]?.split("/")?.last()
         // todo; add an option for sub-directories
         // val paramTapeDir = mockParams["tape_name"]?.replace(paramTapeName ?: "", "")

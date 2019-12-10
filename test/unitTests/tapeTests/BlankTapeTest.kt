@@ -1,10 +1,16 @@
-package com.fiserv.mimik.tapeTests
+package unitTests.tapeTests
 
 import apiTests.assertContains
+import helpers.asHttpUrl
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.attractors.UniqueBit
+import helpers.attractors.UniqueTypes
+import io.mockk.every
+import io.mockk.mockk
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.Requestdata
 import okreplay.TapeMode
 import org.junit.Assert
 import org.junit.Before
@@ -141,5 +147,43 @@ class BlankTapeTest {
         Assert.assertEquals(1, testObject.size())
 
         Assert.assertEquals(data.mockUses, testObject.chapters.first().mockUses)
+    }
+
+    @Test
+    fun appendUniqueAttractors() {
+        val reqBody = """
+            {
+                "batchStartPoint": 0,
+                "batchEndPoint": 4,
+                "transactionStartDate": 1572791496721,
+                "transactionEndDate": 1575383496721,
+                "transactionFor": "CARD",
+                "transactionForId": 123456,
+                "countryCode": "US",
+                "deviceUniqueId": "123",
+            }
+            """.replace(" +|\n|\r".toRegex(), "")
+        val urlStr = "http://url.ext/action?opId=GET_LIST&Version=v2.0"
+        val requestData = mockk<Requestdata> {
+            every { httpUrl } returns urlStr.asHttpUrl
+            every { body } returns reqBody
+        }
+
+        testObject.also {
+            val uList = listOf(
+                UniqueBit("opId=GET_LIST", UniqueTypes.Query),
+                UniqueBit("EndPoint[^\\d]+\\d+", UniqueTypes.Body),
+                UniqueBit("ForId[^\\d]+\\d+", UniqueTypes.Body)
+            )
+            it.byUnique = listOf(uList)
+        }
+
+        val result = testObject.createNewInteraction {
+            it.requestData = requestData
+        }
+
+        Assert.assertNotNull(result.attractors)
+        Assert.assertEquals(1, result.attractors?.queryMatchers?.size)
+        Assert.assertEquals(2, result.attractors?.bodyMatchers?.size)
     }
 }

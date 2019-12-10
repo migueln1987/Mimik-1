@@ -134,7 +134,7 @@ inline fun <reified T : Any?> TestBounds?.observe(tape: BlankTape, watch: () -> 
 
         when (value) {
             null -> { // get
-                if (data == null) {// no existing data, initialize default value
+                if (data == null) { // no existing data, initialize default value
                     data = (chap.name to (chap.origionalMockUses ?: chap.mockUses))
                     stateUses[tape.name]?.add(data)
                 }

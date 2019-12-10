@@ -7,7 +7,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.stream.JsonWriter
 import helpers.*
-import helpers.attractors.RequestAttractors
+import helpers.attractors.*
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.*
 import mimikMockHelpers.MockUseStates
@@ -26,6 +26,7 @@ import java.io.Writer
 import java.nio.charset.Charset
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.measureTimeMillis
 
 class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
@@ -163,6 +164,11 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             name.toJsonName
         ).also { field = it }
 
+    @Suppress("USELESS_ELVIS")
+    @Transient
+    var savingFile: AtomicBoolean = AtomicBoolean(false)
+        get() = field ?: AtomicBoolean(false)
+
     var recordedDate: Date? = Date()
         get() = field ?: Date()
     var modifiedDate: Date? = null
@@ -174,6 +180,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     var alwaysLive: Boolean? = null
 
     var chapters: MutableList<RecordedInteractions> = mutableListOf()
+
+    var byUnique: List<List<UniqueBit>>? = null
 
     private var tapeMode: TapeMode? = TapeMode.READ_WRITE
         get() = if (field == null) TapeMode.READ_WRITE else field
@@ -269,7 +277,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     /**
      * Converts a okHttp request (with context of a tape) into a Interceptor Chain
      */
-    fun requestToChain(request: okhttp3.Request): Interceptor.Chain? {
+    fun requestToChain(request: okhttp3.Request): Interceptor.Chain {
         return object : Interceptor.Chain {
             override fun request(): okhttp3.Request = if (httpRoutingUrl == null)
                 request else request.reHost(httpRoutingUrl)
@@ -299,7 +307,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     override fun seek(request: okreplay.Request) =
-        findBestMatch(request).status == HttpStatusCode.Found
+        findBestMatches(request.toOkRequest).status == HttpStatusCode.Found
 
     /**
      * Appends: [Name], Url, Headers, Body, and [Extras]
@@ -482,6 +490,27 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         request: okhttp3.Request,
         preference: SearchPreferences = SearchPreferences.ALL
     ): QueryResponse<RecordedInteractions> {
+        return findBestMatches(request, preference)
+            .let {
+                QueryResponse {
+                    when {
+                        it.item == null ->
+                            status = HttpStatusCode.NotFound
+                        it.item?.size == 1 -> {
+                            status = HttpStatusCode.Found
+                            item = it.item?.first()
+                        }
+                        else ->
+                            status = HttpStatusCode.Conflict
+                    }
+                }
+            }
+    }
+
+    private fun findBestMatches(
+        request: okhttp3.Request,
+        preference: SearchPreferences = SearchPreferences.ALL
+    ): QueryResponse<List<RecordedInteractions>> {
         val filteredChapters = chapters.asSequence()
             .filter {
                 when (it.uses) {
@@ -509,13 +538,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         it.uses in (1..Int.MAX_VALUE)
                 }
             }
-            .associateWith { it.attractors }
+            .filter { it.attractors != null }
+            .associateWith { it.attractors!! }
 
         if (filteredChapters.isEmpty()) return QueryResponse {
             status = HttpStatusCode.NotFound
         }
 
-        return RequestAttractors.findBest(
+        return RequestAttractors.findBest_many(
             filteredChapters,
             request.url().encodedPath(),
             request.url().query(),
@@ -525,14 +555,15 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         )
     }
 
-    private fun findBestMatch(
-        request: okreplay.Request,
-        preference: SearchPreferences = SearchPreferences.ALL
-    ) = findBestMatch(request.toOkRequest, preference)
-
     override fun record(request: okreplay.Request, response: okreplay.Response) {
-        val newChap = RecordedInteractions(request, response)
-        newChap.alwaysLive = alwaysLive
+        val newChap = createNewInteraction {
+            it.requestData = request.toTapeData
+            it.responseData = response.toTapeData
+            it.attractors = RequestAttractors(it.requestData)
+            it.origionalMockUses = it.mockUses
+            it.alwaysLive = alwaysLive
+        }
+
         val okRequest = request.toOkRequest
 
         val logBuilder = StringBuilder()
@@ -543,7 +574,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         )
 
         println(logBuilder.toString())
-        chapters.add(newChap)
         saveFile()
     }
 
@@ -562,6 +592,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         GlobalScope.launch {
             withContext(Dispatchers.IO) {
                 synchronized(this@BlankTape) {
+                    savingFile.set(true)
                     val time = measureTimeMillis {
                         val tree = gson.toJsonTree(this@BlankTape).asJsonObject
                         val keepChapters = tree.getAsJsonArray("chapters")
@@ -599,6 +630,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                                 .also { gson.toJson(tree, it) }
                                 .close()
                     }
+                    savingFile.set(false)
                     println(
                         "Saved File (%d ms): %s".format(
                             time,
@@ -625,10 +657,61 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
      * Creates a new Recorded Interaction and adds it to this tape
      */
     fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
-        RecordedInteractions {
-            interaction.invoke(it) // in case we want to change anything
-            chapters.add(it)
+        RecordedInteractions { nChap ->
+            interaction.invoke(nChap)
+            appendIfUnique(nChap)
+            chapters.add(nChap)
         }
+
+    private fun appendIfUnique(chap: RecordedInteractions) {
+        /* List of actions:
+        1. Loop through each byUnique list {known as "uList"}
+          - Look for first list who's contents (all) match this chapter's requestData
+        2. Map uList's search string(s) to literal result string(s) {known as litList}
+        3. Determine if any existing chapters (requestData) contain any of the unique literal strings
+          - exit if any pass
+        4. Append uList's contents to chap's attractors
+          - if chap doesn't already contain uList's items (exact value)
+        */
+
+        val litList = byUnique?.firstNotNullResult { it.uniqueAllOrNull(chap) }
+        val notUnique = chapters.any { litList.uniqueAllOrNull(it) != null }
+        if (litList.isNullOrEmpty() || notUnique) return
+
+        val queryMatchers = mutableListOf<RequestAttractorBit>()
+        val headerMatchers = mutableListOf<RequestAttractorBit>()
+        val bodyMatchers = mutableListOf<RequestAttractorBit>()
+
+        litList.forEach {
+            when (it.uniqueType) {
+                UniqueTypes.Query -> queryMatchers.add(RequestAttractorBit(it.searchStr!!))
+                UniqueTypes.Header -> headerMatchers.add(RequestAttractorBit(it.searchStr!!))
+                UniqueTypes.Body -> bodyMatchers.add(RequestAttractorBit(it.searchStr!!))
+                else -> Unit
+            }
+        }
+
+        if (chap.attractors == null)
+            chap.attractors = RequestAttractors()
+
+        chap.attractors?.also { attrs ->
+            if (queryMatchers.isNotEmpty()) {
+                attrs.queryMatchers = attrs.queryMatchers.orEmpty().toMutableList()
+                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .append(queryMatchers)
+            }
+            if (headerMatchers.isNotEmpty()) {
+                attrs.headerMatchers = attrs.headerMatchers.orEmpty().toMutableList()
+                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .append(headerMatchers)
+            }
+            if (bodyMatchers.isNotEmpty()) {
+                attrs.bodyMatchers = attrs.bodyMatchers.orEmpty().toMutableList()
+                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .append(bodyMatchers)
+            }
+        }
+    }
 
     init {
         config.invoke(this)

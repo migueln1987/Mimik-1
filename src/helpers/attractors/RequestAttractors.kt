@@ -46,7 +46,12 @@ class RequestAttractors {
 
     companion object {
         private val skipHeaders =
-            listOf(HttpHeaders.ContentLength, HttpHeaders.Host, "localhost", HttpHeaders.Accept, HttpHeaders.TE)
+            listOf(
+                HttpHeaders.ContentLength, HttpHeaders.Host, HttpHeaders.Accept, HttpHeaders.TE,
+                HttpHeaders.UserAgent, HttpHeaders.Connection, HttpHeaders.CacheControl,
+                "localhost",
+                "ondotsessionid" // todo; move into "mockIgnore_header:ondotsessionid"
+            )
 
         enum class GuessType {
             /**
@@ -68,13 +73,36 @@ class RequestAttractors {
          * - HttpStatusCode.Conflict (409) = null item
          */
         fun <T> findBest(
-            source: Map<T, RequestAttractors?>,
+            source: Map<T, RequestAttractors>,
             path: String?,
             queries: String?,
             headers: List<String>?,
             body: String? = null,
             custom: (T) -> AttractorMatches = { AttractorMatches() }
         ): QueryResponse<T> {
+            return findBest_many(source, path, queries, headers, body, custom).let {
+                val items = it.item
+                when {
+                    items.isNullOrEmpty() -> QueryResponse { status = HttpStatusCode.NotFound }
+
+                    items.size == 1 -> QueryResponse {
+                        status = it.status
+                        item = items.first()
+                    }
+
+                    else -> QueryResponse { status = HttpStatusCode.Conflict }
+                }
+            }
+        }
+
+        fun <T> findBest_many(
+            source: Map<T, RequestAttractors>,
+            path: String?,
+            queries: String?,
+            headers: List<String>?,
+            body: String? = null,
+            custom: (T) -> AttractorMatches = { AttractorMatches() }
+        ): QueryResponse<List<T>> {
             val options = findMany(
                 source, path, queries, headers, body,
                 GuessType.Exact,
@@ -87,9 +115,9 @@ class RequestAttractors {
                 } else {
                     val bestMatch = MatchFilter.findBestMatch(options)
                     if (bestMatch == null)
-                        status = HttpStatusCode.Conflict
+                        status = HttpStatusCode.NotFound
                     else {
-                        item = bestMatch.keys.first()
+                        item = bestMatch.keys.toList()
                         status = HttpStatusCode.Found
                     }
                 }
@@ -100,7 +128,7 @@ class RequestAttractors {
          * Returns the matching results from [source] which have at least 1 [AttractorMatches.MatchesReq]
          */
         fun <T> findMany(
-            source: Map<T, RequestAttractors?>,
+            source: Map<T, RequestAttractors>,
             path: String? = null,
             queries: String? = null,
             headers: List<String>? = null,
@@ -110,6 +138,7 @@ class RequestAttractors {
         ): Map<T, AttractorMatches> {
             if (source.isEmpty()) return linkedMapOf()
 
+            Fails.clear()
             // Filter to early fail checks
             return source.mapValues { it.value to AttractorMatches() }
                 .asSequence()
@@ -118,10 +147,13 @@ class RequestAttractors {
                 .filter { it.parseMatch { it?.getQueryMatches(queries) } }
                 .filter { it.parseMatch { it?.getHeaderMatches(headers) } }
                 .filter { it.parseMatch { it?.getBodyMatches(body) } }
-                .filter {
+                .filter { m ->
                     when (guessType) {
                         GuessType.Any -> true
-                        GuessType.Exact -> it.value.second.satisfiesRequired
+                        GuessType.Exact -> {
+                            m.value.second.satisfiesRequired
+                                .also { if (!it) Fails.add(m.value) }
+                        }
                     }
                 }
                 .associate { it.key to it.value.second }
@@ -134,6 +166,8 @@ class RequestAttractors {
         ): Boolean {
             val mResult = matcher.invoke(value.first)
             value.second.appendValues(mResult)
+            if (!value.second.hasMatches)
+                Fails.add(value)
             return value.second.hasMatches
         }
     }
@@ -243,6 +277,7 @@ class RequestAttractors {
      * - all of [matchScanner]'s values are blank: skips this test
      * - [source] is null: fail all the non-optional (and non-except) tests
      */
+    @Deprecated("use getMatches instead")
     fun getMatchCount(
         matchScanner: List<RequestAttractorBit>?,
         source: String?
@@ -266,90 +301,182 @@ class RequestAttractors {
 
         val (required, reqRatio) = matchScanner.asSequence()
             .filter { it.required }
-            .fold(0 to 0.0) { acc, x ->
-                val result = x.matchResult(source)
+            .fold(0 to 0) { acc, x ->
+                //                val result = x.matchResult(source)
+                val result = (0 to 0)
                 (acc.first + result.first) to (acc.second + result.second)
             }
 
         val (optional, optRatio) = matchScanner.asSequence()
             .filter { it.optional.isTrue() }
-            .fold(0 to 0.0) { acc, x ->
-                val result = x.matchResult(source)
+            .fold(0 to 0) { acc, x ->
+                //                val result = x.matchResult(source)
+                val result = (0 to 0)
                 (acc.first + result.first) to (acc.second + result.second)
             }
 
         return AttractorMatches(reqCount, required, optional).also {
-            it.reqRatio = reqRatio
-            it.optRatio = optRatio
+            it.reqLiterals = reqRatio
+            it.optLiterals = optRatio
         }
     }
 
+    @Deprecated("use getMatches instead")
     private fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
-        val match = regex.find(source)
-        val literalMatch = hardValue.isNotBlank() && (source == hardValue)
+        val (match, literal) = value.match(source)
         var matchVal = 0
-        var matchRto = 0.0
+        var matchSub = 0.0
 
-        if (literalMatch || match.hasMatch) {
+        if (match != null) {
             if (except.isNotTrue()) {
                 matchVal = 1
-                val matchLen = when {
-                    literalMatch -> hardValue.length
-                    match.hasMatch -> regex.pattern.length
-                    else -> 0
-                }
-                matchRto = matchLen / source.length.toDouble()
+//                val len = when {
+//                    match.range.last > source.length -> (match.range.last - source.length)
+//                    else -> match.range.last
+//                }
+                // todo; determine how(if any) to different regex to literal match and regex to more literal regex match
+                // Ex-1: "matcheverything" -> "matcheverything" vs ".+"
+                // Ex-2: "matcheverything" -> "matcheverything" vs "match.+"
+                // Ex-3: "matcheverything" -> "matchevery.+" vs "match.+
+                // For now, it'll just different literal to non-literal
+                // might need to switch Pair to Triple<match, literal matches, reg matches>
+
+                matchSub = if (literal) 1.0 else 0.0
             }
         } else {
             if (except.isTrue()) {
                 matchVal = 1
-                matchRto = 1.0
+                matchSub = 1.0
             }
         }
 
-        return (matchVal to matchRto)
+        return (matchVal to matchSub)
     }
 
-    /**
-     * Returns true if this [MatchResult] contains any matching groups
-     */
-    private val MatchResult?.hasMatch: Boolean
-        get() = this?.groups?.isNotEmpty().isTrue()
+    private fun matchesPath(source: String?): AttractorMatches {
+        return routingPath?.let { listOf(it) }.orEmpty()
+            .getMatches(source?.removePrefix("/"))
+    }
 
-    private fun matchesPath(source: String?) =
-        getMatchCount(routingPath?.let {
-            it.required = true
-            listOf(it)
-        }, source)
-
-    private fun getQueryMatches(source: String?) =
-        getMatchCount(queryMatchers, source)
+    private fun getQueryMatches(source: String?): AttractorMatches {
+        val inputs = source?.split('&')
+        return queryMatchers.getMatches(inputs)
+    }
 
     private fun getHeaderMatches(source: List<String>?): AttractorMatches {
-        if (headerMatchers?.isNullOrEmpty().isTrue())
-            return AttractorMatches().also {
-                if (!source.isNullOrEmpty()) it.Required = 1
+        val inputs = source?.filterNot {
+            skipHeaders.any { hHeaders -> it.startsWith(hHeaders, true) }
+        }
+        return headerMatchers.getMatches(inputs)
+    }
+
+    private fun getBodyMatches(source: String?): AttractorMatches {
+        return bodyMatchers.getMatches(source)
+    }
+}
+
+fun List<RequestAttractorBit>?.getMatches(inputs: String?) =
+    getMatches(inputs?.let { listOf(it) })
+
+fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatches {
+    when {
+        this.isNullOrEmpty() -> AttractorMatches().also {
+            if (!inputs.isNullOrEmpty()) it.Required = 1 // mark as a failed match
+        }
+
+        any { it.allowAllInputs.isTrue() }.isTrue() ->
+            AttractorMatches(1, 1, 0)
+
+        all { it.hardValue.isBlank() }.isTrue() ->
+            AttractorMatches()
+
+        inputs.isNullOrEmpty() ->
+            AttractorMatches(count { it.required }, -1, -1)
+
+        else -> null
+    }?.apply { return this }
+
+    // null-checks from above "when"
+    requireNotNull(this)
+    requireNotNull(inputs)
+
+    /* Actions
+    1. Bucketing - Sort inputs into AttractorBits
+    -a each input may be filtered into multiple buckets
+    -b failed matches are filtered out
+    2. Ensure required buckets have data
+    3. Collection how many optionals matched
+    - then return Required + optional matches
+     */
+
+    // list of (did it match, was it a literal match)
+    val bucketFilter: (RequestAttractorBit) -> List<Pair<String, Boolean>> = { bit ->
+        inputs.asSequence()
+            .map { bit.value.match(it) }
+            .filter { it.first != null }
+            .map { it.first!! to it.second }
+            .toList()
+    } // 1.b
+
+    // step 1
+    // bucket : matches
+    val buckets = associateBy(
+        { it },
+        { bit -> bucketFilter.invoke(bit) }
+    ) as LinkedHashMap
+
+    val xCounts: (scanReq: Boolean) -> Triple<Int, Int, Int> = { scanReq ->
+        buckets.entries.fold(Triple(0, 0, 0)) { r, v ->
+            val pass = when {
+                !v.key.required && scanReq -> 0
+                v.key.required && !scanReq -> 0
+                v.value.isEmpty() && v.key.except.isTrue() -> 1
+                v.value.isNotEmpty() && !v.key.except.isTrue() -> 1
+                else -> 0
             }
 
-        if (headerMatchers?.any { it.allowAllInputs.isTrue() }.isTrue())
-            return AttractorMatches(1, 1, 0)
-
-        if (headerMatchers?.all { it.hardValue.isBlank() }.isTrue())
-            return AttractorMatches()
-
-        return AttractorMatches().apply {
-            source?.forEach {
-                val isSkipHeaders = skipHeaders.any { hHeaders -> it.startsWith(hHeaders) }
-
-                if (isSkipHeaders)
-                    appendValues(AttractorMatches(1, 1, 0))
-                else
-                    appendValues(getMatchCount(headerMatchers, it))
-            }
-            Required = headerMatchers?.count { it.required } ?: 0
+            val isType = v.key.required && scanReq
+            Triple(
+                r.first + if (isType) 1 else 0, // is as requested type
+                r.second + pass, // did it pass?
+                v.value.count { isType && it.second } // was it a literal match?
+            )
         }
     }
 
-    private fun getBodyMatches(source: String?) =
-        getMatchCount(bodyMatchers, source)
+    val reqCounts = xCounts.invoke(true)
+
+    // step 2, did any fail meeting the required count
+    if (reqCounts.first == 0 || reqCounts.first != reqCounts.second) {
+        return AttractorMatches(reqCounts.first, reqCounts.second)
+    }
+
+    // step 3
+    val optCounts = xCounts.invoke(false)
+
+    return AttractorMatches(reqCounts.first, reqCounts.second, optCounts.second).also {
+        it.reqLiterals = reqCounts.third
+        it.optLiterals = optCounts.third
+    }
+}
+
+fun List<RequestAttractorBit>?.append(
+    newData: List<RequestAttractorBit>,
+    haveSameRequired: Boolean = true
+): List<RequestAttractorBit> {
+    val toData = (this ?: listOf()).toMutableList()
+
+    newData.forEach { nChk ->
+        val sameValue = toData.firstOrNull {
+            it.hardValue.isNotBlank() && it.hardValue == nChk.hardValue
+        }
+
+        if (sameValue == null) {
+            toData.add(nChk)
+        } else if (haveSameRequired && (nChk.required != sameValue.required)) {
+            toData.remove(sameValue)
+            toData.add(nChk)
+        }
+    }
+    return toData
 }

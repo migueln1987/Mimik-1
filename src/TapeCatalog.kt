@@ -10,10 +10,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
+import mimikMockHelpers.RecordedInteractions
 import networkRouting.testingManager.observe
 import networkRouting.testingManager.TestManager
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
+import java.io.File
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Collections
@@ -26,6 +28,9 @@ class TapeCatalog : OkReplayInterceptor() {
     val tapes: MutableList<BlankTape> = mutableListOf()
     val backingList = mutableListOf<String>()
     var processingRequests = Collections.synchronizedList(backingList)
+
+    val tapeFiles: List<File>?
+        get() = config.tapeRoot.get()?.jsonFiles()
 
     companion object {
         var isTestRunning = false
@@ -41,11 +46,11 @@ class TapeCatalog : OkReplayInterceptor() {
      * Loads all the *.json tapes within the okreplay.tapeRoot directory
      */
     fun loadTapeData() {
-        val root = config.tapeRoot.get() ?: return
+        val files = tapeFiles ?: return
         val gson = Gson()
 
         tapes.clear()
-        root.fileListing().asSequence()
+        files.asSequence()
             .map { it to it.readText() }
             .mapNotNull {
                 try {
@@ -77,21 +82,38 @@ class TapeCatalog : OkReplayInterceptor() {
         val headers = request.headers().toStringPairs()
         val body = request.body()?.content()
 
-        val tapeSeq = tapes.asSequence()
-            .filter { tapeLimit?.contains(it.name) ?: true }
+        val allowedTapes = tapes.asSequence()
+            .filter { tapeLimit?.contains(it.name) ?: true }.toList()
 
-        val validChapters = tapeSeq
+        val readyChapters = allowedTapes.asSequence()
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
-            .associateWith { it.attractors }
+            .filter { it.attractors != null }
+            .associateWith { it.attractors!! }
 
-        val foundChapter = RequestAttractors.findBest(
-            validChapters,
+        val validChapters = RequestAttractors.findBest_many(
+            readyChapters,
             path, queries, headers, body
         )
 
-        val foundTape = tapeSeq
-            .firstOrNull { it.chapters.contains(foundChapter.item) }
+        fun useMatchesTest(chap: RecordedInteractions, test: (Int) -> Boolean) =
+            allowedTapes.first { it.chapters.contains(chap) }
+                .run { test.invoke(chap.uses) }
+
+        val items = validChapters.item
+        val bestChapter = when {
+            items == null -> null
+            items.size == 1 -> items.first()
+            else -> items.firstMatchNotNull(
+                { it.alwaysLive.isTrue() },
+                { it.awaitResponse },
+                { useMatchesTest(it) { uses -> uses == MockUseStates.ALWAYS.state } },
+                { useMatchesTest(it) { uses -> uses in (1..Int.MAX_VALUE) } }
+            )
+        }
+
+        val foundTape = allowedTapes
+            .firstOrNull { it.chapters.contains(bestChapter) }
 
         return QueryResponse {
             item = foundTape
@@ -114,7 +136,8 @@ class TapeCatalog : OkReplayInterceptor() {
 
         val validTapes = tapes.asSequence()
             .filter { it.mode.isWritable }
-            .associateBy({ it }, { it.attractors })
+            .filter { it.attractors != null }
+            .associateBy({ it }, { it.attractors!! })
 
         return RequestAttractors.findBest(
             validTapes,
@@ -173,14 +196,13 @@ class TapeCatalog : OkReplayInterceptor() {
 
             findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
                 println("Using response tape ${tape.name}".green())
-                tape.requestToChain(callRequest)?.also ChainAlso@{ chain ->
-                    start(config, tape)
-                    withContext(Dispatchers.IO) {
-                        bounds.observe(tape) {
-                            intercept(chain)
-                        }
-                    }?.also { return it }
-                }
+                val chain = tape.requestToChain(callRequest)
+                start(config, tape)
+                withContext(Dispatchers.IO) {
+                    bounds.observe(tape) {
+                        intercept(chain)
+                    }
+                }?.also { return it }
 
                 return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
                     R.getProperty("processCall_InvalidUrl")
@@ -189,7 +211,7 @@ class TapeCatalog : OkReplayInterceptor() {
             }
 
             if (bounds != null) return callRequest.createResponse(HttpStatusCode.Forbidden) {
-                "Test bounds [${bounds.handle}] has no matching recordings."
+                "Test bounds [${bounds.handle}] has no matching recordings for $callUrl."
                     .also { println(it.red()) }
             }
 
@@ -197,15 +219,11 @@ class TapeCatalog : OkReplayInterceptor() {
             return when (hostTape.status) {
                 HttpStatusCode.Found -> {
                     hostTape.item?.let {
-                        println("Using tape ${it.name}".cyan())
+                        println("Response not found; Using tape ${it.name}".cyan())
 
-                        it.requestToChain(callRequest)?.let { chain ->
-                            start(config, it)
-                            withContext(Dispatchers.IO) { intercept(chain) }
-                        } ?: callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
-                            R.getProperty("processCall_InvalidUrl")
-                                .also { println(it.red()) }
-                        }
+                        val chain = it.requestToChain(callRequest)
+                        start(config, it)
+                        withContext(Dispatchers.IO) { intercept(chain) }
                     } ?: let {
                         callRequest.createResponse(HttpStatusCode.Conflict) {
                             R.getProperty("processCall_ConflictingTapes")

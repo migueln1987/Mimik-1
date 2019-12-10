@@ -49,3 +49,39 @@ fun <T, R : Comparable<R>> Sequence<T>.filterByMax(selector: (T) -> R): Sequence
         .filter { maxValue != null && it.second >= maxValue!! }
         .map { it.first }
 }
+
+val <T> List<T>?.nonNull: List<T>
+    get() = this ?: listOf()
+
+/**
+ * Returns the first element matching the given [predicate], or `null` if element was not found.
+ */
+inline fun <T, R : Any> Iterable<T>.firstNotNullResult(predicate: (T) -> R?): R? {
+    for (element in this) {
+        val result = predicate(element)
+        if (result != null) return result
+    }
+    return null
+}
+
+/**
+ * Returns the first item in [this] which matches a [predicates]
+ */
+fun <T> Iterable<T>.firstMatchNotNull(vararg predicates: (T) -> Boolean): T? {
+    for (p in predicates) {
+        val element = firstOrNull { p.invoke(it) }
+        if (element != null) return element
+    }
+    return null
+}
+
+/**
+ * Appends each list in [lists] that isn't null
+ */
+fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> {
+    return toMutableList().apply {
+        lists.forEach {
+            if (it != null) addAll(it)
+        }
+    }
+}

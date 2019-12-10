@@ -45,3 +45,33 @@ fun isThrow(action: () -> Unit = {}): Boolean {
         true
     }
 }
+
+/**
+ * Returns true if this [MatchResult] contains any matching groups
+ */
+val MatchResult?.hasMatch: Boolean
+    get() = this?.groups?.isNotEmpty().isTrue()
+
+/**
+ * Returns the search of [input] in [this] string.
+ * Regex matches will have a range equal to the query length.
+ * Second value of pair is "was the match a literal match".
+ *
+ * Searches (in order):
+ * - Literal (which may include regex items)
+ * - Regex
+ *
+ * If [this] is empty or blank, [null] is returned
+ */
+fun String?.match(input: String): Pair<String?, Boolean> {
+    if (this.isNullOrBlank()) return null to true
+    val asReg = this.ensurePrefix(".*(").ensureSuffix(").*")
+        .toRegex().find(input)?.groups?.get(1)
+    val asLiteral = isNotBlank() && (input == this)
+
+    return when {
+        asLiteral -> input to true
+        asReg != null -> asReg.value to false
+        else -> null to true
+    }
+}

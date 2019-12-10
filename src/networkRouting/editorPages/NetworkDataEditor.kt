@@ -99,7 +99,7 @@ object NetworkDataEditor : EditorModule() {
                                         unsafe {
                                             +"""
                                             requestUrl.addEventListener('paste', (event) => {
-                                                var paste = event.clipboardData.getData('text');
+                                                var paste = getPasteResult(event);
                                                 
                                                 var query = extractQueryFromURL(paste);
                                                 if (query.length > 0) {
@@ -201,9 +201,13 @@ object NetworkDataEditor : EditorModule() {
                                 unsafe {
                                     +"""
                                     netHeaders.addEventListener('paste', (event) => {
-                                        var paste = event.clipboardData.getData('text');
-                                        netHeaders.value = paste.replace(/ *: */g, ' : ')
-                                          .replace(/^\s*$(?:\r\n?|\n)?/gm, '');
+                                        var paste = getPasteResult(event);
+                                        var selEnd = netHeaders.selectionEnd || paste.length;
+                                        
+                                        netHeaders.value = paste.replace(/ *(?<!\d): */g, ' : ')
+                                            .replace(/^\s*$(?:\r\n?|\n)?/gm, '');
+                                        netHeaders.selectionStart = selEnd;
+                                        netHeaders.selectionEnd = selEnd;
                                         event.preventDefault();
                                     });
                                 """.trimIndent()
@@ -235,10 +239,14 @@ object NetworkDataEditor : EditorModule() {
                                             unsafe {
                                                 +"""
                                                     networkBody.addEventListener('paste', (event) => {
-                                                        var paste = event.clipboardData.getData('text');
+                                                        var paste = getPasteResult(event);
+                                                        var selEnd = networkBody.selectionEnd || paste.length;
+                                                        
                                                         var formatted = prettyJson(paste);
                                                         if (formatted != paste) {
                                                             networkBody.value = formatted;
+                                                            selEnd.selectionStart = selEnd;
+                                                            selEnd.selectionEnd = selEnd;
                                                             networkBody.style.height = (networkBody.scrollHeight - 4) + 'px';
                                                             event.preventDefault();
                                                         }

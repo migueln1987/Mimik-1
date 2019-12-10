@@ -82,18 +82,21 @@ object ChapterEditor : EditorModule() {
                                     placeholder = pData.hardChapName(randomHost.valueAsUUID)
                                     value = placeholder
                                     size = "${randomHost.valueAsUUID.length + 10}"
-                                    onKeyUp = nameAction + "value = value.replace(' ','_').replace(',','/');"
+                                    onKeyUp = nameAction + "value = value.replace(/\\s/g,'_').replace(',','/');"
                                 }
 
                                 script {
                                     unsafe {
                                         +"""
                                             nameChap.addEventListener('paste', (event) => {
-                                                var paste = event.clipboardData.getData('text');
+                                                var paste = getPasteResult(event);
+                                                var selEnd = nameChap.selectionEnd || paste.length;
                                                 
-                                                var newVal = value.replace(' ','_').replace(',','/');
+                                                var newVal = paste.replace(/\s/g,'_').replace(',','/');
                                                 if (newVal != paste) {
-                                                    nameChap = newVal;
+                                                    nameChap.value = newVal;
+                                                    nameChap.selectionStart = selEnd;
+                                                    nameChap.selectionEnd = selEnd;
                                                     event.preventDefault();
                                                 }
                                             });
