@@ -504,8 +504,8 @@ suspend fun ApplicationCall.tryGetBody(default: String = ""): String? {
         HttpMethod.requiresRequestBody(request.httpMethod.value) -> {
             try {
                 receiveText()
-            } catch (e: Exception) {
-                println("ApplicationCall.tryGetBody \n$e")
+            } catch (ex: Exception) {
+                println("ApplicationCall.tryGetBody \n$ex")
                 default
             }
         }

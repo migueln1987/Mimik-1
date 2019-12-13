@@ -24,6 +24,7 @@ import okreplay.*
 import java.io.File
 import java.io.Writer
 import java.nio.charset.Charset
+import java.util.ArrayDeque
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -256,22 +257,30 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     @Transient
-    var useWatcher: ((RecordedInteractions, Int?) -> Int)? = null
+    var useWatchers: ArrayDeque<((RecordedInteractions, Int?) -> Int)> = ArrayDeque()
         @Synchronized
         get() {
-            return field ?: { chap, value ->
-                if (value != null)
-                    chap.mockUses = value
-                chap.mockUses
+            var localField = field
+            if (localField.isNullOrEmpty()) {
+                localField = ArrayDeque()
+                localField.push(
+                    { chap, value ->
+                        if (value != null)
+                            chap.mockUses = value
+                        chap.mockUses
+                    }
+                )
             }
+            field = localField
+            return field
         }
 
     var RecordedInteractions.uses
         @Synchronized
-        get() = useWatcher!!.invoke(this, null)
+        get() = useWatchers.peek().invoke(this, null)
         @Synchronized
         set(value) {
-            useWatcher!!.invoke(this, value)
+            useWatchers.peek().invoke(this, value)
         }
 
     /**

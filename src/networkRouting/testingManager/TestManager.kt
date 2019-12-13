@@ -1,6 +1,9 @@
 package networkRouting.testingManager
 
+import com.google.gson.Gson
+import com.google.gson.internal.LinkedTreeMap
 import helpers.*
+import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
@@ -8,11 +11,15 @@ import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.routing.post
 import io.ktor.routing.route
+import io.ktor.util.pipeline.PipelineContext
 import kolor.cyan
 import kolor.green
 import kolor.magenta
 import kolor.yellow
 import networkRouting.RoutingContract
+import networkRouting.testingManager.TestBounds.Companion.DataTypes
+import networkRouting.testingManager.TestBounds.Companion.DataTypes.valueOf
+import java.lang.Exception
 import java.time.Duration
 import java.util.Date
 
@@ -21,6 +28,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
     private enum class RoutePaths(val path: String) {
         START("start"),
         APPEND("append"),
+        Modify("modify"),
         DISABLE("disable"),
         POKE("poke"),
         STOP("stop");
@@ -34,6 +42,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         route.route(path) {
             start
             append
+            modify
             disable
             stop
             poke
@@ -81,7 +90,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         val containsInit = heads.any { it.equals("init", true) }
 
         return heads.flatMap { it.split(',') }.asSequence()
-            .filter { it.isBlank() }
+            .filterNot { it.isBlank() }
             .map { it.trim() }
             .filter { tapeCatNames.contains(it) }
             .toList()
@@ -115,6 +124,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 var canContinue = false
                 when {
+                    tapeCatalog.tapes.isEmpty() ->
+                        call.respondText(status = HttpStatusCode.PreconditionFailed) { "No tapes to append this test to" }
                     noConfigs ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No config headers" }
                     allowedTapes.isEmpty() ->
@@ -126,25 +137,36 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 var testBounds = boundManager.firstOrNull { it.handle == handle }
                 var useExisting = false
 
-                if (testBounds == null) {
-                    handle = ensureUniqueName(handle)
-                    printlnF(
-                        "%s -> %s",
-                        "No test named (%s).".magenta().format(
-                            when (heads["handle"]) {
-                                null -> "{null}"
-                                "" -> "{empty string}"
-                                else -> heads["handle"]
-                            }
-                        ),
-                        "Creating new test named: $handle".green()
-                    )
-
-                    testBounds = TestBounds(handle, allowedTapes.toMutableList())
-                    boundManager.add(testBounds)
+                val replacers = getReplacers()
+                if (replacers.isNullOrEmpty()) {
+                    call.respondText(status = HttpStatusCode.NoContent) { "No modifications entered" }
+                    return@post
                 } else {
-                    useExisting = true
-                    testBounds.boundSource == null
+                    if (testBounds == null) {
+                        handle = ensureUniqueName(handle)
+                        printlnF(
+                            "%s -> %s",
+                            "No test named (%s).".magenta().format(
+                                when (heads["handle"]) {
+                                    null -> "{null}"
+                                    "" -> "{empty string}"
+                                    else -> heads["handle"]
+                                }
+                            ),
+                            "Creating new test named: $handle".green()
+                        )
+
+                        testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
+                            if (replacers.isNotEmpty())
+                                it.replacerData.putAll(replacers)
+                        }
+                        boundManager.add(testBounds)
+                    } else {
+                        useExisting = true
+                        testBounds.boundSource == null
+                        if (replacers.isNotEmpty())
+                            testBounds.replacerData.putAll(replacers)
+                    }
                 }
 
                 val timeVal = time?.replace("\\D".toRegex(), "")?.toLongOrNull() ?: 5
@@ -183,6 +205,10 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 call.response.headers.apply {
                     append("tape", allowedTapes)
                     append("handle", handle.toString())
+                    if (replacers.isNotEmpty()) {
+                        val items = replacers.values.sumBy { it.values.sumBy { it.size } }
+                        append("mappers", items.toString())
+                    }
                 }
 
                 call.respondText(status = status) { "" }
@@ -230,6 +256,109 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 call.response.headers.append("tape", appendTapes)
                 call.respondText(status = HttpStatusCode.OK) { "" }
             }
+        }
+
+    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers() =
+        try {
+            getReplacers_v1()
+        } catch (_: Exception) {
+            try {
+                getReplacers_v2()
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    /**
+    {
+    "aa": {
+    "Body": [
+    {
+    "from": "bb",
+    "to": "cc"
+    },
+    {
+    "from": "dd",
+    "to": "dd"
+    }
+    ]
+    }
+    }
+     */
+    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v1() = Gson()
+        .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
+        .mapKeys { it.key as String }
+        .mapValues { mv ->
+            (mv.value as LinkedTreeMap<*, *>)
+                .mapKeys { DataTypes.valueOf(it.key.toString().uppercaseFirstLetter()) }
+                .mapValues { mvv ->
+                    (mvv.value as List<*>)
+                        .map { (it as LinkedTreeMap<*, *>).map { it.value.toString() } }
+                        .mapNotNull { if (it.size >= 2) it[0] to it[1] else null }
+                        .toMutableList()
+                }.toMap(mutableMapOf())
+        }.toMutableMap()
+
+    /**
+    {
+    "aa": [
+    "body{[abc]->none}",
+    "body{[abc]->none}"
+    ],
+    "bb": [
+    "body{[ab]->none}"
+    ]
+    }
+     */
+    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v2() = Gson()
+        .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
+        .mapKeys { it.key.toString() }
+        .mapValues { mv ->
+            (mv.value as List<*>)
+                .map {
+                    val contents = it.toString().split("{")
+                    contents.getOrNull(0) to
+                            contents.getOrNull(1)?.dropLast(1)?.split("->")
+                                ?.run { if (size >= 2) get(0) to get(1) else null }
+                }
+                .filterNot { it.first == null || it.second == null }
+                .map { it.first!! to it.second!! }
+                .groupBy { it.first }
+                .mapKeys { DataTypes.valueOf(it.key.uppercaseFirstLetter()) }
+                .mapValues { it.value.map { it.second }.toMutableList() }
+                .toMutableMap()
+        }
+        .toMutableMap()
+
+    private val Route.modify: Route
+        get() = route(RoutePaths.Modify.path) {
+            post {
+                val heads = call.request.headers
+                val handle = heads["handle"]
+                val testBounds = boundManager.firstOrNull { it.handle == handle }
+
+                var canContinue = false
+                when {
+                    handle == null ->
+                        call.respondText(status = HttpStatusCode.BadRequest) { "Invalid handle name" }
+                    testBounds == null ->
+                        call.respondText(status = HttpStatusCode.BadRequest) { "No test bounds with the name($handle)" }
+                    else -> canContinue = true
+                }
+                if (!canContinue) return@post
+
+                val replacers = getReplacers()
+                if (replacers.isNullOrEmpty()) {
+                    call.respondText(status = HttpStatusCode.NoContent) { "No modifications entered" }
+                } else {
+                    requireNotNull(testBounds)
+                    testBounds.replacerData.clear()
+                    testBounds.replacerData.putAll(replacers)
+                    val items = replacers.values.sumBy { it.values.sumBy { it.size } }
+                    call.respondText(status = HttpStatusCode.OK) { "Appended $items to test bounds ${testBounds.handle}" }
+                }
+            }
+            // todo; patch
         }
 
     private val Route.disable: Route
@@ -338,6 +467,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
+    // todo; for testing
     private val Route.poke: Route
         get() = route(RoutePaths.POKE.path) {
             post {

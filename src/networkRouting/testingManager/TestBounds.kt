@@ -1,15 +1,24 @@
 package networkRouting.testingManager
 
-import helpers.plus
-import helpers.printlnF
+import helpers.*
 import java.time.Duration
 import java.util.*
 import kolor.red
 import kolor.yellow
+import mimikMockHelpers.RecordedInteractions
+import networkRouting.testingManager.TestBounds.Companion.DataTypes
+import okhttp3.ResponseBody
 import kotlin.concurrent.schedule
 import tapeItems.BlankTape
 
 data class TestBounds(var handle: String, val tapes: MutableList<String> = mutableListOf()) {
+
+    companion object {
+        enum class DataTypes {
+            Head, Body
+        }
+    }
+
     private var expireTimer: TimerTask? = null
         @Synchronized get
         @Synchronized set
@@ -114,6 +123,11 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
      */
     val stateUses =
         mutableMapOf<String, MutableList<Pair<String, Int>>>()
+
+    /**
+     * (chapter name), Map<DataTypes, List<data>>
+     */
+    val replacerData: MutableMap<String, MutableMap<DataTypes, MutableList<Pair<String, String>>>> = mutableMapOf()
 }
 
 enum class BoundStates {
@@ -128,7 +142,7 @@ inline fun <reified T : Any?> TestBounds?.observe(tape: BlankTape, watch: () -> 
     if (!stateUses.containsKey(tape.name))
         stateUses[tape.name] = mutableListOf()
 
-    tape.useWatcher = { chap, value ->
+    val watcherAct: (RecordedInteractions, Int?) -> Int = { chap, value ->
         var data = stateUses[tape.name]
             ?.firstOrNull { it.first == chap.name }
 
@@ -152,7 +166,42 @@ inline fun <reified T : Any?> TestBounds?.observe(tape: BlankTape, watch: () -> 
         }
     }
 
+    tape.useWatchers.push(watcherAct)
+
     val returns = watch.invoke()
-    tape.useWatcher = null
+    tape.useWatchers.remove(watcherAct)
     return returns
+}
+
+fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractions?): okhttp3.Response {
+    if (bounds == null || chap == null) return this
+    val byChap = bounds.replacerData[chap.name] ?: return this
+
+    var bodyContent = body()?.content().orEmpty()
+    var newBody = false
+    byChap[DataTypes.Body].orEmpty()
+        .forEach {
+            val matchStr = it.first.match(bodyContent).first
+            if (matchStr != null) {
+                newBody = true
+                bodyContent = if (matchStr.isBlank())
+                    it.second
+                else
+                    bodyContent.replace(matchStr, it.second)
+            }
+        }
+
+    // todo; replace response headers
+
+    return if (newBody)
+        newBuilder().apply {
+            body(
+                ResponseBody.create(
+                    body()?.contentType(),
+                    bodyContent
+                )
+            )
+        }.build()
+    else
+        this
 }

@@ -27,7 +27,7 @@ class TapeCatalogTests {
     @Test
     fun findResponseByQuery_Empty() {
         val request = mockk<okhttp3.Request>()
-        val response = testObject.findResponseByQuery(request)
+        val response = testObject.findResponseByQuery(request).first
 
         Assert.assertTrue(testObject.tapes.isEmpty())
         Assert.assertEquals(response.status, HttpStatusCode.NoContent)
@@ -50,7 +50,7 @@ class TapeCatalogTests {
 
         val request = okhttp3.Request.Builder()
             .also { it.url("http://valid.url/path") }.build()
-        val response = testObject.findResponseByQuery(request)
+        val response = testObject.findResponseByQuery(request).first
 
         Assert.assertNotNull(response.item)
         Assert.assertEquals(response.status, HttpStatusCode.Found)
@@ -73,7 +73,7 @@ class TapeCatalogTests {
 
         val request = okhttp3.Request.Builder()
             .also { it.url("http://valid.url/path") }.build()
-        val response = testObject.findResponseByQuery(request)
+        val response = testObject.findResponseByQuery(request).first
 
         Assert.assertNull(response.item)
         Assert.assertEquals(response.status, HttpStatusCode.NotFound)
