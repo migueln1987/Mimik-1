@@ -13,6 +13,7 @@ import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
 import networkRouting.testingManager.observe
 import networkRouting.testingManager.TestManager
+import networkRouting.testingManager.replaceByTest
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
 import java.io.File
@@ -74,8 +75,11 @@ class TapeCatalog : OkReplayInterceptor() {
      * - HttpStatusCode.NotFound (404) = item
      * - HttpStatusCode.Conflict (409) = null item
      */
-    fun findResponseByQuery(request: okhttp3.Request, tapeLimit: List<String>? = null): QueryResponse<BlankTape> {
-        if (tapes.isEmpty()) return QueryResponse()
+    fun findResponseByQuery(
+        request: okhttp3.Request,
+        tapeLimit: List<String>? = null
+    ): Pair<QueryResponse<BlankTape>, RecordedInteractions?> {
+        if (tapes.isEmpty()) return Pair(QueryResponse(), null)
 
         val path = request.url().encodedPath().removePrefix("/")
         val queries = request.url().query()
@@ -115,10 +119,10 @@ class TapeCatalog : OkReplayInterceptor() {
         val foundTape = allowedTapes
             .firstOrNull { it.chapters.contains(bestChapter) }
 
-        return QueryResponse {
+        return Pair(QueryResponse {
             item = foundTape
             status = foundTape?.let { HttpStatusCode.Found } ?: HttpStatusCode.NotFound
-        }
+        }, bestChapter)
     }
 
     /**
@@ -194,13 +198,14 @@ class TapeCatalog : OkReplayInterceptor() {
                 }
             }
 
-            findResponseByQuery(callRequest, bounds?.tapes).item?.also { tape ->
+            val (resp, chap) = findResponseByQuery(callRequest, bounds?.tapes)
+            resp.item?.also { tape ->
                 println("Using response tape ${tape.name}".green())
                 val chain = tape.requestToChain(callRequest)
                 start(config, tape)
                 withContext(Dispatchers.IO) {
                     bounds.observe(tape) {
-                        intercept(chain)
+                        intercept(chain).replaceByTest(bounds, chap)
                     }
                 }?.also { return it }
 
@@ -233,14 +238,14 @@ class TapeCatalog : OkReplayInterceptor() {
                 }
 
                 else -> {
-                    BlankTape.Builder().build().also { tape ->
-                        println("Creating new tape/mock of ${tape.name}".green())
-                        tape.createNewInteraction { mock ->
+                    BlankTape.Builder().build().apply {
+                        println("Creating new tape/mock of $name".green())
+                        createNewInteraction { mock ->
                             mock.requestData = callRequest.toTapeData
                             mock.attractors = RequestAttractors(mock.requestData)
                         }
-                        tape.saveFile()
-                        tapes.add(tape)
+                        saveFile()
+                        tapes.add(this)
                     }
                     callRequest.createResponse(hostTape.status) { hostTape.responseMsg.orEmpty() }
                 }
