@@ -3,6 +3,7 @@ package helpers
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
+import helpers.attractors.RequestAttractors
 import io.ktor.application.ApplicationCall
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -81,27 +82,6 @@ val StringValues.toHeaders: Headers
         }.build()
     }
 
-val StringValues.toParameters: Parameters
-    get() = Parameters.build { appendAll(this@toParameters) }
-
-/**
- * Limits the input [StringValues] to only those within the [items] list.
- */
-fun StringValues.limit(items: List<String>, allowDuplicates: Boolean = false): Parameters {
-    val limitParams: MutableList<String> = mutableListOf()
-
-    return filter { s, _ ->
-        s.toLowerCase().let { pKey ->
-            if (items.contains(pKey)) {
-                if (limitParams.contains(pKey) && !allowDuplicates)
-                    return@filter false
-                limitParams.add(pKey)
-                return@filter true
-            } else false
-        }
-    }.toParameters
-}
-
 val Map<String, String>.toHeaders: Headers
     get() {
         return Headers.Builder().also { build ->
@@ -109,6 +89,13 @@ val Map<String, String>.toHeaders: Headers
                 build.add(entry.key, entry.value)
             }
         }.build()
+    }
+
+val Iterable<Pair<String, String>>.toHeaders: Headers
+    get() {
+        return Headers.Builder()
+            .also { build -> forEach { build.add(it.first, it.second) } }
+            .build()
     }
 
 /**
@@ -120,13 +107,13 @@ val Headers.valueOrNull: Headers?
 /**
  * Appends the data from [headers] to this [ResponseHeaders]
  */
-fun ResponseHeaders.appendHeaders(headers: okhttp3.Headers) =
-    appendHeaders(headers.toMultimap())
+fun ResponseHeaders.append(headers: okhttp3.Headers) =
+    append(headers.toMultimap())
 
 /**
  * Appends the data from [headers] to this [ResponseHeaders]
  */
-fun ResponseHeaders.appendHeaders(headers: Map<String, List<String>>) {
+fun ResponseHeaders.append(headers: Map<String, List<String>>) {
     headers.forEach { (t, u) ->
         u.forEach { isThrow { append(t, it) } }
     }
@@ -150,17 +137,39 @@ val Headers.toPairs: List<Pair<String, String>>
     get() = toMultimap().asSequence()
         .filter { it.key != null }
         .flatMap { kv ->
-            kv.value.asSequence().map {
-                kv.key!! to it.orEmpty()
-            }
-        }.toList()
+            kv.value.asSequence().map { kv.key!! to it.orEmpty() }
+        }
+        .toList()
 
 /**
  * Returns this [Headers] as a list of "Key: Value", or user defined [format]
  */
-fun Headers.toStringPairs(
+inline fun Headers.toStringPairs(
     format: (Pair<String, String>) -> String = { "${it.first}: ${it.second}" }
-) = toPairs.map { format.invoke(it) }
+) = toPairs.map(format)
+
+fun okhttp3.Headers.asIterable() = toPairs.asIterable()
+
+val StringValues.toParameters: Parameters
+    get() = Parameters.build { appendAll(this@toParameters) }
+
+/**
+ * Limits the input [StringValues] to only those within the [items] list.
+ */
+fun StringValues.limit(items: List<String>, allowDuplicates: Boolean = false): Parameters {
+    val limitParams: MutableList<String> = mutableListOf()
+
+    return filter { s, _ ->
+        s.toLowerCase().let { pKey ->
+            if (items.contains(pKey)) {
+                if (limitParams.contains(pKey) && !allowDuplicates)
+                    return@filter false
+                limitParams.add(pKey)
+                return@filter true
+            } else false
+        }
+    }.toParameters
+}
 
 fun HttpUrl.containsPath(vararg path: String) =
     pathSegments().containsAll(path.toList())
@@ -168,7 +177,7 @@ fun HttpUrl.containsPath(vararg path: String) =
 /**
  * Returns a brief okHttp response to respond with a defined response [status] and [message]
  */
-fun okhttp3.Request.createResponse(
+inline fun okhttp3.Request.createResponse(
     status: HttpStatusCode,
     message: () -> String = { "" }
 ): okhttp3.Response {
@@ -371,7 +380,7 @@ fun miniResponse(
     }.build()
 }
 
-fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Response? {
+inline fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Response? {
     val requestBuilder = Request.Builder()
         .also { builder.invoke(it) }
 
@@ -391,10 +400,15 @@ fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Res
  */
 val okhttp3.Request.contentHash: Int
     get() {
+        val filterHeaders = headers().asIterable()
+            .filterNot { h -> RequestAttractors.skipHeaders.any { h.first == it } }
+            .map { it.first + ": " + it.second }
+            .joinToString(separator = "\n")
+
         return "%s%s%s%s".format(
             method(),
             url().toString(),
-            headers().toString(),
+            filterHeaders,
             body().content()
         ).hashCode()
     }

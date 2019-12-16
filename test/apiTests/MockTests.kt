@@ -1,6 +1,5 @@
 package apiTests
 
-import VCRConfig
 import com.beust.klaxon.internal.firstNotNullResult
 import com.fiserv.mimik.Ports
 import helpers.isValidJSON
@@ -11,41 +10,10 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
-import io.mockk.unmockkObject
 import mimikMockHelpers.MockUseStates
 import org.junit.*
-import java.lang.Thread.sleep
 
-class MockTests {
-    companion object {
-        @BeforeClass
-        @JvmStatic
-        fun setup() {
-            setupVCRConfig("test/apiTests")
-        }
-
-        @AfterClass
-        @JvmStatic
-        fun tearDown() {
-            unmockkObject(VCRConfig)
-        }
-    }
-
-    @Before
-    @After
-    fun clearTapes() {
-        TapeCatalog.Instance.tapes.forEach {
-            if (it.savingFile.get())
-                println("Waiting to delete file: ${it.name}")
-            while (it.savingFile.get()) {
-                sleep(2)
-            }
-            println("Deleting tape: ${it.name}")
-            it.file?.delete()
-        }
-        TapeCatalog.Instance.tapes.clear()
-    }
-
+class MockTests : ApiTests {
     @Test
     fun testCreateTape_NoParams() {
         TestApp {

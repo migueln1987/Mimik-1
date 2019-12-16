@@ -21,6 +21,14 @@ class RecordedInteractions {
         origionalMockUses = mockUses
     }
 
+    @Transient
+    var cachedCalls: MutableSet<Int> = mutableSetOf()
+        get() {
+            @Suppress("SENSELESS_COMPARISON")
+            if (field == null) field = mutableSetOf()
+            return field
+        }
+
     var recordedDate: Date? = Date()
         get() = field ?: Date()
     var modifiedDate: Date? = null

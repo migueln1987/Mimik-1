@@ -1,7 +1,6 @@
 package networkRouting.editorPages
 
 import R
-import VCRConfig
 import com.google.gson.Gson
 import helpers.*
 import helpers.attractors.RequestAttractors
@@ -152,13 +151,13 @@ object TapeEditor : EditorModule() {
      */
     fun HTML.getTapePage(params: Parameters) {
         val pData = params.toActiveEdit
-
         val randomVal = randomHost.value
         val randomValStr = randomHost.valueAsChars()
-        val currentPath = VCRConfig.getConfig.tapeRoot.get().path
+        val root = tapeCatalog.config.tapeRoot.get()
+        val currentPath = root.path
 
         val folders = mutableListOf(subDirectoryDefault)
-            .apply { addAll(VCRConfig.getConfig.tapeRoot.get().getFolders()) }
+            .apply { addAll(root.getFolders()) }
         head {
             script {
                 unsafe {

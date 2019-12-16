@@ -24,11 +24,10 @@ import java.util.Date
 import kotlin.io.println
 
 class TapeCatalog : OkReplayInterceptor() {
-    private val config = VCRConfig.getConfig
-
+    val config by lazy { VCRConfig.getConfig }
     val tapes: MutableList<BlankTape> = mutableListOf()
-    val backingList = mutableListOf<String>()
-    var processingRequests = Collections.synchronizedList(backingList)
+    val backingList = mutableMapOf<String, LinkedHashSet<Int>>()
+    var processingRequests = Collections.synchronizedMap(backingList)
 
     val tapeFiles: List<File>?
         get() = config.tapeRoot.get()?.jsonFiles()
@@ -37,10 +36,6 @@ class TapeCatalog : OkReplayInterceptor() {
         var isTestRunning = false
 
         val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
-    }
-
-    init {
-        BlankTape.tapeRoot = config.tapeRoot
     }
 
     /**
@@ -81,43 +76,59 @@ class TapeCatalog : OkReplayInterceptor() {
     ): Pair<QueryResponse<BlankTape>, RecordedInteractions?> {
         if (tapes.isEmpty()) return Pair(QueryResponse(), null)
 
-        val path = request.url().encodedPath().removePrefix("/")
-        val queries = request.url().query()
-        val headers = request.headers().toStringPairs()
-        val body = request.body()?.content()
-
         val allowedTapes = tapes.asSequence()
             .filter { tapeLimit?.contains(it.name) ?: true }.toList()
 
-        val readyChapters = allowedTapes.asSequence()
+        fun allowedChaps() = allowedTapes.asSequence()
             .flatMap { it.chapters.asSequence() }
             .filter { MockUseStates.isEnabled(it.mockUses) }
-            .filter { it.attractors != null }
-            .associateWith { it.attractors!! }
 
-        val validChapters = RequestAttractors.findBest_many(
-            readyChapters,
-            path, queries, headers, body
-        )
+        val hashContent = request.contentHash
 
-        fun useMatchesTest(chap: RecordedInteractions, test: (Int) -> Boolean) =
-            allowedTapes.first { it.chapters.contains(chap) }
-                .run { test.invoke(chap.uses) }
+        val cachedChapter = allowedChaps()
+            .firstOrNull { it.cachedCalls.contains(hashContent) }
 
-        val items = validChapters.item
         val bestChapter = when {
-            items == null -> null
-            items.size == 1 -> items.first()
-            else -> items.firstMatchNotNull(
-                { it.alwaysLive.isTrue() },
-                { it.awaitResponse },
-                { useMatchesTest(it) { uses -> uses == MockUseStates.ALWAYS.state } },
-                { useMatchesTest(it) { uses -> uses in (1..Int.MAX_VALUE) } }
-            )
+            cachedChapter != null -> cachedChapter
+
+            else -> {
+                val readyChapters = allowedChaps()
+                    .filter { it.attractors != null }
+                    .associateWith { it.attractors!! }
+
+                val path = request.url().encodedPath().removePrefix("/")
+                val queries = request.url().query()
+                val headers = request.headers().toStringPairs()
+                val body = request.body()?.content()
+
+                val validChapters = RequestAttractors.findBest_many(
+                    readyChapters,
+                    path, queries, headers, body
+                )
+
+                fun useMatchesTest(chap: RecordedInteractions, test: (Int) -> Boolean) =
+                    allowedTapes.first { it.chapters.contains(chap) }
+                        .run { test.invoke(chap.uses) }
+
+                val items = validChapters.item
+                when {
+                    items == null -> null
+                    items.size == 1 -> items.first()
+                    else -> items.firstMatchNotNull(
+                        { it.alwaysLive.isTrue() },
+                        { it.awaitResponse },
+                        { useMatchesTest(it) { uses -> uses == MockUseStates.ALWAYS.state } },
+                        { useMatchesTest(it) { uses -> uses in (1..Int.MAX_VALUE) } }
+                    )
+                }
+            }
         }
 
         val foundTape = allowedTapes
             .firstOrNull { it.chapters.contains(bestChapter) }
+
+        if (cachedChapter == null && bestChapter != null)
+            bestChapter.cachedCalls.add(hashContent)
 
         return Pair(QueryResponse {
             item = foundTape
@@ -153,15 +164,33 @@ class TapeCatalog : OkReplayInterceptor() {
         val callRequest: okhttp3.Request = call.toOkRequest()
         val callUrl = callRequest.url().toString()
 
-        println("Requests: ${processingRequests.size}".cyan())
-        while (processingRequests.contains(callUrl)) {
-            println("... waiting for request $callUrl to finish".blue())
-            delay(20)
-        }
+        println("Active Requests: ${processingRequests.size}".cyan())
+        val thisHash = callRequest.hashCode()
+        processingRequests[callUrl] = processingRequests.getOrDefault(callUrl, linkedSetOf())
+            .apply { add(thisHash) }
+
+        var reqLine: Set<Int>
+        var line = 0
+        var fLine = 0
+        do {
+            reqLine = processingRequests.getOrDefault(callUrl, linkedSetOf())
+
+            fLine = reqLine.indexOf(thisHash)
+            if (fLine == line) delay(10)
+            else {
+                line = fLine
+                when (line) {
+                    0 -> Unit // we're next in line!
+                    -1 -> Unit // error
+                    else -> {
+                        println("... waiting (place #${line + 1} of ${reqLine.size}) for request $callUrl to finish".blue())
+                        delay(10)
+                    }
+                }
+            }
+        } while (line > 0)
 
         println("Adding url lock for $callUrl".blue())
-        processingRequests.add(callUrl)
-        println("Active Requests: ${processingRequests.size}".cyan())
 
         val bounds = TestManager.getManagerByID(call.callId)
         val startTime = System.currentTimeMillis()
@@ -257,7 +286,11 @@ class TapeCatalog : OkReplayInterceptor() {
                 System.currentTimeMillis() - startTime,
                 callRequest.url()
             )
-            processingRequests.remove(callUrl)
+
+            processingRequests[callUrl] = processingRequests.getOrDefault(callUrl, linkedSetOf())
+                .apply { remove(thisHash) }
+            if (processingRequests.getOrDefault(callUrl, linkedSetOf()).isEmpty())
+                processingRequests.remove(callUrl)
         }
     }
 }

@@ -59,6 +59,10 @@ sourceSets["main"].resources.srcDirs("resources")
 sourceSets["test"].resources.srcDirs("testresources")
 
 tasks {
+    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        kotlinOptions.jvmTarget = "1.8"
+    }
+
     register<JavaExec>("ktlint") {
         group = "verification"
         description = "Check Kotlin code style."

@@ -45,7 +45,7 @@ class RequestAttractors {
     }
 
     companion object {
-        private val skipHeaders =
+        val skipHeaders =
             listOf(
                 HttpHeaders.ContentLength, HttpHeaders.Host, HttpHeaders.Accept, HttpHeaders.TE,
                 HttpHeaders.UserAgent, HttpHeaders.Connection, HttpHeaders.CacheControl,
@@ -143,10 +143,10 @@ class RequestAttractors {
             return source.mapValues { it.value to AttractorMatches() }
                 .asSequence()
                 .filter { it.parseMatch { _ -> custom.invoke(it.key) } }
-                .filter { it.parseMatch { it?.matchesPath(path) } }
-                .filter { it.parseMatch { it?.getQueryMatches(queries) } }
-                .filter { it.parseMatch { it?.getHeaderMatches(headers) } }
-                .filter { it.parseMatch { it?.getBodyMatches(body) } }
+                .filter { it.parseMatch { it.matchesPath(path) } }
+                .filter { it.parseMatch { it.getQueryMatches(queries) } }
+                .filter { it.parseMatch { it.getHeaderMatches(headers) } }
+                .filter { it.parseMatch { it.getBodyMatches(body) } }
                 .filter { m ->
                     when (guessType) {
                         GuessType.Any -> true
@@ -161,8 +161,8 @@ class RequestAttractors {
 
         val Fails = mutableListOf<Pair<RequestAttractors?, AttractorMatches>>()
 
-        private fun Map.Entry<*, Pair<RequestAttractors?, AttractorMatches>>.parseMatch(
-            matcher: (RequestAttractors?) -> AttractorMatches?
+        private inline fun Map.Entry<*, Pair<RequestAttractors, AttractorMatches>>.parseMatch(
+            matcher: (RequestAttractors) -> AttractorMatches?
         ): Boolean {
             val mResult = matcher.invoke(value.first)
             value.second.appendValues(mResult)
@@ -410,41 +410,39 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
      */
 
     // list of (did it match, was it a literal match)
-    val bucketFilter: (RequestAttractorBit) -> List<Pair<String, Boolean>> = { bit ->
-        inputs.asSequence()
-            .map { bit.value.match(it) }
-            .filter { it.first != null }
-            .map { it.first!! to it.second }
-            .toList()
-    } // 1.b
+    // step 1.b
+    fun bucketFilter(bit: RequestAttractorBit) = inputs.asSequence()
+        .map { bit.value.match(it) }
+        .filter { it.first != null }
+        .map { it.first!! to it.second }
+        .toList()
 
     // step 1
     // bucket : matches
-    val buckets = associateBy(
-        { it },
-        { bit -> bucketFilter.invoke(bit) }
-    ) as LinkedHashMap
+    val buckets = associateWith(::bucketFilter)
 
-    val xCounts: (scanReq: Boolean) -> Triple<Int, Int, Int> = { scanReq ->
-        buckets.entries.fold(Triple(0, 0, 0)) { r, v ->
-            val pass = when {
-                !v.key.required && scanReq -> 0
-                v.key.required && !scanReq -> 0
-                v.value.isEmpty() && v.key.except.isTrue() -> 1
-                v.value.isNotEmpty() && !v.key.except.isTrue() -> 1
-                else -> 0
-            }
-
+    fun xCounts(scanReq: Boolean): Triple<Int, Int, Int> {
+        return buckets.entries.fold(Triple(0, 0, 0)) { r, v ->
             val isType = v.key.required && scanReq
-            Triple(
-                r.first + if (isType) 1 else 0, // is as requested type
-                r.second + pass, // did it pass?
-                v.value.count { isType && it.second } // was it a literal match?
-            )
+            if (isType) {
+                val pass = when {
+                    !v.key.required && scanReq -> 0
+                    v.key.required && !scanReq -> 0
+                    v.value.isEmpty() && v.key.except.isTrue() -> 1
+                    v.value.isNotEmpty() && !v.key.except.isTrue() -> 1
+                    else -> 0
+                }
+                Triple(
+                    r.first + 1, // is as requested type
+                    r.second + pass, // did it pass?
+                    v.value.count { it.second } // literal matches
+                )
+            } else
+                r
         }
     }
 
-    val reqCounts = xCounts.invoke(true)
+    val reqCounts = xCounts(true)
 
     // step 2, did any fail meeting the required count
     if (reqCounts.first == 0 || reqCounts.first != reqCounts.second) {
@@ -452,7 +450,7 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
     }
 
     // step 3
-    val optCounts = xCounts.invoke(false)
+    val optCounts = xCounts(false)
 
     return AttractorMatches(reqCounts.first, reqCounts.second, optCounts.second).also {
         it.reqLiterals = reqCounts.third

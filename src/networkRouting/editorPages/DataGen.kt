@@ -169,6 +169,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             it.chapterName = params["newChapter"]
                             it.requestData = requestData
                             it.attractors = requestData?.toAttractors
+                            it.cachedCalls.clear()
                             it.responseData = responseData
                         }
 

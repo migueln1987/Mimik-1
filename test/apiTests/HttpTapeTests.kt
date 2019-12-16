@@ -1,10 +1,8 @@
 package apiTests
 
 import com.fiserv.mimik.Ports
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.port
 import io.ktor.server.testing.handleRequest
 import org.junit.Assert
 import org.junit.Test

@@ -25,6 +25,6 @@ object Project {
 }
 
 object VCRConfig {
-    val getConfig: OkReplayConfig = OkReplayConfig.Builder()
-        .build()
+    val getConfig: OkReplayConfig
+        get() = OkReplayConfig.Builder().build()
 }

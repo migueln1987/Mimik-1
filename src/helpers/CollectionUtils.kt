@@ -5,7 +5,7 @@ package helpers
  *
  * If there's an item after the current action, then [hasNext] is also called.
  */
-fun <T> Iterable<T>.eachHasNext(action: (T) -> Unit, hasNext: () -> Unit = {}) {
+inline fun <T> Iterable<T>.eachHasNext(action: (T) -> Unit, hasNext: () -> Unit = {}) {
     val iterator = iterator()
     while (iterator.hasNext()) {
         action.invoke(iterator.next())
@@ -18,7 +18,7 @@ fun <T> Iterable<T>.eachHasNext(action: (T) -> Unit, hasNext: () -> Unit = {}) {
  * Returns a map containing only the non-null results of applying the given [transform] function
  * to each entry in the original map.
  */
-fun <T, V, R> Map<T, V>.mapNotNullToMap(transform: (Map.Entry<T, V>) -> R?): Map<T, R> {
+inline fun <T, V, R> Map<T, V>.mapNotNullToMap(transform: (Map.Entry<T, V>) -> R?): Map<T, R> {
     val result = mutableMapOf<T, R>()
     forEach { element ->
         transform(element)?.also { result[element.key] = it }
@@ -29,7 +29,7 @@ fun <T, V, R> Map<T, V>.mapNotNullToMap(transform: (Map.Entry<T, V>) -> R?): Map
 /**
  * Subtracts [other] from this, then remaps the values based on [transform]
  */
-fun <T, V, oV, R> Map<T, V>.subtractMap(
+inline fun <T, V, oV, R> Map<T, V>.subtractMap(
     other: Map<T, oV>,
     transform: (Map.Entry<T, V>) -> R?
 ) = filterNot { other.keys.contains(it.key) }.mapNotNullToMap(transform)
@@ -37,7 +37,7 @@ fun <T, V, oV, R> Map<T, V>.subtractMap(
 /**
  * Returns the elements yielding the largest value of the given function.
  */
-fun <T, R : Comparable<R>> Sequence<T>.filterByMax(selector: (T) -> R): Sequence<T> {
+inline fun <T, R : Comparable<R>> Sequence<T>.filterByMax(crossinline selector: (T) -> R): Sequence<T> {
     var maxValue: R? = null
 
     return map {
@@ -45,7 +45,8 @@ fun <T, R : Comparable<R>> Sequence<T>.filterByMax(selector: (T) -> R): Sequence
         if (maxValue == null || v >= maxValue!!)
             maxValue = v
         it to v
-    }.toList().asSequence()
+    }.toList()
+        .asSequence()
         .filter { maxValue != null && it.second >= maxValue!! }
         .map { it.first }
 }
