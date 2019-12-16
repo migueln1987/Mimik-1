@@ -1,6 +1,5 @@
 package tapeItems
 
-import VCRConfig
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -92,7 +91,16 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
          * If [reBuild] is not null, then builder values will be applied to it, else a new tape will be made
          */
         fun build(): BlankTape {
-            val returnTape = if (reBuild != null) {
+            val returnTape = if (reBuild == null) {
+                BlankTape { tape ->
+                    tape.tapeName = tapeName
+                    tape.attractors = attractors
+                    tape.mode = if (allowLiveRecordings == true)
+                        TapeMode.READ_WRITE else TapeMode.READ_ONLY
+                    tape.alwaysLive = alwaysLive
+                    tape.file = null
+                }
+            } else {
                 var isHardTape = false
                 if (reBuild.file?.exists().isTrue()) {
                     isHardTape = true
@@ -102,18 +110,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 if (isHardTape)
                     reBuild.saveFile()
                 reBuild
-            } else {
-                BlankTape { tape ->
-                    tape.tapeName = tapeName
-                    tape.attractors = attractors
-                    tape.mode = if (allowLiveRecordings == true)
-                        TapeMode.READ_WRITE else TapeMode.READ_ONLY
-                    tape.alwaysLive = alwaysLive
-                    tape.file = File(
-                        VCRConfig.getConfig.tapeRoot.get(),
-                        tape.name.toJsonName
-                    )
-                }
             }
 
             if (!routingURL.isNullOrBlank())
@@ -124,7 +120,6 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     }
 
     companion object {
-        var tapeRoot: TapeRoot = VCRConfig.getConfig.tapeRoot
         private val gson = Gson()
 
         @Transient
@@ -161,7 +156,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     @Transient
     var file: File? = null
         get() = field ?: File(
-            VCRConfig.getConfig.tapeRoot.get(),
+            TapeCatalog.Instance.config.tapeRoot.get(),
             name.toJsonName
         ).also { field = it }
 
@@ -322,7 +317,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
      * Appends: [Name], Url, Headers, Body, and [Extras]
      */
     private val okhttp3.Request.logRequestData: (Name: String, Extras: String) -> String
-        get() {
+        get() { // todo; move into logger module
             return { name, extras ->
                 var bodyStr = body().content(noData).tryAsPrettyJson ?: noData
 
@@ -347,7 +342,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
      * - Json bodies are formatted if possible
      */
     private val okhttp3.Request.logResponseData: (Data: Responsedata?, Extras: String) -> String
-        get() {
+        get() { // todo; move into logger module
             return { data, extras ->
                 val responseStr = if (data == null) extras
                 else {
@@ -498,28 +493,28 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     private fun findBestMatch(
         request: okhttp3.Request,
         preference: SearchPreferences = SearchPreferences.ALL
-    ): QueryResponse<RecordedInteractions> {
-        return findBestMatches(request, preference)
-            .let {
-                QueryResponse {
-                    when {
-                        it.item == null ->
-                            status = HttpStatusCode.NotFound
-                        it.item?.size == 1 -> {
-                            status = HttpStatusCode.Found
-                            item = it.item?.first()
-                        }
-                        else ->
-                            status = HttpStatusCode.Conflict
-                    }
+    ) = findBestMatches(request, preference).let {
+        QueryResponse<RecordedInteractions> {
+            when {
+                it.item == null ->
+                    status = HttpStatusCode.NotFound
+                it.item?.size == 1 -> {
+                    status = HttpStatusCode.Found
+                    item = it.item?.first()
                 }
+                else ->
+                    status = HttpStatusCode.Conflict
             }
+        }
     }
 
     private fun findBestMatches(
         request: okhttp3.Request,
         preference: SearchPreferences = SearchPreferences.ALL
     ): QueryResponse<List<RecordedInteractions>> {
+        val requestHash = request.contentHash
+        var cachedCall: RecordedInteractions? = null
+
         val filteredChapters = chapters.asSequence()
             .filter {
                 when (it.uses) {
@@ -547,21 +542,36 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                         it.uses in (1..Int.MAX_VALUE)
                 }
             }
+            .filter {
+                when {
+                    cachedCall != null -> false
+                    it.cachedCalls.contains(requestHash) -> {
+                        cachedCall = it
+                        false
+                    }
+                    else -> true
+                }
+            }
             .filter { it.attractors != null }
             .associateWith { it.attractors!! }
 
-        if (filteredChapters.isEmpty()) return QueryResponse {
-            status = HttpStatusCode.NotFound
+        return when {
+            cachedCall != null ->
+                QueryResponse(listOf(cachedCall!!))
+            filteredChapters.isEmpty() ->
+                QueryResponse { status = HttpStatusCode.NotFound }
+            else -> RequestAttractors.findBest_many(
+                filteredChapters,
+                request.url().encodedPath(),
+                request.url().query(),
+                request.headers().toStringPairs(),
+                if (HttpMethod.requiresRequestBody(request.method()))
+                    request.body().content() else null
+            ).also { qr ->
+                if (qr.item?.size == 1)
+                    qr.item?.first()?.cachedCalls?.add(request.contentHash)
+            }
         }
-
-        return RequestAttractors.findBest_many(
-            filteredChapters,
-            request.url().encodedPath(),
-            request.url().query(),
-            request.headers().toStringPairs(),
-            if (HttpMethod.requiresRequestBody(request.method()))
-                request.body().content() else null
-        )
     }
 
     override fun record(request: okreplay.Request, response: okreplay.Response) {
@@ -720,6 +730,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     .append(bodyMatchers)
             }
         }
+
+        chap.cachedCalls.clear()
     }
 
     init {

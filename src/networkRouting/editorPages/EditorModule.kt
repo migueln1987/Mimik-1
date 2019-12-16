@@ -672,6 +672,22 @@ abstract class EditorModule {
             onKeyDown = "return event.key != 'Enter';"
         }
 
+    private fun Map<String, String>.filterToAttractors(): RequestAttractors? {
+        return RequestAttractors { attr ->
+            attr.routingPath = get("filterPath")?.trim()?.let { path ->
+                if (path.isBlank()) null else RequestAttractorBit(path)
+            }
+
+            if (keys.any { it.startsWith(filterKey) }) {
+                attr.queryMatchers = filterFindData("Query")
+                attr.headerMatchers = filterFindData("Header")
+                attr.bodyMatchers = filterFindData("Body")
+            }
+        }.let {
+            if (it.hasData) it else null
+        }
+    }
+
     /**
      * Saves key/value data to a tape. Reusing tape is retrieved using "name_pre".
      */
@@ -688,20 +704,7 @@ abstract class EditorModule {
             if (tape.routingURL.isNullOrBlank())
                 tape.routingURL = null
 
-            tape.attractors = RequestAttractors { attr ->
-                attr.routingPath = get("filterPath")?.trim()?.let { path ->
-                    if (path.isBlank()) null else RequestAttractorBit(path)
-                }
-
-                if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryMatchers = filterFindData("Query")
-                    attr.headerMatchers = filterFindData("Header")
-                    attr.bodyMatchers = filterFindData("Body")
-                }
-            }
-
-            if (tape.attractors?.hasData.isNotTrue())
-                tape.attractors = null
+            tape.attractors = filterToAttractors()
 
             tape.alwaysLive = if (tape.isValidURL && get("allowPassthrough") == "on") true else null
             tape.allowLiveRecordings = if (get("SaveNewCalls") == "on") true else null
@@ -724,17 +727,8 @@ abstract class EditorModule {
 
         modChap.also { chap ->
             chap.chapterName = get("nameChap")
-            chap.attractors = RequestAttractors { attr ->
-                attr.routingPath = get("filterPath")?.trim()?.let { path ->
-                    if (path.isBlank()) null else RequestAttractorBit(path)
-                }
-
-                if (keys.any { it.startsWith(filterKey) }) {
-                    attr.queryMatchers = filterFindData("Query")
-                    attr.headerMatchers = filterFindData("Header")
-                    attr.bodyMatchers = filterFindData("Body")
-                }
-            }
+            chap.attractors = filterToAttractors()
+            chap.cachedCalls.clear()
 
             chap.mockUses = get("usesCount")?.toIntOrNull() ?: MockUseStates.ALWAYS.state
             if (get("usesEnabled") != "on")

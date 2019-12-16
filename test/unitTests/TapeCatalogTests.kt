@@ -40,6 +40,7 @@ class TapeCatalogTests {
             every { attractors } returns RequestAttractors {
                 it.routingPath = RequestAttractorBit("/path")
             }
+            every { cachedCalls } returns mutableSetOf()
         }
 
         val tape = BlankTape.Builder().build().also {
@@ -63,6 +64,7 @@ class TapeCatalogTests {
             every { attractors } returns RequestAttractors {
                 it.routingPath = RequestAttractorBit("/other")
             }
+            every { cachedCalls } returns mutableSetOf()
         }
 
         val tape = BlankTape.Builder().build().also {

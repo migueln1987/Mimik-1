@@ -1,6 +1,6 @@
 package networkRouting
 
-import helpers.appendHeaders
+import helpers.append
 import helpers.asContentType
 import helpers.content
 import io.ktor.application.ApplicationCall
@@ -27,7 +27,7 @@ class CallProcessor : RoutingContract("{...}") {
             .asContentType
         val code = HttpStatusCode.fromValue(processResponse.code())
 
-        response.headers.appendHeaders(processResponse.headers())
+        response.headers.append(processResponse.headers())
         val content = processResponse.body().content()
         when (contentType.contentType) {
             "image" -> {

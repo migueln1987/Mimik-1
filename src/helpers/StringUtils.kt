@@ -55,7 +55,7 @@ fun String.ensureSuffix(suffix: String, value: String? = null) =
  *
  * If no match is found, [(0..0)] is returned.
  */
-fun String.lastIndexRange(predicate: (String) -> String): IntRange {
+inline fun String.lastIndexRange(predicate: (String) -> String): IntRange {
     val regex = predicate.invoke(this).toRegex()
     val matches = regex.findAll(this)
     if (matches.none()) return (0..0)
@@ -149,12 +149,13 @@ val String?.isValidURL: Boolean
 val String?.asHttpUrl: HttpUrl?
     get() = HttpUrl.parse(this.orEmpty().ensureHttpPrefix)
 
+private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
+
 /**
  * Converts the source [String] into a indent-formatted string
  */
 val String?.beautifyJson: String
     get() {
-        val gson = GsonBuilder().setPrettyPrinting().create()
         if (this.isNullOrBlank()) return ""
 
         return try {
@@ -184,7 +185,7 @@ fun printF(message: String, vararg args: Any? = arrayOf()) =
 fun printlnF(message: String, vararg args: Any? = arrayOf()) =
     println(message.format(*args))
 
-fun printlnF(message: () -> String = { "" }, vararg args: Any? = arrayOf()) =
+inline fun printlnF(message: () -> String = { "" }, vararg args: Any? = arrayOf()) =
     println(message.invoke().format(*args))
 
 /**
@@ -198,7 +199,7 @@ val removeCommentFilter: (List<String>) -> Boolean
  *
  * [allowFilter]: If the value returns true, the item is allowed
  */
-fun String?.toPairs(allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String?>>? {
+inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String?>>? {
     if (this == null) return null
 
     return split('\n').asSequence()
@@ -229,7 +230,7 @@ fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) =
 /**
  * Appends [message] to this [StringBuffer] with the optional formatting [args]
  */
-fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) =
+inline fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) =
     appendln(message.invoke().format(*args))
 
 /**

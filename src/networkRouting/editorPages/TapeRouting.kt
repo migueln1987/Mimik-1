@@ -16,6 +16,7 @@ import networkRouting.editorPages.DeleteModule.deleteActions
 import networkRouting.editorPages.NetworkDataEditor.dataEditor
 import networkRouting.editorPages.TapeEditor.getAllTapesPage
 import networkRouting.editorPages.TapeEditor.getTapePage
+import okhttp3.internal.http.HttpMethod
 import tapeItems.BlankTape
 
 @Suppress("RemoveRedundantQualifierName")
@@ -226,7 +227,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
         val network = when (data["network"]) {
             "request" -> (foundChap.requestData ?: Requestdata()).also {
-                it.method = data["requestMethod"]
+                it.method = data["requestMethod"]?.toUpperCase()
                 it.url = data["requestUrl"]?.ensureHttpPrefix
             }
 
@@ -253,14 +254,23 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                         }
                 }.build()
 
-                nData.body = data["networkBody"]
+                nData.body = data["networkBody"].let {
+                    val mm = data["requestMethod"]?.toUpperCase().orEmpty()
+                    when {
+                        !HttpMethod.permitsRequestBody(mm) && it != null -> null
+                        HttpMethod.requiresRequestBody(mm) && it == null -> ""
+                        else -> it?.replace("[\r\n]+ {2,}".toRegex(), "")
+                    }
+                }
             }
 
         when (data["network"]) {
             "request" -> {
                 foundChap.requestData = network as? Requestdata
-                if (data["parseAttractors"] == "on")
+                if (data["parseAttractors"] == "on") {
                     foundChap.attractors = foundChap.requestData?.toAttractors
+                    foundChap.cachedCalls.clear()
+                }
             }
             "response" ->
                 foundChap.responseData = network as? Responsedata

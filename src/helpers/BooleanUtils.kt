@@ -37,7 +37,7 @@ fun anyTrue(vararg states: Boolean) = states.any { it }
  * Tests if the following [action] would throw an [Exception].
  * Also safely handles throws.
  */
-fun isThrow(action: () -> Unit = {}): Boolean {
+inline fun isThrow(action: () -> Unit = {}): Boolean {
     return try {
         action.invoke()
         false
@@ -65,7 +65,8 @@ val MatchResult?.hasMatch: Boolean
  */
 fun String?.match(input: String): Pair<String?, Boolean> {
     if (this.isNullOrBlank()) return null to true
-    val asReg = this.ensurePrefix(".*(").ensureSuffix(").*")
+
+    val asReg = this.ensurePrefix(".*?(").ensureSuffix(").*")
         .toRegex().find(input)?.groups?.get(1)
     val asLiteral = isNotBlank() && (input == this)
 

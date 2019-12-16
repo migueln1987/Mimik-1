@@ -150,6 +150,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         chapter.also { updateChapter ->
             updateChapter.alwaysLive = alwaysLive
             updateChapter.attractors = attractors
+            updateChapter.cachedCalls.clear()
 //            updateChapter.requestData = requestMock
 
             // In case we want to update an existing chapter's name
