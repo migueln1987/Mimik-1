@@ -54,11 +54,14 @@ fun RequestBody?.content(default: String = ""): String {
 
 /**
  * Returns the [ResponseBody]'s body as a string. Images are converted to Base64 (if not already)
+ *
+ * !! This action clears the origional data's body !!
  */
 fun ResponseBody?.content(default: String = ""): String {
     return if (this == null) default
     else try {
-        val data = bytes()
+        val data = tryOrNull { use { bytes() } }
+        if (data == null) return ""
         val dataStr = String(data)
         val isBase64 = dataStr.isBase64
 
@@ -184,8 +187,8 @@ inline fun okhttp3.Request.createResponse(
     return okhttp3.Response.Builder().also {
         it.request(this)
         it.protocol(Protocol.HTTP_1_1)
-        it.code(status.value)
-        it.message(message.invoke())
+        it.code(status.value.coerceAtLeast(0))
+        it.message(tryOrNull { message.invoke() }.orEmpty())
     }.build()
 }
 
@@ -273,16 +276,14 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
     }
 
 fun ResponseBody?.clone(): ResponseBody? {
-    try {
-        if (this == null) return null
-        val source = source()
-        source.request(java.lang.Long.MAX_VALUE)
-        return ResponseBody.create(
-            contentType(), contentLength(),
-            source.buffer.clone()
-        )
-    } catch (e: IOException) {
-        return null
+    return tryOrNull {
+        this?.source()?.use { source ->
+            source.request(java.lang.Long.MAX_VALUE)
+            ResponseBody.create(
+                contentType(), contentLength(),
+                source.buffer.clone()
+            )
+        }
     }
 }
 

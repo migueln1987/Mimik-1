@@ -29,6 +29,10 @@ class CallProcessor : RoutingContract("{...}") {
 
         response.headers.append(processResponse.headers())
         val content = processResponse.body().content()
+        if (content.length.toLong() != processResponse.body()?.contentLength() ?: -1L) {
+            respondText(contentType, HttpStatusCode.ExpectationFailed) { "Body length is longer than content length." }
+            return
+        }
         when (contentType.contentType) {
             "image" -> {
                 val data = DatatypeConverter.parseBase64Binary(content)

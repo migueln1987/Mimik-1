@@ -160,10 +160,14 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             name.toJsonName
         ).also { field = it }
 
-    @Suppress("USELESS_ELVIS")
     @Transient
     var savingFile: AtomicBoolean = AtomicBoolean(false)
-        get() = field ?: AtomicBoolean(false)
+        get() {
+            @Suppress("SENSELESS_COMPARISON")
+            if (field == null)
+                field = AtomicBoolean(false)
+            return field
+        }
 
     var recordedDate: Date? = Date()
         get() = field ?: Date()

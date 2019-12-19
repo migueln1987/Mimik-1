@@ -16,9 +16,10 @@ import kolor.cyan
 import kolor.green
 import kolor.magenta
 import kolor.yellow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import networkRouting.RoutingContract
 import networkRouting.testingManager.TestBounds.Companion.DataTypes
-import networkRouting.testingManager.TestBounds.Companion.DataTypes.valueOf
 import java.lang.Exception
 import java.time.Duration
 import java.util.Date
@@ -51,35 +52,34 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
     companion object {
         val boundManager = mutableListOf<TestBounds>()
+        private val lock = Semaphore(1)
 
         /**
-         * Returns if there are any enabled test bounds
-         */
-        val hasEnabledBounds = boundManager.any { it.isEnabled }
-
-        /**
-         * Attempts to retrieve a [TestBounds] which has the following [handle].
-         * - If none is found and a bound is [BoundStates.Ready], the [handle] is applied to that bound, then returned
+         * Attempts to retrieve a [TestBounds] which has the following [boundID].
+         * - If none is found and a bound is [BoundStates.Ready], the [boundID] is applied to that bound, then returned
          * - [null] is returned if none of the above is true
          */
-        @Synchronized
-        fun getManagerByID(handle: String?): TestBounds? {
-            if (handle == null) return null
-            var bound = boundManager.asSequence()
-                .filter { it.handle == handle }
-                .sortedBy { it.startTime }
-                .firstOrNull()
-            if (bound != null)
-                return bound
+        suspend fun getManagerByID(boundID: String?): TestBounds? {
+            return lock.withPermit {
+                if (boundID == null) return@withPermit null
 
-            bound = boundManager.asSequence()
-                .filter { it.state == BoundStates.Ready }
-                .sortedBy { it.createTime }
-                .firstOrNull()
-            if (bound != null)
-                bound.boundSource = handle
+                // look for existing started bounds
+                var bound = boundManager.asSequence()
+                    .filter { it.boundSource == boundID }
+                    .sortedBy { it.startTime }
+                    .firstOrNull()
+                if (bound != null) return@withPermit bound
 
-            return bound
+                // look for a new slot to start a bounds
+                bound = boundManager.asSequence()
+                    .filter { it.state == BoundStates.Ready }
+                    .sortedBy { it.createTime }
+                    .firstOrNull()
+                if (bound != null)
+                    bound.boundSource = boundID
+
+                return@withPermit bound
+            }
         }
     }
 
@@ -105,8 +105,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         get() = route(RoutePaths.START.path) {
             /**
              * Response codes:
-             * - 100 (Continue) {Update existing data}
              * - 201 (Created) {Created new bounds}
+             * - 202 (Accepted) {Update existing data}
              * - 303 (SeeOther) {Created, but with a non-conflicting handle}
              * - 400 (BadRequest)
              */
@@ -114,7 +114,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 val heads = call.request.headers
                 var handle = heads["handle"]
                 val allowedTapes = heads.getValidTapes()
-                val time = heads["time"]
+                var time = heads["time"]
 
                 val noConfigs = allTrue(
                     handle.isNullOrBlank(),
@@ -138,39 +138,37 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 var useExisting = false
 
                 val replacers = getReplacers()
-                if (replacers.isNullOrEmpty()) {
-                    call.respondText(status = HttpStatusCode.NoContent) { "No modifications entered" }
-                    return@post
-                } else {
-                    if (testBounds == null) {
-                        handle = ensureUniqueName(handle)
-                        printlnF(
-                            "%s -> %s",
-                            "No test named (%s).".magenta().format(
-                                when (heads["handle"]) {
-                                    null -> "{null}"
-                                    "" -> "{empty string}"
-                                    else -> heads["handle"]
-                                }
-                            ),
-                            "Creating new test named: $handle".green()
-                        )
+                if (testBounds == null) {
+                    handle = ensureUniqueName(handle)
+                    printlnF(
+                        "%s -> %s",
+                        "No test named (%s)".magenta().format(
+                            when (heads["handle"]) {
+                                null -> "{null}"
+                                "" -> "{empty string}"
+                                else -> heads["handle"]
+                            }
+                        ),
+                        "Creating new test named: $handle".green()
+                    )
 
-                        testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
-                            if (replacers.isNotEmpty())
-                                it.replacerData.putAll(replacers)
-                        }
-                        boundManager.add(testBounds)
-                    } else {
-                        useExisting = true
-                        testBounds.boundSource == null
-                        if (replacers.isNotEmpty())
-                            testBounds.replacerData.putAll(replacers)
+                    testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
+                        if (!replacers.isNullOrEmpty())
+                            it.replacerData.putAll(replacers)
+                    }
+                    boundManager.add(testBounds)
+                } else {
+                    useExisting = true
+                    testBounds.stateUses.clear()
+                    if (!replacers.isNullOrEmpty()) {
+                        testBounds.replacerData.clear()
+                        testBounds.replacerData.putAll(replacers)
                     }
                 }
 
-                val timeVal = time?.replace("\\D".toRegex(), "")?.toLongOrNull() ?: 5
-                val timeType = time?.replace("\\d".toRegex(), "")
+                time = time ?: "5m"
+                val timeVal = time.replace("\\D".toRegex(), "").toLongOrNull() ?: 5
+                val timeType = time.replace("\\d".toRegex(), "")
 
                 testBounds.timeLimit = when (timeVal) {
                     in (Long.MIN_VALUE..0) -> Duration.ofHours(1)
@@ -186,7 +184,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     null, "" -> HttpStatusCode.Created
                     else -> {
                         if (useExisting)
-                            HttpStatusCode.Continue
+                            HttpStatusCode.Accepted
                         else
                             HttpStatusCode.Created
                     }
@@ -205,7 +203,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 call.response.headers.apply {
                     append("tape", allowedTapes)
                     append("handle", handle.toString())
-                    if (replacers.isNotEmpty()) {
+                    if (!replacers.isNullOrEmpty()) {
                         val items = replacers.values.sumBy { it.values.sumBy { it.size } }
                         append("mappers", items.toString())
                     }
@@ -252,7 +250,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     if (appendTapes.size > 1) "s" else "",
                     handle
                 )
-                boundHandle?.tapes?.addAll(appendTapes)
+                requireNotNull(boundHandle)
+                boundHandle.tapes.addAll(appendTapes)
                 call.response.headers.append("tape", appendTapes)
                 call.respondText(status = HttpStatusCode.OK) { "" }
             }
@@ -270,20 +269,22 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         }
 
     /**
-    {
-    "aa": {
-    "Body": [
-    {
-    "from": "bb",
-    "to": "cc"
-    },
-    {
-    "from": "dd",
-    "to": "dd"
-    }
-    ]
-    }
-    }
+     * Example:
+     * ```json
+     * {
+     *   "aa": {
+     *     "Body": [{
+     *         "from": "bb",
+     *         "to": "cc"
+     *       },
+     *       {
+     *         "from": "dd",
+     *         "to": "dd"
+     *       }
+     *     ]
+     *   }
+     * }
+     * ```
      */
     private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v1() = Gson()
         .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
@@ -300,15 +301,18 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         }.toMutableMap()
 
     /**
-    {
-    "aa": [
-    "body{[abc]->none}",
-    "body{[abc]->none}"
-    ],
-    "bb": [
-    "body{[ab]->none}"
-    ]
-    }
+     * Example:
+     * ```
+     * {
+     *   "aa": [
+     *     "body{[abc]->none}",
+     *     "body{[abc]->none}"
+     *   ],
+     *   "bb": [
+     *     "body{[ab]->none}"
+     *   ]
+     * }
+     * ```
      */
     private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v2() = Gson()
         .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
@@ -392,9 +396,10 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
+                requireNotNull(boundHandle)
                 var dCount = 0
                 disableTapes.forEach { t ->
-                    boundHandle?.tapes?.removeIf {
+                    boundHandle.tapes.removeIf {
                         (it == t).also { dCount++ }
                     }
                 }
@@ -441,7 +446,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                         it.stopTest()
 
-                        val duration = (it.timeLimit - (Date() - it.expireTime)).toString().removePrefix("PT")
+                        val duration =
+                            (it.timeLimit - (Date() - it.expireTime)).toString().removePrefix("PT")
                         call.response.headers.append("${it.handle}_time", duration)
                         printlnF(
                             "Test bounds (%s) ran for %s".yellow(),

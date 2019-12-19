@@ -20,11 +20,8 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     }
 
     private var expireTimer: TimerTask? = null
-        @Synchronized get
-        @Synchronized set
 
     var boundSource: String? = null
-        @Synchronized
         set(value) {
             println("Declaring bounds as: $value")
             when (value) {
@@ -184,16 +181,16 @@ fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractio
             val matchStr = it.first.match(bodyContent).first
             if (matchStr != null) {
                 newBody = true
-                bodyContent = if (matchStr.isBlank())
-                    it.second
-                else
-                    bodyContent.replace(matchStr, it.second)
+                bodyContent = when {
+                    matchStr.isBlank() -> it.second
+                    else -> bodyContent.replace(matchStr, it.second)
+                }
             }
         }
 
     // todo; replace response headers
 
-    return if (newBody)
+    return if (newBody) {
         newBuilder().apply {
             body(
                 ResponseBody.create(
@@ -202,6 +199,5 @@ fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractio
                 )
             )
         }.build()
-    else
-        this
+    } else this
 }
