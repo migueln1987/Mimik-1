@@ -5,6 +5,7 @@ import java.time.Duration
 import java.util.*
 import kolor.red
 import kolor.yellow
+import kotlinx.atomicfu.atomic
 import mimikMockHelpers.RecordedInteractions
 import networkRouting.testingManager.TestBounds.Companion.DataTypes
 import okhttp3.ResponseBody
@@ -26,7 +27,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
             println("Declaring bounds as: $value")
             when (value) {
                 null -> {
-                    isEnabled = false
+                    isEnabled.value = false
                 }
                 field -> {
                     println("Re-assigning test bound -> Resetting time".yellow())
@@ -72,14 +73,14 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     var timeLimit: Duration = Duration.ofSeconds(5)
 
     private fun startTest(): Pair<String, String> {
-        isEnabled = true
+        isEnabled.value = true
         expireTimer?.cancel()
         startTime = Date()
         val startStr = startTime.toString()
         expireTime = (startTime!! + timeLimit).also {
             expireTimer = Timer("Handle: $handle", false).schedule(it) {
                 println("Test bounds ($handle) has expired".red())
-                isEnabled = false
+                isEnabled.value = false
             }
         }
 
@@ -88,7 +89,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
 
     fun stopTest() {
         expireTimer?.cancel()
-        isEnabled = false
+        isEnabled.value = false
     }
 
     val createTime = Date()
@@ -105,14 +106,14 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     val state: BoundStates
         get() {
             return when {
-                !isEnabled -> BoundStates.Stopped
+                !isEnabled.value -> BoundStates.Stopped
                 expireTime == null -> BoundStates.Ready
                 expireTime != null -> BoundStates.Started
                 else -> BoundStates.Unknown
             }
         }
 
-    var isEnabled = true
+    var isEnabled = atomic(true)
         private set
 
     /**

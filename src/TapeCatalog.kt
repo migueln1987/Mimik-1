@@ -188,19 +188,21 @@ class TapeCatalog : OkReplayInterceptor() {
     ): okhttp3.Response {
         val bounds = TestManager.getManagerByID(call.callId)
         if (bounds != null) {
+            println("replacers: ${bounds.replacerData.size}".green())
+
             when {
                 Date().after(bounds.expireTime) -> {
                     val timeOver = ChronoUnit.SECONDS.between(
                         Date().toInstant(),
                         (bounds.expireTime ?: Date()).toInstant()
                     )
-                    "Testing bounds for (%s) is expired. %s past".format(
+                    "Testing bounds for (%s) is expired. %s past.".format(
                         bounds.handle,
                         Duration.ofSeconds(timeOver).toString().removePrefix("PT")
                     )
                 }
-                !bounds.isEnabled ->
-                    "Test with handle ${bounds.handle} is stopped."
+                !bounds.isEnabled.value ->
+                    "Test with handle ${bounds.handle} is not enabled (stopped)."
                 bounds.tapes.isEmpty() ->
                     "Test with handle ${bounds.handle} has no tapes."
                 else -> null
