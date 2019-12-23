@@ -116,6 +116,8 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     var isEnabled = atomic(true)
         private set
 
+    var finalized = false
+
     /**
      * {tape name}, <{chapter name}, uses>
      */

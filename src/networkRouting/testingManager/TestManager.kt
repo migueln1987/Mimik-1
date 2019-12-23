@@ -28,13 +28,14 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         APPEND("append"),
         Modify("modify"),
         DISABLE("disable"),
-        POKE("poke"),
         STOP("stop");
 
         companion object {
             const val rootPath = "tests"
         }
     }
+
+    private val finalizer = "##Finalize"
 
     override fun init(route: Route) {
         route.route(path) {
@@ -43,7 +44,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             modify
             disable
             stop
-            poke
         }
     }
 
@@ -79,7 +79,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 // return the last bounds to show error meta-data
                 return@withPermit boundManager.asSequence()
-                    .filter { it.boundSource == boundID }
+                    .filter { !it.finalized && it.boundSource == boundID }
                     .sortedBy { it.startTime }
                     .firstOrNull()
             }
@@ -447,9 +447,26 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             post {
                 val heads = call.request.headers
                 val handles = heads["handle"]?.split(',')
+                    ?.map { it.trim() }
 
                 if (handles == null || handles.isEmpty()) {
                     call.respondText(status = HttpStatusCode.BadRequest) { "No [handle] parameter" }
+                    return@post
+                }
+
+                if (handles.size > 1 && handles.any { it == finalizer }) {
+                    var finalized = 0
+                    handles.asSequence()
+                        .filterNot { it == finalizer }
+                        .mapNotNull { h -> boundManager.firstOrNull { it.handle == h } }
+                        .filterNot { it.finalized }
+                        .forEach {
+                            finalized++
+                            it.finalized = true
+                        }
+                    println("Finalized $finalized tests.".green())
+                    call.response.headers.append("finalized", finalized.toString())
+                    call.respondText(status = HttpStatusCode.OK) { "" }
                     return@post
                 }
 
@@ -467,7 +484,10 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                         }
                         println(sb.toString().yellow())
 
-                        it.stopTest()
+                        if (it.state != BoundStates.Stopped) {
+                            it.stopTest()
+                            stoppedCnt++
+                        }
 
                         val duration = it.expireTime?.let { expTime ->
                             (it.timeLimit - (Date() - expTime)).toString().removePrefix("PT")
@@ -475,12 +495,13 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                         call.response.headers.append("${it.handle}_time", duration)
                         printlnF(
-                            "Test bounds (%s) ran for %s".yellow(),
+                            "Test bounds (%s) ran for %s".green(),
                             it.handle,
                             duration
                         )
-                        stoppedCnt++
                     }
+
+                call.response.headers.append("stopped", stoppedCnt.toString())
 
                 val status = when (stoppedCnt) {
                     handles.size -> HttpStatusCode.OK
@@ -495,14 +516,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
 
                 call.respondText(status = status) { "" }
-            }
-        }
-
-    // todo; for testing
-    private val Route.poke: Route
-        get() = route(RoutePaths.POKE.path) {
-            post {
-                call.respondText(status = HttpStatusCode.OK) { "good" }
             }
         }
 

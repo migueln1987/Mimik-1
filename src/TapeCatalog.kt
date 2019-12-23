@@ -188,8 +188,6 @@ class TapeCatalog : OkReplayInterceptor() {
     ): okhttp3.Response {
         val bounds = TestManager.getManagerByID(call.callId)
         if (bounds != null) {
-            println("replacers: ${bounds.replacerData.size}".green())
-
             when {
                 Date().after(bounds.expireTime) -> {
                     val timeOver = ChronoUnit.SECONDS.between(

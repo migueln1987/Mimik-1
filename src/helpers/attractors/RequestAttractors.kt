@@ -422,7 +422,7 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
     val buckets = associateWith(::bucketFilter)
 
     fun xCounts(scanReq: Boolean): Triple<Int, Int, Int> {
-        return buckets.entries.fold(Triple(0, 0, 0)) { r, v ->
+        return buckets.entries.fold(Triple(0, 0, 0)) { result, v ->
             val isType = v.key.required && scanReq
             if (isType) {
                 val pass = when {
@@ -433,12 +433,12 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
                     else -> 0
                 }
                 Triple(
-                    r.first + 1, // is as requested type
-                    r.second + pass, // did it pass?
+                    result.first + 1, // is as requested type
+                    result.second + pass, // did it pass?
                     v.value.count { it.second } // literal matches
                 )
             } else
-                r
+                result
         }
     }
 
