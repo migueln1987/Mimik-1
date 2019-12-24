@@ -12,13 +12,11 @@ import io.ktor.routing.Route
 import io.ktor.routing.post
 import io.ktor.routing.route
 import io.ktor.util.pipeline.PipelineContext
-import kolor.cyan
-import kolor.green
-import kolor.magenta
-import kolor.yellow
+import kolor.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import networkRouting.RoutingContract
 import networkRouting.testingManager.TestBounds.Companion.DataTypes
-import networkRouting.testingManager.TestBounds.Companion.DataTypes.valueOf
 import java.lang.Exception
 import java.time.Duration
 import java.util.Date
@@ -30,13 +28,14 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         APPEND("append"),
         Modify("modify"),
         DISABLE("disable"),
-        POKE("poke"),
         STOP("stop");
 
         companion object {
             const val rootPath = "tests"
         }
     }
+
+    private val finalizer = "##Finalize"
 
     override fun init(route: Route) {
         route.route(path) {
@@ -45,41 +44,45 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             modify
             disable
             stop
-            poke
         }
     }
 
     companion object {
         val boundManager = mutableListOf<TestBounds>()
+        private val lock = Semaphore(1)
 
         /**
-         * Returns if there are any enabled test bounds
-         */
-        val hasEnabledBounds = boundManager.any { it.isEnabled }
-
-        /**
-         * Attempts to retrieve a [TestBounds] which has the following [handle].
-         * - If none is found and a bound is [BoundStates.Ready], the [handle] is applied to that bound, then returned
+         * Attempts to retrieve a [TestBounds] which has the following [boundID].
+         * - If none is found and a bound is [BoundStates.Ready], the [boundID] is applied to that bound, then returned
          * - [null] is returned if none of the above is true
          */
-        @Synchronized
-        fun getManagerByID(handle: String?): TestBounds? {
-            if (handle == null) return null
-            var bound = boundManager.asSequence()
-                .filter { it.handle == handle }
-                .sortedBy { it.startTime }
-                .firstOrNull()
-            if (bound != null)
-                return bound
+        suspend fun getManagerByID(boundID: String?): TestBounds? {
+            if (boundID.isNullOrBlank()) return null
+            return lock.withPermit {
+                // look for existing started bounds
+                var bound = boundManager.asSequence()
+                    .filter { it.state == BoundStates.Started && it.boundSource == boundID }
+                    .sortedBy { it.startTime }
+                    .firstOrNull()
+                if (bound != null)
+                    return@withPermit bound
 
-            bound = boundManager.asSequence()
-                .filter { it.state == BoundStates.Ready }
-                .sortedBy { it.createTime }
-                .firstOrNull()
-            if (bound != null)
-                bound.boundSource = handle
+                // look for a new slot to start a bounds
+                bound = boundManager.asSequence()
+                    .filter { it.state == BoundStates.Ready }
+                    .sortedBy { it.createTime }
+                    .firstOrNull()
+                if (bound != null) {
+                    bound.boundSource = boundID
+                    return@withPermit bound
+                }
 
-            return bound
+                // return the last bounds to show error meta-data
+                return@withPermit boundManager.asSequence()
+                    .filter { !it.finalized && it.boundSource == boundID }
+                    .sortedBy { it.startTime }
+                    .firstOrNull()
+            }
         }
     }
 
@@ -105,16 +108,16 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         get() = route(RoutePaths.START.path) {
             /**
              * Response codes:
-             * - 100 (Continue) {Update existing data}
-             * - 201 (Created) {Created new bounds}
-             * - 303 (SeeOther) {Created, but with a non-conflicting handle}
+             * - 200 (OK) {New bounds with given name}
+             * - 201 (Created) {Created new name}
              * - 400 (BadRequest)
+             * - 412 (PreconditionFailed) {Mimik has no tapes}
              */
             post {
                 val heads = call.request.headers
                 var handle = heads["handle"]
                 val allowedTapes = heads.getValidTapes()
-                val time = heads["time"]
+                var time = heads["time"]
 
                 val noConfigs = allTrue(
                     handle.isNullOrBlank(),
@@ -134,43 +137,44 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-                var testBounds = boundManager.firstOrNull { it.handle == handle }
-                var useExisting = false
+                var testBounds: TestBounds? = null
+                var replaceHandleName = false
 
-                val replacers = getReplacers()
-                if (replacers.isNullOrEmpty()) {
-                    call.respondText(status = HttpStatusCode.NoContent) { "No modifications entered" }
-                    return@post
-                } else {
-                    if (testBounds == null) {
-                        handle = ensureUniqueName(handle)
-                        printlnF(
-                            "%s -> %s",
-                            "No test named (%s).".magenta().format(
-                                when (heads["handle"]) {
-                                    null -> "{null}"
-                                    "" -> "{empty string}"
-                                    else -> heads["handle"]
-                                }
-                            ),
-                            "Creating new test named: $handle".green()
-                        )
-
-                        testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
-                            if (replacers.isNotEmpty())
-                                it.replacerData.putAll(replacers)
-                        }
-                        boundManager.add(testBounds)
-                    } else {
-                        useExisting = true
-                        testBounds.boundSource == null
-                        if (replacers.isNotEmpty())
-                            testBounds.replacerData.putAll(replacers)
-                    }
+                if (handle.isNullOrBlank()) {
+                    handle = createUniqueName()
+                    printlnF(
+                        "%s -> %s",
+                        "No given handle name".magenta(),
+                        "Creating new handle: $handle".green()
+                    )
                 }
 
-                val timeVal = time?.replace("\\D".toRegex(), "")?.toLongOrNull() ?: 5
-                val timeType = time?.replace("\\d".toRegex(), "")
+                testBounds = boundManager.firstOrNull { it.handle == handle }
+
+                if (testBounds != null) {
+                    if (testBounds.state != BoundStates.Stopped) {
+                        printlnF(
+                            "Conflict bounds found, stopping the following test:\n- %s".magenta(),
+                            handle
+                        )
+                        testBounds.stopTest()
+                    }
+                    replaceHandleName = true
+                    handle = ensureUniqueName(handle)
+                    println("Creating new test named: $handle".green())
+                }
+
+                val replacers = getReplacers()
+
+                testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
+                    if (!replacers.isNullOrEmpty())
+                        it.replacerData.putAll(replacers)
+                }
+                boundManager.add(testBounds)
+
+                time = time ?: "5m"
+                val timeVal = time.replace("\\D".toRegex(), "").toLongOrNull() ?: 5
+                val timeType = time.replace("\\d".toRegex(), "")
 
                 testBounds.timeLimit = when (timeVal) {
                     in (Long.MIN_VALUE..0) -> Duration.ofHours(1)
@@ -185,30 +189,36 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 val status = when (heads["handle"]) {
                     null, "" -> HttpStatusCode.Created
                     else -> {
-                        if (useExisting)
-                            HttpStatusCode.Continue
-                        else
+                        if (replaceHandleName)
                             HttpStatusCode.Created
+                        else
+                            HttpStatusCode.OK
                     }
                 }
 
+                var items: Int? = null
+                if (!replacers.isNullOrEmpty())
+                    items = replacers.values.sumBy { r -> r.values.sumBy { it.size } }
                 printlnF(
-                    "Test Bounds (%s) ready with %d tapes:".green() + "%s".cyan(),
+                    "Test Bounds (%s) ready with [%d] tapes:".green() +
+                            "%s".cyan() + "%s",
                     testBounds.handle,
                     allowedTapes.size,
                     allowedTapes.joinToString(
                         prefix = "\n- ",
                         separator = "\n- "
-                    ) { it }
+                    ) { it },
+                    when (items) {
+                        null -> ""
+                        else -> "\nWith ".green() + "[$items]".cyan() + " Response modifiers".green()
+                    }
                 )
 
                 call.response.headers.apply {
                     append("tape", allowedTapes)
                     append("handle", handle.toString())
-                    if (replacers.isNotEmpty()) {
-                        val items = replacers.values.sumBy { it.values.sumBy { it.size } }
+                    if (items != null)
                         append("mappers", items.toString())
-                    }
                 }
 
                 call.respondText(status = status) { "" }
@@ -252,7 +262,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     if (appendTapes.size > 1) "s" else "",
                     handle
                 )
-                boundHandle?.tapes?.addAll(appendTapes)
+                requireNotNull(boundHandle)
+                boundHandle.tapes.addAll(appendTapes)
                 call.response.headers.append("tape", appendTapes)
                 call.respondText(status = HttpStatusCode.OK) { "" }
             }
@@ -270,20 +281,22 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         }
 
     /**
-    {
-    "aa": {
-    "Body": [
-    {
-    "from": "bb",
-    "to": "cc"
-    },
-    {
-    "from": "dd",
-    "to": "dd"
-    }
-    ]
-    }
-    }
+     * Example:
+     * ```json
+     * {
+     *   "aa": {
+     *     "Body": [{
+     *         "from": "bb",
+     *         "to": "cc"
+     *       },
+     *       {
+     *         "from": "dd",
+     *         "to": "dd"
+     *       }
+     *     ]
+     *   }
+     * }
+     * ```
      */
     private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v1() = Gson()
         .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
@@ -300,15 +313,18 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         }.toMutableMap()
 
     /**
-    {
-    "aa": [
-    "body{[abc]->none}",
-    "body{[abc]->none}"
-    ],
-    "bb": [
-    "body{[ab]->none}"
-    ]
-    }
+     * Example:
+     * ```
+     * {
+     *   "aa": [
+     *     "body{[abc]->none}",
+     *     "body{[abc]->none}"
+     *   ],
+     *   "bb": [
+     *     "body{[ab]->none}"
+     *   ]
+     * }
+     * ```
      */
     private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v2() = Gson()
         .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
@@ -332,6 +348,12 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
     private val Route.modify: Route
         get() = route(RoutePaths.Modify.path) {
+            /**
+             * Response codes:
+             * - 400 (BadRequest)
+             * - 204 (NoContent)
+             * - 200 (OK)
+             */
             post {
                 val heads = call.request.headers
                 val handle = heads["handle"]
@@ -355,6 +377,11 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     testBounds.replacerData.clear()
                     testBounds.replacerData.putAll(replacers)
                     val items = replacers.values.sumBy { it.values.sumBy { it.size } }
+                    printlnF(
+                        "Applying [%d] replacer actions to test bounds %s".cyan(),
+                        items,
+                        testBounds.handle
+                    )
                     call.respondText(status = HttpStatusCode.OK) { "Appended $items to test bounds ${testBounds.handle}" }
                 }
             }
@@ -392,9 +419,10 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
+                requireNotNull(boundHandle)
                 var dCount = 0
                 disableTapes.forEach { t ->
-                    boundHandle?.tapes?.removeIf {
+                    boundHandle.tapes.removeIf {
                         (it == t).also { dCount++ }
                     }
                 }
@@ -419,45 +447,67 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             post {
                 val heads = call.request.headers
                 val handles = heads["handle"]?.split(',')
+                    ?.map { it.trim() }
 
                 if (handles == null || handles.isEmpty()) {
                     call.respondText(status = HttpStatusCode.BadRequest) { "No [handle] parameter" }
                     return@post
                 }
 
-                var stoppedCnt = 0
+                if (handles.size > 1 && handles.any { it == finalizer }) {
+                    var finalized = 0
+                    handles.asSequence()
+                        .filterNot { it == finalizer }
+                        .mapNotNull { h -> boundManager.firstOrNull { it.handle == h } }
+                        .filterNot { it.finalized }
+                        .forEach {
+                            finalized++
+                            it.finalized = true
+                        }
+                    println("Finalized $finalized tests.".green())
+                    call.response.headers.append("finalized", finalized.toString())
+                    call.respondText(status = HttpStatusCode.OK) { "" }
+                    return@post
+                }
+
+                var tryStopped = 0
                 boundManager.asSequence()
                     .filter { handles.contains(it.handle) }
                     .forEach {
                         val sb = StringBuilder()
                         sb.appendln("Stopping test bounds (${it.handle})...")
                         when (it.state) {
-                            BoundStates.Ready -> sb.append("Test was idle. no change")
+                            BoundStates.Ready -> sb.append("Test was idle. no change".green())
                             BoundStates.Stopped -> sb.append("Test was already stopped")
-                            BoundStates.Started -> sb.append("Test was stopped")
+                            BoundStates.Started -> sb.append("Test was stopped".green())
                             else -> sb.append("Test was in an unknown state".magenta())
                         }
                         println(sb.toString().yellow())
 
                         it.stopTest()
+                        tryStopped++
 
-                        val duration = (it.timeLimit - (Date() - it.expireTime)).toString().removePrefix("PT")
+                        val duration = it.expireTime?.let { expTime ->
+                            (it.timeLimit - (Date() - expTime)).toString().removePrefix("PT")
+                        } ?: "[Idle]"
+
                         call.response.headers.append("${it.handle}_time", duration)
                         printlnF(
-                            "Test bounds (%s) ran for %s".yellow(),
+                            "Test bounds (%s) ran for %s".green(),
                             it.handle,
                             duration
                         )
-                        stoppedCnt++
                     }
 
-                val status = when (stoppedCnt) {
+                call.response.headers.append("stopped", tryStopped.toString())
+
+                val status = when (tryStopped) {
                     handles.size -> HttpStatusCode.OK
                     else -> {
-                        call.response.headers.append("missing", (handles.size - stoppedCnt).toString())
+                        call.response.headers.append("missing", (handles.size - tryStopped).toString())
                         printlnF(
                             "%d Test Bounds were not stopped/ unchanged".magenta(),
-                            handles.size - stoppedCnt
+                            handles.size - tryStopped
                         )
                         HttpStatusCode.NotModified
                     }
@@ -467,33 +517,36 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
-    // todo; for testing
-    private val Route.poke: Route
-        get() = route(RoutePaths.POKE.path) {
-            post {
-                call.respondText(status = HttpStatusCode.OK) { "good" }
-            }
-        }
-
-    fun ensureUniqueName(handle: String?): String {
+    fun createUniqueName(): String {
         val randHost = RandomHost()
 
-        var result = handle
-        if (handle.isNullOrBlank()) {
-            result = randHost.valueAsChars()
-            printlnF(
-                "Input handle is %s".magenta() + " -> " +
-                        "Creating new handle: %s".green(),
-                if (handle == null) "null" else "blank",
-                result
-            )
-        }
-
+        var result = randHost.valueAsChars()
         while (boundManager.any { it.handle == result }) {
-            println("New Handle - Conflicting name: $result".magenta())
+            println("New Handle: $result".magenta())
             randHost.nextRandom()
             result = randHost.valueAsChars()
         }
-        return result!!
+
+        return result
+    }
+
+    fun ensureUniqueName(handle: String): String {
+        var inc = 0
+        var result = handle + "_" + inc
+
+        while (boundManager.any { it.handle == result }) {
+            boundManager.firstOrNull { it.handle == result }?.also {
+                if (it.state != BoundStates.Stopped) {
+                    printlnF(
+                        "Conflict bounds found, stopping the following test:\n- %s".red(),
+                        result
+                    )
+                    it.stopTest()
+                }
+            }
+            inc++
+            result = handle + "_" + inc
+        }
+        return result
     }
 }

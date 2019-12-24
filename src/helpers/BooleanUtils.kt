@@ -46,6 +46,18 @@ inline fun isThrow(action: () -> Unit = {}): Boolean {
     }
 }
 
+/*
+ * Attempts to get data from [action], or returns a null.
+ * Throws return null.
+ */
+inline fun <T> tryOrNull(action: () -> T?): T? {
+    return try {
+        action.invoke()
+    } catch (e: Exception) {
+        null
+    }
+}
+
 /**
  * Returns true if this [MatchResult] contains any matching groups
  */

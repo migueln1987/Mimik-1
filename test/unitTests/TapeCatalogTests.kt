@@ -84,7 +84,7 @@ class TapeCatalogTests {
     @Test
     fun makeCatchResponseTest() {
         val request = mockk<okhttp3.Request>()
-        val testCode = HttpStatusCode.Continue
+        val testCode = HttpStatusCode.OK
         val testMessage = "test"
 
         runBlocking {

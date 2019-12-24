@@ -5,6 +5,7 @@ import java.time.Duration
 import java.util.*
 import kolor.red
 import kolor.yellow
+import kotlinx.atomicfu.atomic
 import mimikMockHelpers.RecordedInteractions
 import networkRouting.testingManager.TestBounds.Companion.DataTypes
 import okhttp3.ResponseBody
@@ -20,16 +21,13 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     }
 
     private var expireTimer: TimerTask? = null
-        @Synchronized get
-        @Synchronized set
 
     var boundSource: String? = null
-        @Synchronized
         set(value) {
             println("Declaring bounds as: $value")
             when (value) {
                 null -> {
-                    isEnabled = false
+                    isEnabled.value = false
                 }
                 field -> {
                     println("Re-assigning test bound -> Resetting time".yellow())
@@ -75,14 +73,14 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     var timeLimit: Duration = Duration.ofSeconds(5)
 
     private fun startTest(): Pair<String, String> {
-        isEnabled = true
+        isEnabled.value = true
         expireTimer?.cancel()
         startTime = Date()
         val startStr = startTime.toString()
         expireTime = (startTime!! + timeLimit).also {
             expireTimer = Timer("Handle: $handle", false).schedule(it) {
                 println("Test bounds ($handle) has expired".red())
-                isEnabled = false
+                isEnabled.value = false
             }
         }
 
@@ -91,7 +89,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
 
     fun stopTest() {
         expireTimer?.cancel()
-        isEnabled = false
+        isEnabled.value = false
     }
 
     val createTime = Date()
@@ -108,15 +106,17 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     val state: BoundStates
         get() {
             return when {
-                !isEnabled -> BoundStates.Stopped
+                !isEnabled.value -> BoundStates.Stopped
                 expireTime == null -> BoundStates.Ready
                 expireTime != null -> BoundStates.Started
                 else -> BoundStates.Unknown
             }
         }
 
-    var isEnabled = true
+    var isEnabled = atomic(true)
         private set
+
+    var finalized = false
 
     /**
      * {tape name}, <{chapter name}, uses>
@@ -184,16 +184,16 @@ fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractio
             val matchStr = it.first.match(bodyContent).first
             if (matchStr != null) {
                 newBody = true
-                bodyContent = if (matchStr.isBlank())
-                    it.second
-                else
-                    bodyContent.replace(matchStr, it.second)
+                bodyContent = when {
+                    matchStr.isBlank() -> it.second
+                    else -> bodyContent.replace(matchStr, it.second)
+                }
             }
         }
 
     // todo; replace response headers
 
-    return if (newBody)
+    return if (newBody) {
         newBuilder().apply {
             body(
                 ResponseBody.create(
@@ -202,6 +202,5 @@ fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractio
                 )
             )
         }.build()
-    else
-        this
+    } else this
 }
