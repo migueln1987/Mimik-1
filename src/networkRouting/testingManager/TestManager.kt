@@ -198,7 +198,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 var items: Int? = null
                 if (!replacers.isNullOrEmpty())
-                    items = replacers.values.sumBy { it.values.sumBy { it.size } }
+                    items = replacers.values.sumBy { r -> r.values.sumBy { it.size } }
                 printlnF(
                     "Test Bounds (%s) ready with [%d] tapes:".green() +
                             "%s".cyan() + "%s",
@@ -470,7 +470,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     return@post
                 }
 
-                var stoppedCnt = 0
+                var tryStopped = 0
                 boundManager.asSequence()
                     .filter { handles.contains(it.handle) }
                     .forEach {
@@ -484,10 +484,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                         }
                         println(sb.toString().yellow())
 
-                        if (it.state != BoundStates.Stopped) {
-                            it.stopTest()
-                            stoppedCnt++
-                        }
+                        it.stopTest()
+                        tryStopped++
 
                         val duration = it.expireTime?.let { expTime ->
                             (it.timeLimit - (Date() - expTime)).toString().removePrefix("PT")
@@ -501,15 +499,15 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                         )
                     }
 
-                call.response.headers.append("stopped", stoppedCnt.toString())
+                call.response.headers.append("stopped", tryStopped.toString())
 
-                val status = when (stoppedCnt) {
+                val status = when (tryStopped) {
                     handles.size -> HttpStatusCode.OK
                     else -> {
-                        call.response.headers.append("missing", (handles.size - stoppedCnt).toString())
+                        call.response.headers.append("missing", (handles.size - tryStopped).toString())
                         printlnF(
                             "%d Test Bounds were not stopped/ unchanged".magenta(),
-                            handles.size - stoppedCnt
+                            handles.size - tryStopped
                         )
                         HttpStatusCode.NotModified
                     }

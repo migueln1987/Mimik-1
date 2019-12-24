@@ -227,8 +227,7 @@ class RequestAttractors {
     fun append(data: RequestAttractors?) {
         if (data == null) return
 
-        if (routingPath == null && data.routingPath != null)
-            routingPath = data.routingPath?.clone()
+        routingPath = data.routingPath?.clone()
 
         queryMatchers = matchAppender {
             from = data.queryMatchers
