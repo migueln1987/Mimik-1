@@ -1,14 +1,20 @@
 # Mimik
 
 Mimik is a API mocking server build on Ktor (written in Kotlin).
-The purpose of this server is to return pre-recorded responses (tapes) or mock requests (using the Mimik Mock PUT call).
+The purpose of this server is to
+- return pre-recorded responses (chapters via tapes)
+- create a testing environment to ensure expected calls are called
+- enable offline (no internet access) device testing (except for "live response" chapters)
 
 ## Key features
-- Requests to localhost are re-directed to a pre-configured external address
-- New network requests are recorded and played back (as cached responses)
+- Requests to localhost (`port 2202`) are handled by mimik to return pre-configured responses as as live server would
+  - Offline access
+- New network requests are filtered to tapes based on tape attractors to use similar configs as other like requests
+  - Seamless integration with new API calls
 - Using Mimik mock, limited use responses are used to override mimik tape recordings
-- Using tapes/ mocks, network calls can be called without online access
-
+  - Temporary responses to re-create server state changes
+  - Note: can also be done via test bounds with ~~header/~~ body replacements
+- And more within -> [Feature list](Docs/features.md)
 
 ## How to setup - mobile
 ### iOS
