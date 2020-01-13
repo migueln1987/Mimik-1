@@ -1,5 +1,6 @@
 package helpers
 
+import TapeCatalog
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
@@ -24,6 +25,7 @@ import okio.Buffer
 import org.w3c.dom.NodeList
 import java.io.IOException
 import java.nio.charset.Charset
+import java.util.TreeMap
 import javax.xml.bind.DatatypeConverter
 
 // == okHttp3
@@ -72,6 +74,24 @@ fun ResponseBody?.content(default: String = ""): String {
     } catch (e: Exception) {
         default
     }
+}
+
+/**
+ * toMultiMap function which can preserve the case of header keys
+ */
+fun Headers.toMultimap(caseSensitive: Boolean): Map<String, List<String>> {
+    if (!caseSensitive) return this.toMultimap()
+
+    var result = TreeMap<String, ArrayList<String>>()
+    (0..size() - 1).forEach { i ->
+        val name = name(i)
+        if (!result.containsKey(name))
+            result[name] = ArrayList()
+        var data = result.getValue(name)
+        data.add(value(i))
+    }
+
+    return result
 }
 
 val StringValues.toHeaders: Headers

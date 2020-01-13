@@ -399,21 +399,18 @@ class MockTests : ApiTests {
             Assert.assertNull(mock.responseData)
 
             handleRequest(HttpMethod.Post, "/mail", Ports.live)
-                .apply {
-                    response {
-                        Assert.assertEquals(HttpStatusCode.OK, it.status())
-                        Assert.assertTrue(MockUseStates.isDisabled(mock.mockUses))
-                        Assert.assertNull(mock.responseData)
-                        Assert.assertNotEquals(mockBody, it.content)
-                    }
+                .response {
+                    Assert.assertEquals(HttpStatusCode.OK, it.status())
+                    Assert.assertTrue(MockUseStates.isDisabled(mock.mockUses))
+                    Assert.assertNull(mock.responseData)
+                    Assert.assertNotEquals(mockBody, it.content)
                 }
 
+
             handleRequest(HttpMethod.Post, "/mail", Ports.live)
-                .apply {
-                    response {
-                        Assert.assertEquals(HttpStatusCode.OK, it.status())
-                        Assert.assertEquals(mockBody, it.content)
-                    }
+                .response {
+                    Assert.assertEquals(HttpStatusCode.OK, it.status())
+                    Assert.assertEquals(mockBody, it.content)
                 }
         }
     }
@@ -438,12 +435,10 @@ class MockTests : ApiTests {
             Assert.assertTrue(tape.alwaysLive.orFalse)
 
             handleRequest(HttpMethod.Post, "/mail", Ports.live)
-                .apply {
-                    response {
-                        Assert.assertEquals(HttpStatusCode.OK, it.status())
-                        Assert.assertTrue(tape.chapters.isNotEmpty())
-                        Assert.assertTrue(tape.chapters.first().alwaysLive.isTrue())
-                    }
+                .response {
+                    Assert.assertEquals(HttpStatusCode.OK, it.status())
+                    Assert.assertTrue(tape.chapters.isNotEmpty())
+                    Assert.assertTrue(tape.chapters.first().alwaysLive.isTrue())
                 }
         }
     }

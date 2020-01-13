@@ -198,12 +198,10 @@ fun FlowContent.paramTextArea(params: Parameters?, config: TEXTAREA.() -> Unit =
  */
 fun FlowContent.headerTextArea(headers: Headers?, config: TEXTAREA.() -> Unit = {}) {
     val pairs = headers?.run {
-        toMultimap().asSequence()
-            .filter { it.key != null && it.value != null }
+        toMultimap(true).asSequence()
             .flatMap { kv ->
                 kv.value.asSequence()
-                    .filter { it != null }
-                    .map { kv.key!! to it!! }
+                    .map { kv.key to it }
             }
     }
     textAreaBuilder(pairs, config)

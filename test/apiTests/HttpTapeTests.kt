@@ -15,20 +15,16 @@ class HttpTapeTests {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
                 addHeader("mockTape_Name", tapeName)
                 addHeader("mockTape_Only", "true")
-            }.apply {
-                response {
-                    Assert.assertEquals(HttpStatusCode.Created, it.status())
-                }
+            }.response {
+                Assert.assertEquals(HttpStatusCode.Created, it.status())
             }
 
             handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName", Ports.config)
-                .apply {
-                    response {
-                        val hasTape = TapeCatalog.Instance.tapes
-                            .any { it.name == tapeName }
+                .response {
+                    val hasTape = TapeCatalog.Instance.tapes
+                        .any { it.name == tapeName }
 
-                        Assert.assertFalse(hasTape)
-                    }
+                    Assert.assertFalse(hasTape)
                 }
         }
     }

@@ -246,12 +246,14 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                         nData.url = null
                 }
 
-                val headersData = data["netHeaders"].toPairs()
+                val headersData = data["netHeaders"].toPairs().orEmpty()
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
-                    headersData?.filter { it.second != null }
-                        ?.forEach {
-                            builder.add(it.first, it.second!!)
-                        }
+                    headersData.forEach {
+                        val headName = it.first.toLowerCase()
+                            .replace("""-([a-z])""".toRegex()) { it.value.toUpperCase() }
+                            .uppercaseFirstLetter()
+                        builder.add(headName, it.second)
+                    }
                 }.build()
 
                 nData.body = data["networkBody"].let {

@@ -199,7 +199,7 @@ val removeCommentFilter: (List<String>) -> Boolean
  *
  * [allowFilter]: If the value returns true, the item is allowed
  */
-inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String?>>? {
+inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String>>? {
     if (this == null) return null
 
     return split('\n').asSequence()
@@ -212,7 +212,9 @@ inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = 
                 else -> null
             }
         }
-        .filter { (it.first.isNotBlank() && it.second != null) }
+        .filterNot { it.first.isBlank() }
+        .filterNot { it.second.isNullOrBlank() }
+        .map { it.first to it.second!! }
 }
 
 /**

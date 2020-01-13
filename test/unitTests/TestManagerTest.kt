@@ -106,29 +106,4 @@ class TestManagerTest {
         Assert.assertNotEquals(bodyStr, outBody)
         Assert.assertTrue(outBody.none { it == 'b' })
     }
-
-    @Test
-    fun aaaa() {
-        val tt: MutableMap<String, MutableMap<TestBounds.Companion.DataTypes, MutableList<Pair<String, String>>>> =
-            mutableMapOf()
-        tt["aa"] = mutableMapOf(
-            Body to mutableListOf(
-                "bb" to "cc",
-                "dd" to "dd"
-            ),
-            Head to mutableListOf(
-                "bb" to "cc",
-                "dd" to "dd"
-            )
-        )
-
-        tt["rr"] = mutableMapOf(
-            Body to mutableListOf(
-                "bb1" to "c2c",
-                "dd2" to "d3d"
-            )
-        )
-
-        println(tt.toJson.green())
-    }
 }
