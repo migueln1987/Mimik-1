@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import helpers.ensurePrefix
 import helpers.isValidJSON
 import helpers.isTrue
+import helpers.match
 import org.junit.Assert
 import org.junit.Test
 
@@ -100,5 +101,41 @@ class StringTests {
         """.trimIndent()
 
         Assert.assertTrue(test.isValidJSON)
+    }
+
+    @Test
+    fun matches_RegMixedHard() {
+        val input = "test 123 end"
+        val regIn = """.+ \d+"""
+        val mixedIn = ".+123"
+        val hardIn = "test 123"
+        val failIn = "fail"
+        val emptyIn = ""
+
+        val out_reg = regIn.match(input)
+        val out_mixed = mixedIn.match(input)
+        val out_hard = hardIn.match(input)
+        val out_fail = failIn.match(input)
+        val out_empty = emptyIn.match(input)
+
+        Assert.assertEquals(1, out_reg.third)
+        Assert.assertEquals(3, out_mixed.third)
+        Assert.assertEquals(7, out_hard.third)
+        Assert.assertEquals(0, out_fail.third)
+
+        Assert.assertTrue(out_hard.third > out_mixed.third)
+        Assert.assertTrue(out_mixed.third > out_reg.third)
+        Assert.assertTrue(out_reg.third > out_fail.third)
+        Assert.assertEquals(out_fail.third, out_empty.third)
+
+        Assert.assertEquals("t 123", out_reg.first)
+        Assert.assertEquals(" 123", out_mixed.first)
+        Assert.assertEquals("test 123", out_hard.first)
+        Assert.assertEquals(null, out_fail.first)
+        Assert.assertEquals(null, out_empty.first)
+
+        Assert.assertFalse(out_reg.second)
+        Assert.assertFalse(out_mixed.second)
+        Assert.assertTrue(out_hard.second) // literal compatible
     }
 }

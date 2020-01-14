@@ -413,7 +413,7 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
     fun bucketFilter(bit: RequestAttractorBit) = inputs.asSequence()
         .map { bit.value.match(it) }
         .filter { it.first != null }
-        .map { it.first!! to it.second }
+        .map { Triple(it.first!!, it.second, it.third) }
         .toList()
 
     // step 1
@@ -434,7 +434,7 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
                 Triple(
                     result.first + 1, // is as requested type
                     result.second + pass, // did it pass?
-                    v.value.count { it.second } // literal matches
+                    v.value.sumBy { it.third } // literal matches
                 )
             } else
                 result
