@@ -53,10 +53,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
             set(value) {
                 field = value
                 if (reBuild != null) {
-                    reBuild.attractors
-                        ?.also { it.append(value) }
-                        ?: also { reBuild.attractors = value }
-                    if (value == null)
+                    reBuild.attractors = value
+                    if (value == null || value.isInitial)
                         reBuild.attractors = null
                 }
             }
@@ -66,7 +64,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
          *
          * Default: true
          */
-        var allowLiveRecordings: Boolean? = true
+        var allowNewRecordings: Boolean? = true
             set(value) {
                 field = value
                 if (reBuild != null) {
@@ -95,7 +93,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                 BlankTape { tape ->
                     tape.tapeName = tapeName
                     tape.attractors = attractors
-                    tape.mode = if (allowLiveRecordings == true)
+                    tape.mode = if (allowNewRecordings == true)
                         TapeMode.READ_WRITE else TapeMode.READ_ONLY
                     tape.alwaysLive = alwaysLive
                     tape.file = null

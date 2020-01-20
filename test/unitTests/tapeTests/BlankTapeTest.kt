@@ -55,7 +55,7 @@ class BlankTapeTest {
             it.tapeName = name
             it.routingURL = url
             it.attractors = attractorData
-            it.allowLiveRecordings = false
+            it.allowNewRecordings = false
         }.build()
 
         Assert.assertEquals(name, testObject.name)

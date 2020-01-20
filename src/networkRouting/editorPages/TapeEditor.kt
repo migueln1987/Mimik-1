@@ -336,7 +336,6 @@ object TapeEditor : EditorModule() {
                                     }
                                 }
                                 size = "${placeholder.length + 20}"
-                                onLoad = "setRoutingUrlStates(value)"
                                 onKeyUp = "setRoutingUrlStates(value)"
                             }
 
@@ -430,7 +429,7 @@ object TapeEditor : EditorModule() {
                                 checkBoxInput(name = "allowPassthrough") {
                                     id = "allowPassthrough"
                                     disabled = true
-                                    value = pData.tape?.alwaysLive.isTrue().toString()
+                                    checked = pData.tape?.alwaysLive.isTrue()
                                     onChange = """
                                         setIsDisabled(SaveNewCalls, checked)
                                         if (document.getElementById('ChapterData'))
@@ -441,6 +440,7 @@ object TapeEditor : EditorModule() {
                                         setIsDisabled(SaveAddChapters, checked)
                                     """.trimIndent()
                                 }
+
                                 tooltipText("?", "tapeCallPassthroughHint")
                                 linebreak()
 
@@ -451,7 +451,7 @@ object TapeEditor : EditorModule() {
                                 checkBoxInput(name = "SaveNewCalls") {
                                     id = "SaveNewCalls"
                                     disabled = true
-                                    value = pData.tape?.isWritable.isTrue().toString()
+                                    checked = pData.tape?.isWritable.isTrue()
                                 }
 
                                 if (!pData.newTape) {
@@ -472,6 +472,8 @@ object TapeEditor : EditorModule() {
                                     }
                                 } else
                                     div { id = "SaveAddChapters" }
+
+                                script { unsafe { +"setRoutingUrlStates(RoutingUrl.value)" } }
                             }
                         }
                     }

@@ -332,7 +332,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             result.item = BlankTape.Builder {
                 it.tapeName = paramTapeName
                 it.routingURL = mockParams["tape_url"]
-                it.allowLiveRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
+                it.allowNewRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
             }.build()
                 .also { tapeCatalog.tapes.add(it) }
         }

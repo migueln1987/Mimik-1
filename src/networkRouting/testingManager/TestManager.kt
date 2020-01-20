@@ -36,6 +36,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
     }
 
     private val finalizer = "##Finalize"
+    private val initTag = "##Init"
+    private val allTag = "##All"
 
     override fun init(route: Route) {
         route.route(path) {
@@ -90,7 +92,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         val heads = getAll("tape")
         if (heads.isNullOrEmpty()) return listOf()
         val tapeCatNames = tapeCatalog.tapes.map { it.name }
-        val containsInit = heads.any { it.equals("init", true) }
+        val tapeFlags = listOf(initTag, allTag)
+        val containsFlags = heads.union(tapeFlags)
 
         return heads.flatMap { it.split(',') }.asSequence()
             .filterNot { it.isBlank() }
@@ -98,8 +101,8 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             .filter { tapeCatNames.contains(it) }
             .toList()
             .let {
-                if (containsInit)
-                    it.toMutableList().apply { add("Init") }
+                if (containsFlags.isNotEmpty())
+                    containsFlags.toMutableList()
                 else it
             }
     }
@@ -421,11 +424,20 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 requireNotNull(boundHandle)
                 var dCount = 0
-                disableTapes.forEach { t ->
-                    boundHandle.tapes.removeIf {
-                        (it == t).also { dCount++ }
+                when {
+                    disableTapes.contains(allTag) -> {
+                        dCount += boundHandle.tapes.size
+                        boundHandle.tapes.clear()
+                    }
+                    else -> {
+                        disableTapes.forEach { t ->
+                            boundHandle.tapes.removeIf {
+                                (it == t).also { dCount++ }
+                            }
+                        }
                     }
                 }
+
                 printlnF(
                     "Disabling %s tape%s in test (%s)".green(),
                     dCount,

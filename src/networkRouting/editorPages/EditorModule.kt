@@ -707,7 +707,7 @@ abstract class EditorModule {
             tape.attractors = filterToAttractors()
 
             tape.alwaysLive = if (tape.isValidURL && get("allowPassthrough") == "on") true else null
-            tape.allowLiveRecordings = if (get("SaveNewCalls") == "on") true else null
+            tape.allowNewRecordings = if (get("SaveNewCalls") == "on") true else null
         }
         modTape.modifiedDate = Date()
 
