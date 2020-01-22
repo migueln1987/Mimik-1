@@ -96,24 +96,44 @@ private fun Application.installFeatures() {
     install(DoubleReceive) // https://ktor.io/servers/features/double-receive.html
 
     install(CallId) {
-        retrieve {
-            if (it.request.local.port == Ports.config)
-                return@retrieve ""
-            var result = it.request.headers["x-dcmguid"]
-            result = result ?: it.request.headers["x-up-subno"]
-            result = result ?: it.request.headers["x-jphone-uid"]
-            result = result ?: it.request.headers["x-em-uid"]
-            if (result != null) return@retrieve result
+        var activeID = ""
+        fun ApplicationCall.getID(): String {
+            if (request.local.port == Ports.config)
+                return ""
+            var result = request.headers["x-dcmguid"]
+            result = result ?: request.headers["x-up-subno"]
+            result = result ?: request.headers["x-jphone-uid"]
+            result = result ?: request.headers["x-em-uid"]
+            if (result != null) return result.also {
+                activeID = it
+                println("Result ID: $it")
+            }
 
-            runBlocking {
-                val body = it.tryGetBody()
+            return runBlocking {
+                val body = tryGetBody()
                 deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
-            }.orEmpty()
+            }.orEmpty().also {
+                activeID = it
+                println("Use ID: $it")
+            }
         }
+
+        retrieve { it.getID() }
+
+        generate {
+            if (it.callId == null)
+                it.getID().also {
+                    activeID = it
+                    println("GenID: $it")
+                }
+            else ""
+        }
+
+        verify { it == activeID }
     }
 
 //    install(ContentNegotiation) {
-        // gson {}
+    // gson {}
 //    }
 
     install(CallLogging) {

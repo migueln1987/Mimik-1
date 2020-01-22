@@ -93,7 +93,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         if (heads.isNullOrEmpty()) return listOf()
         val tapeCatNames = tapeCatalog.tapes.map { it.name }
         val tapeFlags = listOf(initTag, allTag)
-        val containsFlags = heads.union(tapeFlags)
+        val containsFlags = tapeFlags.filter { heads.contains(it) }
 
         return heads.flatMap { it.split(',') }.asSequence()
             .filterNot { it.isBlank() }

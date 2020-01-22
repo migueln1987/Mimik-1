@@ -183,6 +183,11 @@ fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractio
         .forEach {
             val matchStr = it.first.match(bodyContent).first
             if (matchStr != null) {
+                printlnF(
+                    "Replaced:\n== From\n %s\n== To\n %s",
+                    matchStr,
+                    it.second
+                )
                 newBody = true
                 bodyContent = when {
                     matchStr.isBlank() -> it.second
