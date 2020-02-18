@@ -13,6 +13,7 @@ import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
 import networkRouting.testingManager.observe
 import networkRouting.testingManager.TestManager
+import networkRouting.testingManager.collectVars
 import networkRouting.testingManager.replaceByTest
 import okreplay.OkReplayInterceptor
 import tapeItems.BlankTape
@@ -23,7 +24,8 @@ import java.util.Collections
 import java.util.Date
 import kotlin.io.println
 
-class TapeCatalog : OkReplayInterceptor() {
+class TapeCatalog {
+    private val okreplay by lazy { OkReplayInterceptor() }
     val config by lazy { VCRConfig.getConfig }
     val tapes: MutableList<BlankTape> = mutableListOf()
     val requestList = mutableMapOf<String, Semaphore>()
@@ -217,11 +219,14 @@ class TapeCatalog : OkReplayInterceptor() {
                 bounds?.handle?.let { "[$it] " } ?: "",
                 tape.name
             )
+            callRequest.collectVars(bounds, chap)
             val chain = tape.requestToChain(callRequest)
-            start(config, tape)
+            okreplay.start(config, tape)
             withContext(Dispatchers.IO) {
                 bounds.observe(tape) {
-                    intercept(chain).replaceByTest(bounds, chap)
+                    okreplay.intercept(chain)
+                        .collectVars(bounds, chap)
+                        .replaceByTest(bounds, chap)
                 }
             }?.also { return it }
 
@@ -243,8 +248,8 @@ class TapeCatalog : OkReplayInterceptor() {
                     println("Response not found; Using tape ${it.name}".cyan())
 
                     val chain = it.requestToChain(callRequest)
-                    start(config, it)
-                    withContext(Dispatchers.IO) { intercept(chain) }
+                    okreplay.start(config, it)
+                    withContext(Dispatchers.IO) { okreplay.intercept(chain) }
                 } ?: let {
                     callRequest.createResponse(HttpStatusCode.Conflict) {
                         R.getProperty("processCall_ConflictingTapes")

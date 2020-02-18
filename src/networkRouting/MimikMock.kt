@@ -104,7 +104,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         }
 
         // Step 2: Get existing chapter (to override) or create a new one
-        val interactionName = mockParams["name"]
+        val interactionName = mockParams["name"] ?: mockParams["_name"]
 
         var creatingNewChapter = false
         val chapter =
@@ -145,7 +145,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             (attractors.bodyMatchers.isNullOrEmpty().isTrue() ||
                     attractors.bodyMatchers?.all { it.hardValue.isBlank() }.isTrue())
         ) // add the default "accept all bodies" to calls requiring a body
-            attractors.bodyMatchers = listOf(RequestAttractorBit(".*"))
+            attractors.bodyMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
 
         chapter.also { updateChapter ->
             updateChapter.alwaysLive = alwaysLive

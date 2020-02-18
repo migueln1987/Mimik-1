@@ -13,6 +13,7 @@ import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.Responsedata
+import networkRouting.editorPages.EditorModule.Companion.isBlank
 import networkRouting.editorPages.EditorModule.Companion.noData
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
@@ -322,6 +323,8 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         get() { // todo; move into logger module
             return { name, extras ->
                 var bodyStr = body().content(noData).tryAsPrettyJson ?: noData
+                if (bodyStr.isBlank())
+                    bodyStr = isBlank
 
                 val requestStr =
                     ("-Name: $name\n" +

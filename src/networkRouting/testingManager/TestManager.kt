@@ -17,9 +17,9 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import networkRouting.RoutingContract
 import networkRouting.testingManager.TestBounds.Companion.DataTypes
-import java.lang.Exception
 import java.time.Duration
 import java.util.Date
+import kotlin.Exception
 
 @Suppress("RemoveRedundantQualifierName")
 class TestManager : RoutingContract(RoutePaths.rootPath) {
@@ -130,7 +130,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 var canContinue = false
                 when {
-                    tapeCatalog.tapes.isEmpty() ->
+                    tapeCatalog.tapes.isEmpty() && !allowedTapes.contains(allTag) ->
                         call.respondText(status = HttpStatusCode.PreconditionFailed) { "No tapes to append this test to" }
                     noConfigs ->
                         call.respondText(status = HttpStatusCode.BadRequest) { "No config headers" }
@@ -170,8 +170,9 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 val replacers = getReplacers()
 
                 testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
-                    if (!replacers.isNullOrEmpty())
-                        it.replacerData.putAll(replacers)
+                    replacers?.forEach { (t, u) ->
+                        it.replacerData[t] = u
+                    }
                 }
                 boundManager.add(testBounds)
 
@@ -199,29 +200,32 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     }
                 }
 
-                var items: Int? = null
-                if (!replacers.isNullOrEmpty())
-                    items = replacers.values.sumBy { r -> r.values.sumBy { it.size } }
+                var findVars: Int? = null
+                var remappers: Int? = null
+                if (!replacers.isNullOrEmpty()) {
+                    findVars = replacers.values.sumBy { it.findVars.size }
+                    remappers = replacers.values.sumBy { it.replacers_body.size }
+                }
                 printlnF(
                     "Test Bounds (%s) ready with [%d] tapes:".green() +
-                            "%s".cyan() + "%s",
+                            "%s".cyan(),
                     testBounds.handle,
                     allowedTapes.size,
                     allowedTapes.joinToString(
                         prefix = "\n- ",
                         separator = "\n- "
-                    ) { it },
-                    when (items) {
-                        null -> ""
-                        else -> "\nWith ".green() + "[$items]".cyan() + " Response modifiers".green()
-                    }
+                    ) { it }
                 )
+
+                println("With:".green())
+                println(" - [${findVars ?: 0}]".cyan() + " Variable finders".green())
+                println(" - [${remappers ?: 0}]".cyan() + " Response modifiers".green())
 
                 call.response.headers.apply {
                     append("tape", allowedTapes)
                     append("handle", handle.toString())
-                    if (items != null)
-                        append("mappers", items.toString())
+                    if (remappers != null)
+                        append("mappers", remappers.toString())
                 }
 
                 call.respondText(status = status) { "" }
@@ -274,13 +278,14 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
     private suspend fun PipelineContext<*, ApplicationCall>.getReplacers() =
         try {
-            getReplacers_v1()
+            getReplacers_v2()
         } catch (_: Exception) {
-            try {
-                getReplacers_v2()
-            } catch (_: Exception) {
-                null
-            }
+            null
+//            try {
+//                getReplacers_v1()
+//            } catch (_: Exception) {
+//                null
+//            }
         }
 
     /**
@@ -317,11 +322,12 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
     /**
      * Example:
-     * ```
+     * ```json
      * {
      *   "aa": [
      *     "body{[abc]->none}",
-     *     "body{[abc]->none}"
+     *     "body{[abc]->none}",
+     *     "var{[abc]->SaveVar}"
      *   ],
      *   "bb": [
      *     "body{[ab]->none}"
@@ -329,25 +335,58 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
      * }
      * ```
      */
-    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v2() = Gson()
-        .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
-        .mapKeys { it.key.toString() }
-        .mapValues { mv ->
-            (mv.value as List<*>)
-                .map {
-                    val contents = it.toString().split("{")
-                    contents.getOrNull(0) to
-                            contents.getOrNull(1)?.dropLast(1)?.split("->")
-                                ?.run { if (size >= 2) get(0) to get(1) else null }
-                }
-                .filterNot { it.first == null || it.second == null }
-                .map { it.first!! to it.second!! }
-                .groupBy { it.first }
-                .mapKeys { DataTypes.valueOf(it.key.uppercaseFirstLetter()) }
-                .mapValues { it.value.map { it.second }.toMutableList() }
-                .toMutableMap()
+    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v2() =
+        parse_v2(call.tryGetBody().orEmpty())
+
+    private fun String.toJsonMap(): Map<String, Any>? {
+        if (isEmpty()) return mapOf()
+        return try {
+            Gson()
+                .fromJson(this, LinkedTreeMap::class.java).orEmpty()
+                .mapKeys { it.key.toString() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
-        .toMutableMap()
+    }
+
+    fun parse_v2(body: String): MutableMap<String, boundChapterItems> {
+        return (body.toJsonMap() ?: return mutableMapOf())
+            .mapValues { mv ->
+                (mv.value as List<*>)
+                    .map {
+                        val contents = it.toString().split("{")
+                        Pair(
+                            contents.getOrNull(0),
+                            contents.drop(1).joinToString(separator = "{").dropLast(1)
+                                .split("->")
+                                .run { if (size >= 2) Pair(get(0), get(1)) else null }
+                        )
+                    }
+                    .filterNot { it.first == null || it.second == null }
+                    .map { it.first!! to it.second!! }
+                    .groupBy { it.first }
+                    .map { (key, data) ->
+                        key to data.map { it.second }.toMutableList()
+                    }
+            }
+            .mapValues { (_, data) ->
+                boundChapterItems().also { bItems ->
+                    data.forEach {
+                        when (it.first.toLowerCase()) {
+                            "body" -> {
+                                bItems.replacers_body.clear()
+                                bItems.replacers_body.addAll(it.second)
+                            }
+                            "var" -> {
+                                bItems.findVars.clear()
+                                bItems.findVars.addAll(it.second)
+                            }
+                        }
+                    }
+                }
+            }.toMutableMap()
+    }
 
     private val Route.modify: Route
         get() = route(RoutePaths.Modify.path) {
@@ -377,14 +416,18 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     call.respondText(status = HttpStatusCode.NoContent) { "No modifications entered" }
                 } else {
                     requireNotNull(testBounds)
-                    testBounds.replacerData.clear()
-                    testBounds.replacerData.putAll(replacers)
-                    val items = replacers.values.sumBy { it.values.sumBy { it.size } }
-                    printlnF(
-                        "Applying [%d] replacer actions to test bounds %s".cyan(),
-                        items,
-                        testBounds.handle
-                    )
+                    replacers.forEach { (t, u) ->
+                        testBounds.replacerData[t] = u
+                    }
+
+                    val findVars = replacers.values.sumBy { it.findVars.size }
+                    val remappers = replacers.values.sumBy { it.replacers_body.size }
+
+                    println("Applying the following bound items to test bounds ${testBounds.handle}:".green())
+                    println(" - [$findVars]".cyan() + " Variable finders".green())
+                    println(" - [$remappers]".cyan() + " Response modifiers".green())
+
+                    val items = findVars + remappers
                     call.respondText(status = HttpStatusCode.OK) { "Appended $items to test bounds ${testBounds.handle}" }
                 }
             }

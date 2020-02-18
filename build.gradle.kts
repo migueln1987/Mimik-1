@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.fiserv.mimik"
-version = "0.0.1"
+version = "0.8.0"
 
 application {
     mainClassName = "$group.ApplicationKt"
@@ -19,6 +19,7 @@ application {
 
 repositories {
     mavenLocal()
+    mavenCentral()
     maven("http://jcenter.bintray.com")
     maven("http://kotlin.bintray.com/ktor")
 }
@@ -42,12 +43,12 @@ dependencies {
     implementation("io.ktor:ktor-locations:$ktor_version")
     implementation("io.ktor:ktor-server-core:$ktor_version")
 
-    implementation("com.airbnb.okreplay:okreplay:1.5.0")
+    implementation("com.airbnb.okreplay:okreplay:1.6.0")
     implementation("com.beust:klaxon:5.2")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
     testImplementation("io.mockk:mockk:1.9.3")
 
-    ktlint("com.pinterest:ktlint:0.35.0")
+    ktlint("com.pinterest:ktlint:0.36.0")
 }
 
 kotlin {

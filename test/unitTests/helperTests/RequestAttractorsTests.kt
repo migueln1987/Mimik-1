@@ -2,8 +2,10 @@ package unitTests.helperTests
 
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.attractors.getMatches
 import org.junit.Assert
 import org.junit.Before
+import org.junit.Test
 
 class RequestAttractorsTests {
     lateinit var textObject: RequestAttractors
@@ -13,47 +15,44 @@ class RequestAttractorsTests {
         textObject = RequestAttractors()
     }
 
-    //@Test
+    @Test
     fun matchCountReqRatio() {
         val bitA = RequestAttractorBit("matchevery.*")
         val bitB = RequestAttractorBit("match.*")
         val input = "matcheverything"
-        val ratioA = bitA.hardValue.length / input.length.toDouble()
-        val ratioB = bitB.hardValue.length / input.length.toDouble()
 
         val matchBitA = listOf(bitA)
-        val responseA = textObject.getMatchCount(matchBitA, input)
+        val responseA = matchBitA.getMatches(input)
 
         val matchBitB = listOf(bitB)
-        val responseB = textObject.getMatchCount(matchBitB, input)
+        val responseB = matchBitB.getMatches(input)
 
         Assert.assertEquals(responseA.Required, responseB.Required)
         Assert.assertEquals(responseA.MatchesReq, responseB.MatchesReq)
         Assert.assertTrue(responseA.reqLiterals > responseB.reqLiterals)
 
-//        Assert.assertEquals(responseA.reqSub, ratioA, 0.1)
-//        Assert.assertEquals(responseB.reqSub, ratioB, 0.1)
+        Assert.assertEquals(9, responseA.reqLiterals)
+        Assert.assertEquals(5, responseB.reqLiterals)
     }
 
-    //@Test
+    @Test
     fun matchCountOptRatio() {
+        // Add a dummy "Req", as "optionals" are skipped if "Req" fails
         val dummyReq = RequestAttractorBit(".*")
         val bitA = RequestAttractorBit("matchevery.*") { it.optional = true }
         val bitB = RequestAttractorBit("match.*") { it.optional = true }
         val input = "matcheverything"
-        val ratioA = bitA.hardValue.length / input.length.toDouble()
-        val ratioB = bitB.hardValue.length / input.length.toDouble()
 
         val matchBitA = listOf(dummyReq, bitA)
-        val responseA = textObject.getMatchCount(matchBitA, input)
+        val responseA = matchBitA.getMatches(input)
 
         val matchBitB = listOf(dummyReq, bitB)
-        val responseB = textObject.getMatchCount(matchBitB, input)
+        val responseB = matchBitB.getMatches(input)
 
         Assert.assertEquals(responseA.MatchesOpt, responseB.MatchesOpt)
         Assert.assertTrue(responseA.optLiterals > responseB.optLiterals)
 
-//        Assert.assertEquals(responseA.optSub, ratioA, 0.1)
-//        Assert.assertEquals(responseB.optSub, ratioB, 0.1)
+        Assert.assertEquals(9, responseA.optLiterals)
+        Assert.assertEquals(5, responseB.optLiterals)
     }
 }

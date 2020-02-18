@@ -26,6 +26,7 @@ abstract class EditorModule {
          * "{ no data }"
          */
         const val noData = "{ no data }"
+        const val isBlank = "{ blank }"
     }
 
     @Suppress("unused", "EnumEntryName")
