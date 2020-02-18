@@ -268,90 +268,6 @@ class RequestAttractors {
         }.to
     }
 
-    /**
-     * Using the provided [matchScanner], the source list will be scanned for required and optional matches
-     *
-     * - No [matchScanner]s and [source] is not null: returns failed match
-     * - Any [matchScanner]'s allowAllInputs = true: ANY input (even none) passes the match
-     * - all of [matchScanner]'s values are blank: skips this test
-     * - [source] is null: fail all the non-optional (and non-except) tests
-     */
-    @Deprecated("use getMatches instead")
-    fun getMatchCount(
-        matchScanner: List<RequestAttractorBit>?,
-        source: String?
-    ): AttractorMatches {
-        if (matchScanner.isNullOrEmpty())
-            return AttractorMatches().also {
-                if (!source.isNullOrEmpty()) it.Required = 1
-            }
-
-        // match ANY input passed in, even an empty input
-        if (matchScanner.any { it.allowAllInputs.isTrue() })
-            return AttractorMatches(1, 1, 0)
-
-        // nothing can possibly match, so give up here
-        if (matchScanner.all { it.hardValue.isBlank() })
-            return AttractorMatches()
-
-        val reqCount = matchScanner.count { it.required }
-        if (source == null) // hard fail if source is null
-            return AttractorMatches(reqCount, -1, -1)
-
-        val (required, reqRatio) = matchScanner.asSequence()
-            .filter { it.required }
-            .fold(0 to 0) { acc, x ->
-                //                val result = x.matchResult(source)
-                val result = (0 to 0)
-                (acc.first + result.first) to (acc.second + result.second)
-            }
-
-        val (optional, optRatio) = matchScanner.asSequence()
-            .filter { it.optional.isTrue() }
-            .fold(0 to 0) { acc, x ->
-                //                val result = x.matchResult(source)
-                val result = (0 to 0)
-                (acc.first + result.first) to (acc.second + result.second)
-            }
-
-        return AttractorMatches(reqCount, required, optional).also {
-            it.reqLiterals = reqRatio
-            it.optLiterals = optRatio
-        }
-    }
-
-    @Deprecated("use getMatches instead")
-    private fun RequestAttractorBit.matchResult(source: String): Pair<Int, Double> {
-        val (match, literal) = value.match(source)
-        var matchVal = 0
-        var matchSub = 0.0
-
-        if (match != null) {
-            if (except.isNotTrue()) {
-                matchVal = 1
-//                val len = when {
-//                    match.range.last > source.length -> (match.range.last - source.length)
-//                    else -> match.range.last
-//                }
-                // todo; determine how(if any) to different regex to literal match and regex to more literal regex match
-                // Ex-1: "matcheverything" -> "matcheverything" vs ".+"
-                // Ex-2: "matcheverything" -> "matcheverything" vs "match.+"
-                // Ex-3: "matcheverything" -> "matchevery.+" vs "match.+
-                // For now, it'll just different literal to non-literal
-                // might need to switch Pair to Triple<match, literal matches, reg matches>
-
-                matchSub = if (literal) 1.0 else 0.0
-            }
-        } else {
-            if (except.isTrue()) {
-                matchVal = 1
-                matchSub = 1.0
-            }
-        }
-
-        return (matchVal to matchSub)
-    }
-
     private fun matchesPath(source: String?): AttractorMatches {
         return routingPath?.let { listOf(it) }.orEmpty()
             .getMatches(source?.removePrefix("/"))
@@ -374,9 +290,25 @@ class RequestAttractors {
     }
 }
 
-fun List<RequestAttractorBit>?.getMatches(inputs: String?) =
-    getMatches(inputs?.let { listOf(it) })
+/**
+ * Using the provided [RequestAttractorBit]s, the [input] will be scanned for required and optional matches
+ *
+ * - No [RequestAttractorBit]s and [input] is not null: returns failed match
+ * - Any [RequestAttractorBit]'s allowAllInputs = true: ANY input (even none) passes the match
+ * - all of [RequestAttractorBit]'s values are blank: skips this test
+ * - [input] is null: fail all the non-optional (and non-except) tests
+ */
+fun List<RequestAttractorBit>?.getMatches(input: String?): AttractorMatches =
+    getMatches(input?.let { listOf(it) })
 
+/**
+ * Using the provided [RequestAttractorBit]s, the [inputs] will be scanned for required and optional matches
+ *
+ * - No [RequestAttractorBit]s and [inputs] is not null: returns failed match
+ * - Any [RequestAttractorBit]'s allowAllInputs = true: ANY input (even none) passes the match
+ * - all of [RequestAttractorBit]'s values are blank: skips this test
+ * - [inputs] is null: fail all the non-optional (and non-except) tests
+ */
 fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatches {
     when {
         this.isNullOrEmpty() -> AttractorMatches().also {
@@ -408,37 +340,28 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
     - then return Required + optional matches
      */
 
-    // list of (did it match, was it a literal match)
-    // step 1.b
-    fun bucketFilter(bit: RequestAttractorBit) = inputs.asSequence()
-        .map { bit.value.match(it) }
-        .filter { it.first != null }
-        .map { Triple(it.first!!, it.second, it.third) }
-        .toList()
-
-    // step 1
-    // bucket : matches
-    val buckets = associateWith(::bucketFilter)
-
     fun xCounts(scanReq: Boolean): Triple<Int, Int, Int> {
-        return buckets.entries.fold(Triple(0, 0, 0)) { result, v ->
-            val isType = v.key.required && scanReq
-            if (isType) {
+        return asSequence()
+            .filter { it.required == scanReq }
+            .map { bit ->
+                // step 1
+                // bucket : matches
+                bit to inputs.map { bit.value.matchResults(it)[0] }.filter { it.isNotEmpty() }
+            }
+            .fold(Triple(0, 0, 0)) { result, (bit, bData) ->
                 val pass = when {
-                    !v.key.required && scanReq -> 0
-                    v.key.required && !scanReq -> 0
-                    v.value.isEmpty() && v.key.except.isTrue() -> 1
-                    v.value.isNotEmpty() && !v.key.except.isTrue() -> 1
+                    !bit.required && scanReq -> 0
+                    bit.required && !scanReq -> 0
+                    bData.isEmpty() && bit.except.isTrue() -> 1
+                    bData.isNotEmpty() && !bit.except.isTrue() -> 1
                     else -> 0
                 }
                 Triple(
                     result.first + 1, // is as requested type
                     result.second + pass, // did it pass?
-                    v.value.sumBy { it.third } // literal matches
+                    bData.sumBy { it.sumBy { it.litMatchCnt } } // literal matches
                 )
-            } else
-                result
-        }
+            }
     }
 
     val reqCounts = xCounts(true)

@@ -104,6 +104,7 @@ private fun Application.installFeatures() {
             result = result ?: request.headers["x-up-subno"]
             result = result ?: request.headers["x-jphone-uid"]
             result = result ?: request.headers["x-em-uid"]
+            result = result ?: request.headers["uniqueid"]
             if (result != null) return result.also {
                 activeID = it
                 println("Result ID: $it")

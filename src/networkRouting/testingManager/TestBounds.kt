@@ -7,7 +7,6 @@ import kolor.red
 import kolor.yellow
 import kotlinx.atomicfu.atomic
 import mimikMockHelpers.RecordedInteractions
-import networkRouting.testingManager.TestBounds.Companion.DataTypes
 import okhttp3.ResponseBody
 import kotlin.concurrent.schedule
 import tapeItems.BlankTape
@@ -16,7 +15,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
 
     companion object {
         enum class DataTypes {
-            Head, Body
+            Head, Body, Var
         }
     }
 
@@ -73,6 +72,11 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     var timeLimit: Duration = Duration.ofSeconds(5)
 
     private fun startTest(): Pair<String, String> {
+        if (tapes.contains("##All")) {
+            // for unit tests only, lazy adds ALL the known tapes
+            tapes.clear()
+            tapes.addAll(TapeCatalog.Instance.tapes.map { it.name })
+        }
         isEnabled.value = true
         expireTimer?.cancel()
         startTime = Date()
@@ -125,9 +129,18 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
         mutableMapOf<String, MutableList<Pair<String, Int>>>()
 
     /**
-     * (chapter name), Map<DataTypes, List<data>>
+     * (chapter name), (data)
      */
-    val replacerData: MutableMap<String, MutableMap<DataTypes, MutableList<Pair<String, String>>>> = mutableMapOf()
+    val replacerData: MutableMap<String, boundChapterItems> = mutableMapOf()
+
+    val boundVars: MutableMap<String, String> = mutableMapOf()
+}
+
+class boundChapterItems {
+    val replacers_body: MutableList<Pair<String, String>> = mutableListOf()
+    // todo; replacers_head
+
+    val findVars: MutableList<Pair<String, String>> = mutableListOf()
 }
 
 enum class BoundStates {
@@ -173,39 +186,179 @@ inline fun <reified T : Any?> TestBounds?.observe(tape: BlankTape, watch: () -> 
     return returns
 }
 
+fun okhttp3.Request.collectVars(bounds: TestBounds?, chap: RecordedInteractions?) {
+    if (bounds == null || chap == null) return
+
+    val bodyContent = body()?.content()
+    if (bodyContent.isNullOrEmpty()) return
+    val byChap = bounds.replacerData[chap.name] ?: return
+
+    byChap.findVars.forEach {
+        val matches = it.first.matchResults(bodyContent)
+        if (matches.hasMatches) {
+            bounds.boundVars[it.second] = matches.first().value.orEmpty()
+        }
+    }
+}
+
+fun okhttp3.Response.collectVars(bounds: TestBounds?, chap: RecordedInteractions?): okhttp3.Response {
+    if (bounds == null || chap == null) return this
+    val byChap = bounds.replacerData[chap.name] ?: return this
+
+    val bodyContent = body()?.content().orEmpty()
+
+    byChap.findVars.forEach {
+        val matches = it.first.matchResults(bodyContent)
+        if (matches.hasMatches) {
+            bounds.boundVars[it.second] = matches.last().value.orEmpty()
+        }
+    }
+
+    return newBuilder().apply {
+        body(
+            ResponseBody.create(
+                body()?.contentType(),
+                bodyContent
+            )
+        )
+    }.build()
+}
+
+private const val templateReg = """@\{(.+?)\}"""
+private const val variableMatch = """((?<content>\w+)|(?<final>['"].+?['"]))"""
 fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractions?): okhttp3.Response {
     if (bounds == null || chap == null) return this
     val byChap = bounds.replacerData[chap.name] ?: return this
 
+    /* Actions:
+    1. use (replacerFrom) to find matching content in (body)
+    -> [0] = (repFromRoot)
+    --> range which must be replaced
+    -> [+] (replacer[+])
+    --> content which was matched
+
+    2.a Template checking
+    2.a.1 (templateReg) determined that (replacerTo) is a template; "@{...}"
+    -> result becomes (templateMatches)
+    ~> (replacerTo) -> (repToOut) as writable copy
+
+    2.a.2 (variableMatch) collects the results of (templateMatches)[1].sortedByDescending
+    -> each result becomes (templateMatch)
+    -> (temRootRange) = indexOf(item) or (templateMatch)[0]
+
+    2.a.3 loop through the items of (templateMatch) by group name
+    - process/ use only the items which are valid
+    2.a.3.a empty; skip ths item
+    2.a.3.b "content"; use as is
+    2.a.3.c "final"; remove padding quotes and use data
+    2.a.3.d other; TBD, use as is for now
+
+    2.a.4 Process the valid group items
+    2.a.4.a group name is "final"
+    ->> (value to range to replace)
+
+    2.a.4.b item is a template to be processed
+    ~> below processing (1-3) becomes (result)
+    2.a.4.b.1 collect vars and process the item
+    --> (temValue) = index/ group name/ bounds variable
+
+    2.a.4.b.1.a (temValue) is an index
+    2.a.4.b.1.a.1 (replacer) must contain a index of (content index)
+    -> (temRepValue) = (replacer)[temValue as index]
+
+    2.a.4.b.1.b check if (replacer) contains [temValue] - as it's closer relative
+    -> (temRepValue) = (replacer)[temValue]
+
+    2.a.4.b.1.c check if (boundVars) contains (content key)
+    -> (temRepValue) = boundVars[temValue]
+
+    2.a.4.b.2 (temRepValue) is not null
+    ->> (temRepValue to range to replace)
+
+    2.a.4.b.3 above result is null, no matches or "finals" were found
+    ->> (empty string to range to replace)
+
+    2.a.5 Use result and replace range; (result to temRootRange)
+    => replace (repToOut) at (temRootRange) with value from (result)
+
+    2.b Not a template
+    => replace (body) at (replacer[0] range) with (replacerTo)
+   */
+
     var bodyContent = body()?.content().orEmpty()
-    var newBody = false
-    byChap[DataTypes.Body].orEmpty()
-        .forEach {
-            val matchStr = it.first.match(bodyContent).first
-            if (matchStr != null) {
-                printlnF(
-                    "Replaced:\n== From\n %s\n== To\n %s",
-                    matchStr,
-                    it.second
-                )
-                newBody = true
-                bodyContent = when {
-                    matchStr.isBlank() -> it.second
-                    else -> bodyContent.replace(matchStr, it.second)
+
+    // todo; move content into it's own function, so replacers_head can use it too
+    byChap.replacers_body.forEach { (replacerFrom, replacerTo) ->
+        val replacer = replacerFrom.matchResults(bodyContent)
+        if (replacer.hasMatches) {
+            val repRootFromRange = replacer[0].first().range
+
+            val templateMatches = templateReg.matchResults(replacerTo)
+            var repToOut: String? = null
+            if (templateMatches.hasMatches) {
+                repToOut = replacerTo
+                templateMatches[1].sortedByDescending { it.range.first }.forEach { temMatch ->
+                    val template = variableMatch.matchResults(temMatch.value)
+                    val temRootRange = templateMatches.rootIndexOf(temMatch)!!.range
+
+                    val temReplace = template.mapNotNull {
+                        when (it.groupName) {
+                            "" -> null
+                            "content" -> it
+                            "final" -> { // remove bounding quotes (single or double)
+                                it.clone { b ->
+                                    b.value = b.value!!.drop(1).dropLast(1)
+                                }
+                            }
+                            else -> it
+                        }
+                    }
+                        .firstNotNullResult {
+                            when (it.groupName) {
+                                "final" -> it.value.orEmpty()
+                                else -> {
+                                    // if this path has a non-null result, then use it
+                                    val temValue = it.value.orEmpty()
+                                    val temIndex = temValue.toIntOrNull()
+
+                                    when {
+                                        temIndex != null -> { // is it a index?
+                                            if (replacer.contains(temIndex))
+                                                replacer[temIndex].first().value
+                                            else null
+                                        }
+
+                                        replacer.contains(temValue) -> // a named group?
+                                            replacer[temValue].first().value.orEmpty()
+
+                                        bounds.boundVars.containsKey(temValue) -> // a variable?
+                                            bounds.boundVars.getValue(temValue)
+
+                                        else -> null // nothing found
+                                    }
+                                }
+                            }
+                        }.orEmpty()
+
+                    repToOut = repToOut!!.replaceRange(
+                        temRootRange.first,
+                        temRootRange.last,
+                        temReplace
+                    )
                 }
             }
+            // todo; "Replaced:\n== From\n %s\n== To\n %s"
+            bodyContent = bodyContent
+                .replaceRange(repRootFromRange.first, repRootFromRange.last, repToOut ?: replacerTo)
         }
+    }
 
-    // todo; replace response headers
-
-    return if (newBody) {
-        newBuilder().apply {
-            body(
-                ResponseBody.create(
-                    body()?.contentType(),
-                    bodyContent
-                )
+    return newBuilder().apply {
+        body(
+            ResponseBody.create(
+                body()?.contentType(),
+                bodyContent
             )
-        }.build()
-    } else this
+        )
+    }.build()
 }

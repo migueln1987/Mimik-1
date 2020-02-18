@@ -44,7 +44,9 @@ class UniqueBit(var searchStr: String? = null, var uniqueType: UniqueTypes? = Un
 
             else -> null
         }?.firstNotNullResult {
-            searchStr.match(it).first
+            searchStr.matchResults(it).get { r ->
+                r.groupIndex == 0 && r.hasMatch
+            }.firstOrNull()?.value
         }
     }
 }

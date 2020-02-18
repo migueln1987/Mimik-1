@@ -64,44 +64,51 @@ inline fun <T> tryOrNull(action: () -> T?): T? {
 val MatchResult?.hasMatch: Boolean
     get() = this?.groups?.isNotEmpty().isTrue()
 
-/**
- * Returns the search of [input] in [this] string.
- * 1. Regex matches will have a range equal to the query length.
- * 2. Second value of pair is "was the match a literal match".
- * 3. Union count between [this] and [input], preserving duplicates
- *
- * Searches (in order):
- * - Literal (which may include regex items)
- * - Regex
- * - How much of the result (regex capture) matches the filter input
- *
- * If [this] is empty or blank, [null] is returned
- */
-fun String?.match(input: String): Triple<String?, Boolean, Int> {
-    if (this.isNullOrBlank()) return Triple(null, true, 0)
+private val logMatchChars = false
 
-    val asReg = ".*($this)".toRegex().find(input)?.groups?.get(1)
-    val asLiteral = isNotBlank() && (input == this)
-
-    val filtArr = toHashSet()
-    val regMatch = asReg?.value.orEmpty().toHashSet()
-
-    val logMatchChars = false
+fun matchCount(inputFind: HashSet<Char>, compareMatch: HashSet<Char>): Int {
+    // todo; figure out what to do with matchChars
     val matchChars = mutableListOf<Char>()
-    val filterCnt = filtArr.intersect(regMatch).map { x ->
-        val m = kotlin.math.min(filtArr.count { it == x }, regMatch.count { it == x })
-        if (logMatchChars)
-            repeat((0 until m).count()) { matchChars.add(x) }
-        m
+    return inputFind.intersect(compareMatch).map { x ->
+        kotlin.math.min(inputFind.count { it == x }, compareMatch.count { it == x })
+            .also {
+                if (logMatchChars)
+                    repeat((0 until it).count()) { matchChars.add(x) }
+            }
     }.sum()
+}
 
-    // matched by not using regex
-    val literalComp = filtArr.subtract(regMatch)
+fun String?.matchResults(input: String?): MatcherCollection {
+    if (this.isNullOrEmpty() || input == null) return MatcherCollection()
 
-    return when {
-        asLiteral -> Triple(input, true, filterCnt)
-        literalComp.isEmpty() -> Triple(asReg?.value, true, filterCnt)
-        asReg != null -> Triple(asReg.value, false, filterCnt)
-        else -> Triple(null, true, 0)
+    val resultCollection = MatcherCollection(this)
+
+    if (input == this) { // finish early if it's a literal match
+        resultCollection.loadResult(input)
+        return resultCollection
     }
+
+    val filterArr = toHashSet()
+    toRegex().findAll(input).forEach {
+        resultCollection.processResult(it, filterArr)
+    }
+    return resultCollection
+}
+
+/**
+ * Processes the incoming [result] into the destination collection ([this])
+ */
+private fun MatcherCollection.processResult(result: MatchResult, inputReg: HashSet<Char>) {
+    val literalComp = inputReg.isLiteralCompatible(result)
+    loadResult(result, literalComp)
+}
+
+/**
+ * Determines if the [match]'s matched value was found based on non-regex means
+ */
+fun HashSet<Char>.isLiteralCompatible(match: MatchResult): Boolean {
+    val firstMatch = match.value
+    val firstMatchChars = firstMatch.toHashSet()
+    val literalComp = subtract(firstMatchChars)
+    return literalComp.isEmpty()
 }

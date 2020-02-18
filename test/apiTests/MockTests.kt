@@ -255,8 +255,6 @@ class MockTests : ApiTests {
                 addHeader("mockFilter_Path", "/path")
                 // avoid a body which contains "avoid" anywhere in the string
                 addHeader("mockFilter_Body!", "avoid")
-                // wild-card "all", to allow this mock to accept any body (addition to above filter)
-                addHeader("mockFilter_Body", ".+")
                 setBody(avoidBody)
             }
 

@@ -1,19 +1,17 @@
 package unitTests
 
 import helpers.content
-import helpers.toJson
 import io.mockk.*
-import kolor.green
 import mimikMockHelpers.RecordedInteractions
-import networkRouting.testingManager.observe
-import networkRouting.testingManager.TestBounds
-import networkRouting.testingManager.TestBounds.Companion.DataTypes.Body
-import networkRouting.testingManager.TestBounds.Companion.DataTypes.Head
-import networkRouting.testingManager.replaceByTest
+import networkRouting.testingManager.*
+import okhttp3.MediaType
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import okio.BufferedSink
 import org.junit.Assert
 import org.junit.Test
 import tapeItems.BlankTape
+import java.nio.charset.Charset
 
 class TestManagerTest {
     @Test
@@ -63,47 +61,139 @@ class TestManagerTest {
     }
 
     @Test
-    fun replaceBodyTest() {
-        val chap = RecordedInteractions {
-            it.chapterName = "test1"
+    fun saveRequestVars() {
+        val chapName = "chapName"
+        val requestBodyStr = "this is a 123 test"
+        val filterFindVars = mutableListOf(
+            "\\d+" to "numberGrab",
+            "^\\w+" to "firstWord"
+        )
+
+        val reqBody = object : RequestBody() {
+            override fun contentType(): MediaType? = null
+
+            override fun writeTo(p0: BufferedSink) {
+                p0.writeString(requestBodyStr, Charset.defaultCharset())
+            }
         }
 
-        val bodyStr = "aaaabbbbcccc"
+        val mockRequest = mockk<okhttp3.Request> {
+            every { body() } returns reqBody
+        }
 
-        val bodySlot = slot<ResponseBody>()
+        val bounds = TestBounds("", mutableListOf())
+        bounds.replacerData[chapName] = mockk {
+            every { findVars } returns filterFindVars
+        }
 
-        val resp = mockk<okhttp3.Response> mResponse@{
+        val interaction = mockk<RecordedInteractions> {
+            every { name } returns chapName
+        }
+
+        // Do the test!
+        mockRequest.collectVars(bounds, interaction)
+
+        Assert.assertTrue(bounds.boundVars.containsKey(filterFindVars[0].second))
+        val varData_1 = bounds.boundVars[filterFindVars[0].second]
+        Assert.assertEquals("123", varData_1)
+
+        Assert.assertTrue(bounds.boundVars.containsKey(filterFindVars[1].second))
+        val varData_2 = bounds.boundVars[filterFindVars[1].second]
+        Assert.assertEquals("this", varData_2)
+    }
+
+    @Test
+    fun saveResponseVars() {
+        val chapName = "chapName"
+        val responseBodyStr = "this is a 123 test"
+        val filterFindVars = mutableListOf(
+            "\\d+" to "numberGrab",
+            "^\\w+" to "firstWord"
+        )
+
+        val mockResponse = mockk<okhttp3.Response> {
+            val resp = this
             every { body() } returns mockk {
-                every { bytes() } returns bodyStr.toByteArray()
-                every { contentType() } returns mockk {
-                    every { type() } returns "text"
-                    every { charset() } returns Charsets.UTF_8
-                }
-            }
-            every { newBuilder() } returns mockk {
-                every { body(capture(bodySlot)) } returns this
-                every { build() } returns mockk {
-                    every { body() } answers { bodySlot.captured }
+                every { contentType() } returns null
+                every { close() } just runs
+                every { bytes() } returns responseBodyStr.toByteArray()
+                every { newBuilder() } returns mockk {
+                    every { body(any()) } returns this
+                    every { build() } returns mockk()
                 }
             }
         }
 
-        var outResp: okhttp3.Response? = null
-
-        TestBounds("").also { test ->
-            test.replacerData
-                .getOrPut("test1", { mutableMapOf() })
-                .getOrPut(Body, { mutableListOf() })
-                .also {
-                    it.add("b" to "_")
-                }
-
-            outResp = resp.replaceByTest(test, chap)
+        val bounds = TestBounds("", mutableListOf())
+        bounds.replacerData[chapName] = mockk {
+            every { findVars } returns filterFindVars
         }
 
-        val outBody = outResp?.body().content()
+        val interaction = mockk<RecordedInteractions> {
+            every { name } returns chapName
+        }
 
-        Assert.assertNotEquals(bodyStr, outBody)
-        Assert.assertTrue(outBody.none { it == 'b' })
+        mockResponse.collectVars(bounds, interaction)
+
+        Assert.assertTrue(bounds.boundVars.containsKey(filterFindVars[0].second))
+        val varData_1 = bounds.boundVars[filterFindVars[0].second]
+        Assert.assertEquals("123", varData_1)
+
+        Assert.assertTrue(bounds.boundVars.containsKey(filterFindVars[1].second))
+        val varData_2 = bounds.boundVars[filterFindVars[1].second]
+        Assert.assertEquals("this", varData_2)
+    }
+
+    @Test
+    fun useVarsByIndexAndName() {
+        val chapName = "chapName"
+        val bodyOut = "abc def xyz"
+
+        val boundReplace = mutableListOf(
+            "f" to "P",                     // normal
+            // "abc def xyz" -> "abc deP xyz"
+            "x(.{2})" to "+@{1}_@{1}+",     // indexed
+            // "abc deP xyz" -> "abc deP +yz_yz+"
+            "(a)(?<tt>.)" to "@{1}333@{tt}",  // index and local named var
+            // "abc deP +yz_yz+" -> "a333bc deP +yz_yz+"
+            "d" to "@{testVar}"             // test bound named var
+            // "a333bc deP +yz_yz+" -> "a333bc 456eP +yz_yz+"
+        )
+
+        val bounds = TestBounds("", mutableListOf())
+            .apply {
+                replacerData[chapName] = mockk {
+                    every { replacers_body } returns boundReplace
+                }
+                boundVars["testVar"] = "456"
+            }
+
+        val interaction = mockk<RecordedInteractions> {
+            every { name } returns chapName
+        }
+
+        val result = slot<ResponseBody>()
+
+        val mockResponse = mockk<okhttp3.Response> response@{
+            every { body() } returns mockk {
+                every { contentType() } returns null
+                every { close() } just runs
+                every { bytes() } answers { bodyOut.toByteArray() }
+                every { newBuilder() } answers {
+                    mockk {
+                        every { body(capture(result)) } returns this
+                        every { build() } returns this@response
+                    }
+                }
+            }
+        }
+
+        // Do the test, result is captured in body(input)
+        mockResponse.replaceByTest(bounds, interaction)
+
+        Assert.assertEquals(
+            "a333bc 456eP +yz_yz+",
+            result.captured.content()
+        )
     }
 }
