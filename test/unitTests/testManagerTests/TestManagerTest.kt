@@ -1,4 +1,4 @@
-package unitTests
+package unitTests.testManagerTests
 
 import helpers.content
 import io.mockk.*
@@ -150,7 +150,7 @@ class TestManagerTest {
         val bodyOut = "abc def xyz"
 
         val boundReplace = mutableListOf(
-            "f" to "P",                     // normal
+            "f" to "P",                     // norMal
             // "abc def xyz" -> "abc deP xyz"
             "x(.{2})" to "+@{1}_@{1}+",     // indexed
             // "abc deP xyz" -> "abc deP +yz_yz+"

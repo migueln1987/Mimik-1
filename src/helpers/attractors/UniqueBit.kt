@@ -1,6 +1,7 @@
 package helpers.attractors
 
 import helpers.*
+import helpers.matchers.matchResults
 import mimikMockHelpers.RecordedInteractions
 
 enum class UniqueTypes {

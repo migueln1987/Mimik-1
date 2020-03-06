@@ -3,6 +3,9 @@ package networkRouting.testingManager
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
 import helpers.*
+import helpers.matchers.MatcherCollection
+import helpers.parser.P4Command
+import helpers.parser.Parser_v4
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.Headers
@@ -276,23 +279,34 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
-    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers() =
-        try {
-            getReplacers_v2()
+    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers(): MutableMap<String, boundChapterItems>? {
+        val bodyStr = call.tryGetBody().orEmpty()
+
+        return try {
+            parse_v2(bodyStr)
         } catch (_: Exception) {
             null
-//            try {
-//                getReplacers_v1()
-//            } catch (_: Exception) {
-//                null
-//            }
         }
+    }
+
+    private fun String.toJsonMap(): Map<String, Any> {
+        if (isEmpty()) return mapOf()
+        return try {
+            Gson()
+                .fromJson(this, LinkedTreeMap::class.java).orEmpty()
+                .map { it.key.toString() to it.value }
+                .toMap()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            mutableMapOf()
+        }
+    }
 
     /**
      * Example:
      * ```json
      * {
-     *   "aa": {
+     *   "chap_name": {
      *     "Body": [{
      *         "from": "bb",
      *         "to": "cc"
@@ -306,86 +320,257 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
      * }
      * ```
      */
-    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v1() = Gson()
-        .fromJson(call.tryGetBody().orEmpty(), LinkedTreeMap::class.java).orEmpty()
-        .mapKeys { it.key as String }
-        .mapValues { mv ->
-            (mv.value as LinkedTreeMap<*, *>)
-                .mapKeys { DataTypes.valueOf(it.key.toString().uppercaseFirstLetter()) }
-                .mapValues { mvv ->
-                    (mvv.value as List<*>)
-                        .map { (it as LinkedTreeMap<*, *>).map { it.value.toString() } }
-                        .mapNotNull { if (it.size >= 2) it[0] to it[1] else null }
-                        .toMutableList()
-                }.toMap(mutableMapOf())
-        }.toMutableMap()
+    @Deprecated("Use parse v4")
+    fun parse_v1(body: String): MutableMap<String, *>? {
+        val ret = body.toJsonMap()
+            .mapValues { mv ->
+                (mv.value as LinkedTreeMap<*, *>)
+                    .mapKeys { DataTypes.valueOf(it.key.toString().uppercaseFirstLetter()) }
+                    .mapValues { mvv ->
+                        (mvv.value as List<*>)
+                            .map { (it as LinkedTreeMap<*, *>).map { it.value.toString() } }
+                            .mapNotNull { if (it.size >= 2) it[0] to it[1] else null }
+                            .toMutableList()
+                    }.toMap(mutableMapOf())
+            }.toMutableMap()
+        return ret
+    }
 
     /**
      * Example:
      * ```json
      * {
-     *   "aa": [
-     *     "body{[abc]->none}",
-     *     "body{[abc]->none}",
-     *     "var{[abc]->SaveVar}"
+     *   "chap_name": [
+     *     "body{from->to}",
+     *     "body{(from)->@{1}also}",
+     *     "body{(?<gp>from)->@{gp}also}",
+     *     "var{[find]->SaveVar}"
      *   ],
-     *   "bb": [
-     *     "body{[ab]->none}"
-     *   ]
+     *   "another_chap_name": []
      * }
      * ```
      */
-    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers_v2() =
-        parse_v2(call.tryGetBody().orEmpty())
-
-    private fun String.toJsonMap(): Map<String, Any>? {
-        if (isEmpty()) return mapOf()
-        return try {
-            Gson()
-                .fromJson(this, LinkedTreeMap::class.java).orEmpty()
-                .mapKeys { it.key.toString() }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
+    @Deprecated("Use parse v4")
     fun parse_v2(body: String): MutableMap<String, boundChapterItems> {
-        return (body.toJsonMap() ?: return mutableMapOf())
-            .mapValues { mv ->
-                (mv.value as List<*>)
-                    .map {
-                        val contents = it.toString().split("{")
-                        Pair(
-                            contents.getOrNull(0),
-                            contents.drop(1).joinToString(separator = "{").dropLast(1)
-                                .split("->")
-                                .run { if (size >= 2) Pair(get(0), get(1)) else null }
-                        )
+        return body.toJsonMap()
+            .mapValues { (_, values) ->
+                (values as? List<*>).orEmpty().asSequence()
+                    .mapNotNull { it as? String }
+                    .map { it.split("{") }
+                    .filter { it.size >= 2 }
+                    .mapNotNull {
+                        val dataContent = it.drop(1).joinToString(separator = "{")
+                            .dropLast(1) // trailing "}"
+                            .split("->") // split by "From -> To"
+
+                        when (dataContent.size) {
+                            in (0..1) -> null
+                            2 -> it.first() to Pair(dataContent[0], dataContent[1])
+                            else -> {
+                                it.first() to Pair(
+                                    dataContent[0],
+                                    dataContent.drop(1).joinToString(separator = "->")
+                                )
+                            }
+                        }
                     }
-                    .filterNot { it.first == null || it.second == null }
-                    .map { it.first!! to it.second!! }
                     .groupBy { it.first }
-                    .map { (key, data) ->
-                        key to data.map { it.second }.toMutableList()
+                    .mapValues { (_, values) ->
+                        values.map { it.second }.toMutableList()
                     }
             }
             .mapValues { (_, data) ->
                 boundChapterItems().also { bItems ->
-                    data.forEach {
-                        when (it.first.toLowerCase()) {
+                    data.forEach { (dKey, dValue) ->
+                        when (dKey.toLowerCase()) {
                             "body" -> {
                                 bItems.replacers_body.clear()
-                                bItems.replacers_body.addAll(it.second)
+                                bItems.replacers_body.addAll(dValue)
                             }
                             "var" -> {
                                 bItems.findVars.clear()
-                                bItems.findVars.addAll(it.second)
+                                bItems.findVars.addAll(dValue)
                             }
                         }
                     }
                 }
             }.toMutableMap()
+    }
+
+    private val seqActReg =
+        """(?<group>\w+):(?<name>\w*):(?<type>\w+):(?<find>\(.*?\)|[\w- ]+|):(?<new>\(.*?\)|[-\w ]*)"""
+            .toRegex()
+
+    /**
+     * Example
+     * ```json
+     *{
+     *  "chap_name": {
+     *    "modify": [
+     *      "body{from->to}",
+     *      "body{(from)->@{1}also}",
+     *      "body{(?<gp>from)->@{gp}also}",
+     *      "var{[find]->SaveVar}"
+     *    ],
+     *    "seqAct": [{
+     *        "when": [
+     *          "when::body:():()",
+     *          "when::any:-:-"
+     *        ],
+     *        "do": [
+     *          "do:thing:use:-:4",
+     *          "do:thing:body::(testing)",
+     *          "do:thing:body:(test):(end)",
+     *          "do:thing:body:(code :):none",
+     *          "do:thing:body:code any:none",
+     *          "do:thing:body:test:  ",
+     *          "do:thing:body:test:",
+     *          "do:thing:body:($):end",
+     *        ]
+     *      },
+     *      {
+     *        "when": [],
+     *        "do": [
+     *          "do:thing2:use:-:4",
+     *          "do:thing2:body::(testing)",
+     *          "do:thing2:body:(test):(end)"
+     *        ]
+     *      }
+     *    ]
+     *  }
+     *}
+     * ```
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Deprecated("Use parse v4")
+    fun parse_v3(body: String): MutableMap<String, boundChapterItems> {
+        return body.toJsonMap().asSequence()
+            .map { it.key to (it.value as? LinkedTreeMap<String, ArrayList<*>>).orEmpty() }
+            .map { (key, values) ->
+                val content = boundChapterItems()
+
+                values.forEach { (t, u) ->
+                    when (t) {
+                        "modify" -> {
+                            val modItems = u.asSequence()
+                                .mapNotNull { it as? String }
+                                .map { it.split("{") }
+                                .filter { it.size >= 2 }
+                                .mapNotNull {
+                                    val dataContent = it.drop(1).joinToString(separator = "{")
+                                        .dropLast(1) // trailing "}"
+                                        .split("->") // split by "From -> To"
+
+                                    when (dataContent.size) {
+                                        in (0..1) -> null
+                                        2 -> it.first() to Pair(dataContent[0], dataContent[1])
+                                        else -> {
+                                            it.first() to Pair(
+                                                dataContent[0],
+                                                dataContent.drop(1).joinToString(separator = "->")
+                                            )
+                                        }
+                                    }
+                                }
+                                .groupBy { it.first }
+                                .mapValues { (_, values) ->
+                                    values.map { it.second }.toMutableList()
+                                }
+
+                            modItems.entries.forEach { (key, data) ->
+                                when (key) {
+                                    "body" -> {
+                                        content.replacers_body.clear()
+                                        content.replacers_body.addAll(data)
+                                    }
+                                    "var" -> {
+                                        content.findVars.clear()
+                                        content.findVars.addAll(data)
+                                    }
+                                }
+                            }
+                        }
+                        "seqAct" -> {
+                            u.asSequence()
+                                .mapNotNull { it as? LinkedTreeMap<String, ArrayList<String>> }
+                                .map { lkm ->
+                                    val bSeqSteps = BoundSeqSteps_2()
+                                    lkm.forEach { (type, data) ->
+                                        data.forEach { actLine ->
+                                            val caster = seqActReg.find(actLine)
+                                                .let { MatcherCollection.castResult(it) }
+                                            val actStep = BoundSeqSteps_2.actStep(caster)
+                                            when (type) {
+                                                "when" -> bSeqSteps.step_When.add(actStep)
+                                                "do" -> bSeqSteps.step_Do.add(actStep)
+                                            }
+                                        }
+                                    }
+                                    bSeqSteps
+                                }
+                                .forEach { content.seqSteps_old.add(it) }
+                        }
+                    }
+                }
+                key to content
+            }
+            .toMap().toMutableMap()
+    }
+
+    /**
+     * Example
+     * ```json
+     * {
+     *   "aaa":[
+     *      [
+     *          "?request:body:(some\w+)->toVar",
+     *          "response:body:((test:))->(@{1}@{toVar})"
+     *      ],
+     *      '
+     *      [
+     *          "var:regCode->(true)",
+     *          "response:body:(code: )-(code: @{regCode})"
+     *      ]
+     *   ]
+     * }
+     * ```
+     */
+    fun parse_v4(body: String): MutableMap<String, boundChapterItems> {
+        val parser = Parser_v4()
+        return body.toJsonMap().asSequence()
+            .map { (key, value) ->
+                @Suppress("UNCHECKED_CAST")
+                key to (value as? ArrayList<ArrayList<String>>).orEmpty()
+            }
+            .map { (chap, data) ->
+                val actionItems = data.asSequence()
+                    .map { dStr ->
+                        // process the strings into lexicon bites
+                        val parsedItems = dStr.asSequence()
+                            .map { parser.parseToContents(it) }
+                            .filter { parser.isValid(it) }
+                            .toList()
+
+                        // If any of the string lines were invalid
+                        // then reject the whole array to be safe.
+                        if (parsedItems.size == dStr.size)
+                            parsedItems
+                        else listOf()
+                    }
+                    .filter { it.isNotEmpty() }
+                    .map { lexM ->
+                        lexM.map { P4Command(it) }
+                    }
+                    .toList()
+
+                val chapItems = boundChapterItems().also {
+                    it.seqSteps.clear()
+                    it.seqSteps.addAll(actionItems)
+                }
+
+                chap to chapItems
+            }
+            .toMap().toMutableMap()
     }
 
     private val Route.modify: Route

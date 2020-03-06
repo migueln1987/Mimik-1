@@ -75,6 +75,20 @@ object ChapterEditor : EditorModule() {
                             else ""
                             val chapNameAction = "nameChap.value = '%s';%s"
 
+                            /**
+                             * 1. must start with a a-zA-Z char
+                             * 2. space-like chars become underscores
+                             * 3. commas become back slashes
+                             * 4. valid chars [!-+\--~]*
+                             * - invalid ones are removed
+                             *
+                             */
+                            val replaceChars = """
+                                replace(/^[a-zA-Z]+/,'').
+                                replace(/\s/g, '_').replace(',' ,'/').
+                                replace(/[^!-+\--~]/g, '')
+                                """.trimIndent()
+
                             div {
                                 textInput(name = "nameChap") {
                                     disableEnterKey
@@ -82,7 +96,7 @@ object ChapterEditor : EditorModule() {
                                     placeholder = pData.hardChapName(randomHost.valueAsUUID)
                                     value = placeholder
                                     size = "${randomHost.valueAsUUID.length + 10}"
-                                    onKeyUp = nameAction + "value = value.replace(/\\s/g,'_').replace(',','/');"
+                                    onKeyUp = nameAction + "value = value.$replaceChars;"
                                 }
 
                                 script {
@@ -92,7 +106,7 @@ object ChapterEditor : EditorModule() {
                                                 var paste = getPasteResult(event);
                                                 var selEnd = nameChap.selectionEnd || paste.length;
                                                 
-                                                var newVal = paste.replace(/\s/g,'_').replace(',','/');
+                                                var newVal = paste.$replaceChars;
                                                 if (newVal != paste) {
                                                     nameChap.value = newVal;
                                                     nameChap.selectionStart = selEnd;

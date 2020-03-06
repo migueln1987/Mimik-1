@@ -114,6 +114,20 @@ val Map<String, String>.toHeaders: Headers
         }.build()
     }
 
+/**
+ * Creates a [Headers] which can have multiple different values to the same key
+ */
+val Map<String, List<String>>.toHeaders_dupKeys: Headers
+    get() {
+        return Headers.Builder().also { build ->
+            forEach { key, values ->
+                values.forEach { value ->
+                    build.add(key, value)
+                }
+            }
+        }.build()
+    }
+
 val Iterable<Pair<String, String>>.toHeaders: Headers
     get() {
         return Headers.Builder()

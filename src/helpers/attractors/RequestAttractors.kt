@@ -1,6 +1,7 @@
 package helpers.attractors
 
 import helpers.*
+import helpers.matchers.matchResults
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse

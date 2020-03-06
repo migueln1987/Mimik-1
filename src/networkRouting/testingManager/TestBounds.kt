@@ -1,12 +1,17 @@
 package networkRouting.testingManager
 
 import helpers.*
+import helpers.matchers.MatcherCollection
+import helpers.matchers.MatcherResult
+import helpers.matchers.matchResults
+import helpers.parser.P4Command
 import java.time.Duration
 import java.util.*
 import kolor.red
 import kolor.yellow
 import kotlinx.atomicfu.atomic
 import mimikMockHelpers.RecordedInteractions
+import okhttp3.Headers
 import okhttp3.ResponseBody
 import kotlin.concurrent.schedule
 import tapeItems.BlankTape
@@ -123,24 +128,92 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
     var finalized = false
 
     /**
+     * {tape name}, <data>
+     */
+    val boundData = mutableMapOf<String, boundChapterItems>()
+
+    /**
      * {tape name}, <{chapter name}, uses>
      */
+    @Deprecated("")
     val stateUses =
         mutableMapOf<String, MutableList<Pair<String, Int>>>()
 
     /**
      * (chapter name), (data)
      */
+    @Deprecated("")
     val replacerData: MutableMap<String, boundChapterItems> = mutableMapOf()
 
     val boundVars: MutableMap<String, String> = mutableMapOf()
 }
 
 class boundChapterItems {
+    var stateUse = 0
+
+    @Deprecated("use seqSteps")
     val replacers_body: MutableList<Pair<String, String>> = mutableListOf()
     // todo; replacers_head
 
+    @Deprecated("use seqSteps")
+    val seqSteps_old: MutableList<BoundSeqSteps_2> = mutableListOf()
+
+    val seqSteps: MutableList<List<P4Command>> = mutableListOf()
+
+    @Deprecated("use seqSteps")
     val findVars: MutableList<Pair<String, String>> = mutableListOf()
+
+    constructor()
+    constructor(config: (boundChapterItems) -> Unit) {
+        config.invoke(this)
+    }
+}
+
+@Deprecated("")
+class BoundSeqSteps_2 {
+    var step_When: MutableList<actStep> = mutableListOf()
+    var step_Do: MutableList<actStep> = mutableListOf()
+
+    class actStep {
+        var group: String? = ""
+        var name: String? = ""
+        var type: String? = ""
+        var str_find: String? = ""
+        var str_new: String? = ""
+
+        fun loadCaster(cc: MatcherCollection): actStep {
+            group = cc["group"].firstOrNull()?.value
+            name = cc["name"].firstOrNull()?.value
+            type = cc["type"].firstOrNull()?.value
+            str_find = cc["find"].firstOrNull()?.value
+            str_new = cc["new"].firstOrNull()?.value
+            return this
+        }
+
+        private fun finder(
+            items: MutableList<List<MatcherResult?>>,
+            group: String
+        ): MatcherResult? = MatcherCollection.finder(items, group)
+
+        fun loadCaster(items: MutableList<List<MatcherResult?>>): actStep {
+            group = finder(items, "group")?.value
+            name = finder(items, "name")?.value
+            type = finder(items, "type")?.value
+            str_find = finder(items, "find")?.value
+            str_new = finder(items, "new")?.value
+            return this
+        }
+
+        constructor()
+
+        constructor(items: MutableList<List<MatcherResult?>>) {
+            group = finder(items, "group")?.value
+            name = finder(items, "name")?.value
+            type = finder(items, "type")?.value
+            str_find = finder(items, "find")?.value
+            str_new = finder(items, "new")?.value
+        }
+    }
 }
 
 enum class BoundStates {
@@ -186,6 +259,10 @@ inline fun <reified T : Any?> TestBounds?.observe(tape: BlankTape, watch: () -> 
     return returns
 }
 
+/**
+ * Collect variables only from the [okhttp3.Request]
+ */
+@Deprecated("use boundActions")
 fun okhttp3.Request.collectVars(bounds: TestBounds?, chap: RecordedInteractions?) {
     if (bounds == null || chap == null) return
 
@@ -201,6 +278,10 @@ fun okhttp3.Request.collectVars(bounds: TestBounds?, chap: RecordedInteractions?
     }
 }
 
+/**
+ * Collect variables only from the (pre-modify) [okhttp3.Response]
+ */
+@Deprecated("use boundActions")
 fun okhttp3.Response.collectVars(bounds: TestBounds?, chap: RecordedInteractions?): okhttp3.Response {
     if (bounds == null || chap == null) return this
     val byChap = bounds.replacerData[chap.name] ?: return this
@@ -226,6 +307,8 @@ fun okhttp3.Response.collectVars(bounds: TestBounds?, chap: RecordedInteractions
 
 private const val templateReg = """@\{(.+?)\}"""
 private const val variableMatch = """((?<content>\w+)|(?<final>['"].+?['"]))"""
+
+@Deprecated("use boundActions")
 fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractions?): okhttp3.Response {
     if (bounds == null || chap == null) return this
     val byChap = bounds.replacerData[chap.name] ?: return this
@@ -358,6 +441,93 @@ fun okhttp3.Response.replaceByTest(bounds: TestBounds?, chap: RecordedInteractio
             ResponseBody.create(
                 body()?.contentType(),
                 bodyContent
+            )
+        )
+    }.build()
+}
+
+fun okhttp3.Response.boundActions(
+    request: okhttp3.Request,
+    bounds: TestBounds?,
+    chap: RecordedInteractions?
+): okhttp3.Response {
+    if (bounds == null || chap == null) return this
+    val byChap = bounds.replacerData[chap.name] ?: return this
+
+    val in_headers = request.headers()
+    val in_body = request.body()?.content().orEmpty()
+    var out_headers = headers()
+    var out_body = body()?.content().orEmpty()
+
+    val privateVars = mutableMapOf<String, String>()
+    var result: String? = null
+
+    byChap.seqSteps.forEach { steps ->
+        var canContinue = true
+        for (step in steps) {
+            result = null
+            when {
+                step.isType_R -> {
+                    var r_headers: Headers? = null
+                    var r_body: String? = null
+
+                    when {
+                        step.isRequest -> {
+                            if (step.isHead)
+                                r_headers = in_headers
+                            else if (step.isBody)
+                                r_body = in_body
+                        }
+
+                        step.isResponse -> {
+                            if (step.isHead)
+                                r_headers = out_headers
+                            else if (step.isBody)
+                                r_body = out_body
+                        }
+                    }
+
+                    if (step.source_HasSubItem) {
+                        if (r_headers != null) {
+                            var subSources: List<String>? = null
+                            if (step.source_name != null)
+                                subSources = r_headers.values(step.source_name!!)
+
+                            if (step.source_match != null) {
+                                // todo
+                                val uu = subSources.orEmpty().asSequence()
+                                println()
+                            }
+                        } else if (r_body != null) {
+                            // todo
+                            println()
+                        }
+                    } else {
+                        if (step.isHead)
+                            result = (r_headers?.size() ?: 0 > 0).toString()
+                        else if (step.isBody)
+                            result = (!r_body.isNullOrEmpty()).toString()
+                    }
+                }
+
+                step.isType_V -> {
+                    Unit
+                    // todo
+                }
+
+                step.isType_U -> {
+                    Unit
+                    // todo
+                }
+            }
+        }
+    }
+
+    return newBuilder().apply {
+        body(
+            ResponseBody.create(
+                body()?.contentType(),
+                out_body
             )
         )
     }.build()
