@@ -13,7 +13,7 @@ import mimikMockHelpers.RecordedInteractions
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 
 class TapeCatalogTests {
 
@@ -43,7 +43,7 @@ class TapeCatalogTests {
             every { cachedCalls } returns mutableSetOf()
         }
 
-        val tape = BlankTape.Builder().build().also {
+        val tape = BaseTape.Builder().build().also {
             it.chapters.add(mockChapter)
         }
 
@@ -67,7 +67,7 @@ class TapeCatalogTests {
             every { cachedCalls } returns mutableSetOf()
         }
 
-        val tape = BlankTape.Builder().build().also {
+        val tape = BaseTape.Builder().build().also {
             it.chapters.add(mockChapter)
         }
 

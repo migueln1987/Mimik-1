@@ -74,9 +74,11 @@ class TestBoundTests : ApiTests {
                 setBody(
                     """
                     {
-                        "chap_use": [
-                            "body{test->@{useCode}}"
+                      "chap_use": [
+                        [
+                          "response:body:{test}->{@{useCode}}"
                         ]
+                      ]
                     }
                 """.trimIndent()
                 )
@@ -112,9 +114,11 @@ class TestBoundTests : ApiTests {
                 setBody(
                     """
                     {
-                        "chap_use": [
-                            "body{test->@{SaveVar|'none'}}"
+                      "chap_use": [
+                        [
+                          "response:body:{test}->{@{useCode|'none'}}"
                         ]
+                      ]
                     }
                 """.trimIndent()
                 )
@@ -157,12 +161,16 @@ class TestBoundTests : ApiTests {
                 setBody(
                     """
                     {
-                        "chap_activate": [
-                            "var{code: (\\d+)->SaveVar}"
-                        ],
-                        "chap_use": [
-                            "body{test->@{SaveVar|'none'}}"
+                      "chap_activate": [
+                        [
+                          "response:body:{code: (\\d+)}->SaveVar"
                         ]
+                      ],
+                      "chap_use": [
+                        [
+                          "response:body:{test}->{@{SaveVar|'none'}}"
+                        ]
+                      ]
                     }
                 """.trimIndent()
                 )

@@ -769,11 +769,12 @@ class ParserTests {
         }
     }
 
-    class P4MockData(config: (P4MockData) -> Unit) {
+    class P4MockData {
         var envChaptersUses: MutableMap<String, Int>? = null
         var envChapterUse: Int? = null
 
         var boundVars: MutableMap<String, String>? = null
+
         // todo; expChaptersUses
         var expChaptersUses: MutableMap<String, Int>? = null
         var expChapterUse: Int? = null
@@ -795,7 +796,9 @@ class ParserTests {
         var out_headers: Headers? = null
         var out_body: String? = null
 
-        init {
+        constructor()
+
+        constructor(config: (P4MockData) -> Unit) {
             config.invoke(this)
             in_body = in_body?.also { it.trimIndent() }
             out_body = out_body?.also { it.trimIndent() }
@@ -837,6 +840,25 @@ class ParserTests {
         }
     }
 
+    private class MockSet(
+        val name: String,
+        val commands: List<String>,
+        mockDataConfig: (P4MockData) -> Unit
+    ) {
+        operator fun component1() = name
+        operator fun component2() = commands
+        operator fun component3() = mockData
+
+        val mockData: P4MockData = P4MockData()
+
+        init {
+            mockDataConfig.invoke(mockData)
+        }
+    }
+
+    private fun List<String>.toMockSet(name: String = "", mockSetup: (P4MockData) -> Unit): MockSet =
+        MockSet(name, this, mockSetup)
+
     /**
      * Appended command to conditionals to ensure they were successful in matching
      */
@@ -846,14 +868,14 @@ class ParserTests {
      * Broad list of command combinations and expected results
      * @param returns List<Input commands, expected output env>
      */
-    private val mockSuiteCommands: List<Pair<List<String>, P4MockData>>
+    private val mockSuiteCommands: List<MockSet>
         get() {
-            val runTests: MutableList<Pair<List<String>, P4MockData>> = mutableListOf()
+            val runTests: MutableList<MockSet> = mutableListOf()
 
             // 0. Baseline
             arrayOf(
                 // expect no changes from input env to result env
-                listOf("") to P4MockData {
+                listOf("").toMockSet("Baseline") {
                     val defaultEnv = createEnv()
                     it.envChapterUse = 2
                     it.expChapterUse = 2
@@ -870,47 +892,47 @@ class ParserTests {
             arrayOf(
                 // 1.1 Heads
                 // 1.1.1 Conditionals
-                listOf("?request:head", p4CondChk) to P4MockData {
+                listOf("?request:head", p4CondChk).toMockSet("1.1.1.a") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?request:head[a1]", p4CondChk) to P4MockData {
+                listOf("?request:head[a1]", p4CondChk).toMockSet("1.1.1.b") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?request:head[a1]:{a+1}", p4CondChk) to P4MockData {
+                listOf("?request:head[a1]:{a+1}", p4CondChk).toMockSet("1.1.1.c") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?request:head:{a1}", p4CondChk) to P4MockData {
+                listOf("?request:head:{a1}", p4CondChk).toMockSet("1.1.1.d") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 1.1.2 Actions
-                listOf("request:head->result") to P4MockData {
+                listOf("request:head->result").toMockSet("1.1.2.a") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
-                listOf("request:head[a1]->result") to P4MockData {
+                listOf("request:head[a1]->result").toMockSet("1.1.2.b") {
                     it.boundVars = (envBoundVars + ("result" to "aaa1")).toMutableMap()
                 },
-                listOf("request:head[a1]:{a+}->result") to P4MockData {
+                listOf("request:head[a1]:{a+}->result").toMockSet("1.1.2.c") {
                     it.boundVars = (envBoundVars + ("result" to "aaa")).toMutableMap()
                 },
-                listOf("request:head:{a\\d}->result") to P4MockData {
+                listOf("request:head:{a\\d}->result").toMockSet("1.1.2.d") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
 
                 // 1.2 Body
                 // 1.2.1 Conditionals
-                listOf("?request:body", p4CondChk) to P4MockData {
+                listOf("?request:body", p4CondChk).toMockSet("1.2.1.a") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?request:body:{code.+\\d+}", p4CondChk) to P4MockData {
+                listOf("?request:body:{code.+\\d+}", p4CondChk).toMockSet("1.2.1.b") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 1.2.2 Actions
-                listOf("request:body->result") to P4MockData {
+                listOf("request:body->result").toMockSet("1.2.2.a") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
-                listOf("request:body:{code.+?(\\d+)}->result") to P4MockData {
+                listOf("request:body:{code.+?(\\d+)}->result").toMockSet("1.2.2.b") {
                     it.boundVars = (envBoundVars + ("result" to "14")).toMutableMap()
                 }
             )
@@ -920,42 +942,42 @@ class ParserTests {
             arrayOf(
                 // 2.1 Heads
                 // 2.1.1 Conditionals
-                listOf("?response:head", p4CondChk) to P4MockData {
+                listOf("?response:head", p4CondChk).toMockSet("2.1.1.a") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?response:head[b1]", p4CondChk) to P4MockData {
+                listOf("?response:head[b1]", p4CondChk).toMockSet("2.1.1.b") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?response:head[b1]:{b+\\d}", p4CondChk) to P4MockData {
+                listOf("?response:head[b1]:{b+\\d}", p4CondChk).toMockSet("2.1.1.c") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?response:head:{b\\d}", p4CondChk) to P4MockData {
+                listOf("?response:head:{b\\d}", p4CondChk).toMockSet("2.1.1.d") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 2.1.2 Actions
                 // 2.1.2.A to Var
-                listOf("response:head->result") to P4MockData {
+                listOf("response:head->result").toMockSet("2.1.2.A.a") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
-                listOf("response:head[b1]->result") to P4MockData {
+                listOf("response:head[b1]->result").toMockSet("2.1.2.A.b") {
                     it.boundVars = (envBoundVars + ("result" to "bbb1")).toMutableMap()
                 },
-                listOf("response:head[b1]:{b+}->result") to P4MockData {
+                listOf("response:head[b1]:{b+}->result").toMockSet("2.1.2.A.c") {
                     it.boundVars = (envBoundVars + ("result" to "bbb")).toMutableMap()
                 },
-                listOf("response:head:{b\\d}->result") to P4MockData {
+                listOf("response:head:{b\\d}->result").toMockSet("2.1.2.A.d") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
 
                 // 2.1.2.B to Self
-                listOf("response:head[b1]->{dd}") to P4MockData {
+                listOf("response:head[b1]->{dd}").toMockSet("2.1.2.B.a") {
                     it.out_headers_raw = env_outHeads + ("b1" to listOf("dd"))
                 },
-                listOf("response:head[b1]:{b+}->{dd}") to P4MockData {
+                listOf("response:head[b1]:{b+}->{dd}").toMockSet("2.1.2.B.b") {
                     it.out_headers_raw = env_outHeads + ("b1" to listOf("dd1"))
                 },
-                listOf("response:head:{[a-z]\\d}->{dd}") to P4MockData {
+                listOf("response:head:{[a-z]\\d}->{dd}").toMockSet("2.1.2.B.c") {
                     it.out_headers_raw = env_outHeads + arrayOf(
                         "b1" to listOf("dd"),
                         "b2" to listOf("dd")
@@ -964,27 +986,27 @@ class ParserTests {
 
                 // 2.2 Body
                 // 2.2.1 Conditionals
-                listOf("?response:body", p4CondChk) to P4MockData {
+                listOf("?response:body", p4CondChk).toMockSet("2.2.1.a") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?response:body:{test: \\d+}", p4CondChk) to P4MockData {
+                listOf("?response:body:{test: \\d+}", p4CondChk).toMockSet("2.2.1.b") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 2.2.2 Actions
                 // 2.2.2.A to Var
-                listOf("response:body->result") to P4MockData {
+                listOf("response:body->result").toMockSet("2.2.2.A.a") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
-                listOf("response:body:{test: (\\d+)}->result") to P4MockData {
+                listOf("response:body:{test: (\\d+)}->result").toMockSet("2.2.2.A.b") {
                     it.boundVars = (envBoundVars + ("result" to "22")).toMutableMap()
                 },
 
                 // 2.2.2.B to Self
-                listOf("response:body->{body text}") to P4MockData {
+                listOf("response:body->{body text}").toMockSet("2.2.2.B.a") {
                     it.out_body = "body text"
                 },
-                listOf("response:body:{test: (\\d+)}->{done}") to P4MockData {
+                listOf("response:body:{(test: )(\\d+)}->{@{1}done}").toMockSet("2.2.2.B.b") {
                     it.out_body = """
                             test: done
                             final: 44
@@ -996,45 +1018,45 @@ class ParserTests {
             // 3. Variables
             arrayOf(
                 // 3.1 Conditionals
-                listOf("?var", p4CondChk) to P4MockData {
+                listOf("?var", p4CondChk).toMockSet("3.1.a") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?var[wwA]", p4CondChk) to P4MockData {
+                listOf("?var[wwA]", p4CondChk).toMockSet("3.1.b") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?var:{w+A}", p4CondChk) to P4MockData {
+                listOf("?var:{w+A}", p4CondChk).toMockSet("3.1.c") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?var[wwA]:{.+A}", p4CondChk) to P4MockData {
+                listOf("?var[wwA]:{.+A}", p4CondChk).toMockSet("3.1.d") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 3.2 Actions
                 // 3.2.1 to Var
-                listOf("var->result") to P4MockData {
+                listOf("var->result").toMockSet("3.2.1.a") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
-                listOf("var:{w+A}->result") to P4MockData {
+                listOf("var:{w+A}->result").toMockSet("3.2.1.b") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
-                listOf("var[wwA]->result") to P4MockData {
+                listOf("var[wwA]->result").toMockSet("3.2.1.c") {
                     it.boundVars = (envBoundVars + ("result" to "zzA")).toMutableMap()
                 },
-                listOf("var[wwA]:{z+}->result") to P4MockData {
+                listOf("var[wwA]:{z+}->result").toMockSet("3.2.1.d") {
                     it.boundVars = (envBoundVars + ("result" to "zz")).toMutableMap()
                 },
 
                 // 3.2.2 to Self
                 // 3.2.2.1 Basic
-                listOf("var:{w+.}->{dd}") to P4MockData {
+                listOf("var:{w+.}->{dd}").toMockSet("3.2.2.1.a") {
                     it.boundVars = (envBoundVars +
                             arrayOf("wwA" to "dd", "wwB" to "dd"))
                         .toMutableMap()
                 },
-                listOf("var[wwA]->{dd}") to P4MockData {
+                listOf("var[wwA]->{dd}").toMockSet("3.2.2.1.b") {
                     it.boundVars = (envBoundVars + ("wwA" to "dd")).toMutableMap()
                 },
-                listOf("var[wwA]:{zz}->{dd}") to P4MockData {
+                listOf("var[wwA]:{zz}->{dd}").toMockSet("3.2.2.1.c") {
                     it.boundVars = (envBoundVars + ("wwA" to "ddA")).toMutableMap()
                 },
 
@@ -1043,7 +1065,7 @@ class ParserTests {
                     "var[testA]->{123}",// variable we will clear
                     "var[testB]->{456}",// proof the variables are being set
                     "var[testA]:{.+}->{}"// clear the variable
-                ) to P4MockData {
+                ).toMockSet("3.2.2.2.a") {
                     it.boundVars = (envBoundVars + ("testB" to "456")).toMutableMap()
                 }
             )
@@ -1053,27 +1075,27 @@ class ParserTests {
             arrayOf(
                 // 4.1 Conditionals
                 // 4.1.1 Basic maths
-                listOf("?use:{3}", p4CondChk) to P4MockData {
+                listOf("?use:{3}", p4CondChk).toMockSet("4.1.1.a") {
                     it.envChapterUse = 3
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?use:{>3}", p4CondChk) to P4MockData {
+                listOf("?use:{>3}", p4CondChk).toMockSet("4.1.1.b") {
                     it.envChapterUse = 5
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?use:{>=3}", p4CondChk) to P4MockData {
+                listOf("?use:{>=3}", p4CondChk).toMockSet("4.1.1.c") {
                     it.envChapterUse = 5
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?use:{<3}", p4CondChk) to P4MockData {
+                listOf("?use:{<3}", p4CondChk).toMockSet("4.1.1.d") {
                     it.envChapterUse = 2
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?use:{3..4}", p4CondChk) to P4MockData {
+                listOf("?use:{3..4}", p4CondChk).toMockSet("4.1.1.e") {
                     it.envChapterUse = 3
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
-                listOf("?use:{3,5..6,9}", p4CondChk) to P4MockData {
+                listOf("?use:{3,5..6,9}", p4CondChk).toMockSet("4.1.1.f") {
                     it.envChapterUse = 6
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
@@ -1081,26 +1103,26 @@ class ParserTests {
                 // 4.1.2 Accessing "other"'s use info
                 // 4.1.2.1 Testing is another chapter exists
                 // 4.1.2.1.A Pass
-                listOf("?use[other]", p4CondChk) to P4MockData {
+                listOf("?use[other]", p4CondChk).toMockSet("4.1.2.1.A") {
                     it.envChaptersUses = mutableMapOf(("other" to 3))
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 4.1.2.1.B Fail
-                listOf("?use[something]", p4CondChk) to P4MockData {
+                listOf("?use[something]", p4CondChk).toMockSet("4.1.2.1.B") {
                     it.envChaptersUses = mutableMapOf(("none" to 3))
                     it.boundVars = envBoundVars.toMutableMap()
                 },
 
                 // 4.1.2.2 Testing the value of another chapter
                 // 4.1.2.2.A Pass
-                listOf("?use[other]:{3}", p4CondChk) to P4MockData {
+                listOf("?use[other]:{3}", p4CondChk).toMockSet("4.1.2.2.A") {
                     it.envChaptersUses = mutableMapOf(("other" to 3))
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
                 // 4.1.2.2.B Fail
-                listOf("?use[other]:{5}", p4CondChk) to P4MockData {
+                listOf("?use[other]:{5}", p4CondChk).toMockSet("4.1.2.2.B") {
                     it.envChaptersUses = mutableMapOf(("other" to 3))
                     it.boundVars = envBoundVars.toMutableMap()
                 },
@@ -1108,7 +1130,7 @@ class ParserTests {
                 // 4.2 Actions
                 // 4.2.1 to Var
                 // 4.2.1.A Pass, save to var
-                listOf("use:{3,5..6,9}->result") to P4MockData {
+                listOf("use:{3,5..6,9}->result").toMockSet("4.2.1.A") {
                     it.envChapterUse = 9
                     it.boundVars = (envBoundVars + ("result" to "9")).toMutableMap()
                 },
@@ -1118,7 +1140,7 @@ class ParserTests {
                     "use:{>6}->result",
                     "var[result]:{false}->{}",
                     "var[test]->{@{result|'none'}}"
-                ) to P4MockData {
+                ).toMockSet("4.2.1.B") {
                     it.envChapterUse = 2
                     it.boundVars = (envBoundVars + ("test" to "none")).toMutableMap()
                 },
@@ -1126,25 +1148,25 @@ class ParserTests {
                 // 4.2.2 to Self
                 // 4.2.2.1 set the value only
                 // 4.2.2.1.A Pass
-                listOf("use->{8}") to P4MockData {
+                listOf("use->{8}").toMockSet("4.2.2.1.A") {
                     it.envChapterUse = 4
                     it.expChapterUse = 8
                 },
-                // 4.2.2.1.A Fail
-                listOf("use->{w}") to P4MockData {
+                // 4.2.2.1.B Fail
+                listOf("use->{w}").toMockSet("4.2.2.1.B") {
                     it.envChapterUse = 4
                     it.expChapterUse = 4
                 },
 
-                // 4.2.2.1 Ensure range, then set
-                // 4.2.2.1.A Pass
-                listOf("use:{3,5..6,9}->{2}") to P4MockData {
+                // 4.2.2.2 Ensure range, then set
+                // 4.2.2.2.A Pass
+                listOf("use:{3,5..6,9}->{2}").toMockSet("4.2.2.2.A") {
                     it.envChapterUse = 5
                     it.expChapterUse = 2
                 },
 
-                // 4.2.2.1.B Fail
-                listOf("use:{3,5..6,9}->{w}") to P4MockData {
+                // 4.2.2.2.B Fail
+                listOf("use:{3,5..6,9}->{w}").toMockSet("4.2.2.2.B") {
                     it.envChapterUse = 5
                     it.expChapterUse = 5
                 }
@@ -1158,7 +1180,7 @@ class ParserTests {
                 listOf(
                     "?response:body:{test: (\\d+)}->&hold", // collect the value to scoped
                     "var[hold]:{\\d+}->result"// export variable for assert testing
-                ) to P4MockData {
+                ).toMockSet("5.1.A") {
                     it.boundVars = (envBoundVars + ("result" to "22")).toMutableMap()
                 },
 
@@ -1166,7 +1188,7 @@ class ParserTests {
                 listOf(
                     "?response:body:{other: (\\d+)}->&hold",
                     "var[hold]:{\\d+}->result"
-                ) to P4MockData {
+                ).toMockSet("5.1.B") {
                     it.boundVars = envBoundVars.toMutableMap()
                 },
 
@@ -1175,7 +1197,7 @@ class ParserTests {
                 listOf(
                     "!response:body:{other: (\\d+)}->&hold",// no match (as requested),'true' -> &hold
                     "?var[hold]->result"// if we saved to &hold, then export it
-                ) to P4MockData {
+                ).toMockSet("5.2.A") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
 
@@ -1185,7 +1207,7 @@ class ParserTests {
                     "!response:body:{test: (\\d+)}->FTest",
                     // `hold` will have no data, so this will fail. Thus `result` will not be set
                     "?var[FTest]->result"
-                ) to P4MockData {
+                ).toMockSet("5.2.B") {
                     it.boundVars = envBoundVars.toMutableMap()
                 },
 
@@ -1196,7 +1218,7 @@ class ParserTests {
                     "~?response:body:{test: (\\d+)}->FTest",
                     // but this should still run
                     "var[confirm]->{true}"
-                ) to P4MockData {
+                ).toMockSet("5.3.A") {
                     it.boundVars = (envBoundVars + arrayOf(
                         "FTest" to "22",
                         "confirm" to "true"
@@ -1209,7 +1231,7 @@ class ParserTests {
                     "~?response:body:{none: (\\d+)}->FTest",
                     // but this should still run
                     "var[confirm]->{true}"
-                ) to P4MockData {
+                ).toMockSet("5.3.B") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
@@ -1218,7 +1240,7 @@ class ParserTests {
                 listOf(
                     "~!response:body:{none: (\\d+)}->FTest",
                     "var[confirm]->{true}"
-                ) to P4MockData {
+                ).toMockSet("5.4.A") {
                     it.boundVars = (envBoundVars + arrayOf(
                         "FTest" to "true",
                         "confirm" to "true"
@@ -1229,7 +1251,7 @@ class ParserTests {
                 listOf(
                     "~!response:body:{test: (\\d+)}->FTest",
                     "var[confirm]->{true}"
-                ) to P4MockData {
+                ).toMockSet("5.4.B") {
                     it.boundVars = (envBoundVars + ("confirm" to "true")).toMutableMap()
                 },
 
@@ -1242,7 +1264,7 @@ class ParserTests {
                     "~var[test]->{@{hold}}",
                     // this will always run
                     "var[extra]->{true}"
-                ) to P4MockData {
+                ).toMockSet("5.5.A") {
                     it.boundVars = (envBoundVars + arrayOf(
                         "test" to "14",
                         "extra" to "true"
@@ -1257,7 +1279,7 @@ class ParserTests {
                     "~var[test]->{@{hold}}",
                     // this will always run
                     "var[extra]->{true}"
-                ) to P4MockData {
+                ).toMockSet("5.5.B") {
                     it.boundVars = (envBoundVars + ("extra" to "true")).toMutableMap()
                 }
             )
@@ -1274,8 +1296,8 @@ class ParserTests {
                     // Create a local var which we do var processing on
                     "&var[hold3]->{_@{hold1}@{hold2}}",
                     // use the new var, plus add extra chars
-                    "response:body:{test.+?(\\d+)}->{+@{hold3}+}"
-                ) to P4MockData {
+                    "response:body:{(test.+?)(\\d+)}->{@{1}+@{hold3}+}"
+                ).toMockSet("6.1.A") {
                     it.out_body = """
                         test: +_1412+
                         final: 44
@@ -1290,7 +1312,7 @@ class ParserTests {
                 listOf(
                     "response:body:{test: 22}->{qqq}->c}",
                     "response:body:{qqq}\\->c}->result"
-                ) to P4MockData {
+                ).toMockSet("7.A") {
                     it.boundVars = (envBoundVars + ("result" to "qqq}->c")).toMutableMap()
                 }
             )
@@ -1310,9 +1332,15 @@ class ParserTests {
         println("Running full-suit test: $testMax items".cyan())
         println("=".repeat(30))
 
-        toTest.forEach { (commands, exp_env) ->
+        toTest.forEach { (setName, commands, exp_env) ->
             val sb = StringBuilder()
-            sb.appendln("Test #$testsRun".yellow())
+
+            sb.appendln(
+                "Test #%s%s".format(
+                    testsRun,
+                    if (setName.isEmpty()) "" else ": $setName"
+                ).yellow()
+            )
             sb.appendln("Testing commands:")
             val printCmdLines = commands.joinToString("\n") {
                 (if (it.isEmpty()) "{empty string}" else it)
@@ -1328,7 +1356,7 @@ class ParserTests {
                     exp_env.envChaptersUses?.also { envChaps ->
                         val mockChaps =
                             envChaps.map { (key, value) ->
-                                key to boundChapterItems().also {
+                                key to BoundChapterItem().also {
                                     it.stateUse = value
                                 }
                             }.toMap().toMutableMap()
@@ -1346,7 +1374,7 @@ class ParserTests {
                 }
 
                 exp_env.envChapterUse?.also { use ->
-                    setup.chapItems = boundChapterItems() { it.stateUse = use }
+                    setup.chapItems = BoundChapterItem() { it.stateUse = use }
                 }
 
                 p4MockEnv.in_headers?.also { setup.in_headers = it }
@@ -1450,13 +1478,5 @@ class ParserTests {
             testsRun++
         }
         println("Full test suite complete: $testsRun / $testMax".green())
-    }
-
-    // todo
-    fun test_useStepVar() {
-        /*
-            "?var[codeVar]",
-            "response:body:{(result: [).+(])}->{@{1}@{codeVar}@{2}}"
-        */
     }
 }

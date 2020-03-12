@@ -27,15 +27,15 @@ class MockUseStates(val state: Int) {
         /**
          * Returns true if [value] is equal to a state which is disabled
          */
-        fun isDisabled(value: Int) = when (value) {
-            DISABLE.state, DISABLEDLIMITED.state -> true
+        fun isDisabled(value: Int?) = when (value) {
+            null, DISABLE.state, DISABLEDLIMITED.state -> true
             else -> false
         }
 
         /**
          * Returns true if [value] is a type of enabled state
          */
-        fun isEnabled(value: Int): Boolean = !isDisabled(value)
+        fun isEnabled(value: Int?): Boolean = !isDisabled(value)
 
         /**
          * Returns true if [value] is a type of limited state

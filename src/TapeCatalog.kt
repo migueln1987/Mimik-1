@@ -11,12 +11,9 @@ import kotlinx.coroutines.sync.withPermit
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
-import networkRouting.testingManager.observe
-import networkRouting.testingManager.TestManager
-import networkRouting.testingManager.collectVars
-import networkRouting.testingManager.replaceByTest
+import networkRouting.testingManager.*
 import okreplay.OkReplayInterceptor
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 import java.io.File
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -27,7 +24,7 @@ import kotlin.io.println
 class TapeCatalog {
     private val okreplay by lazy { OkReplayInterceptor() }
     val config by lazy { VCRConfig.getConfig }
-    val tapes: MutableList<BlankTape> = mutableListOf()
+    val tapes: MutableList<BaseTape> = mutableListOf()
     val requestList = mutableMapOf<String, Semaphore>()
     var processingRequests = Collections.synchronizedMap(requestList)
 
@@ -52,7 +49,7 @@ class TapeCatalog {
             .map { it to it.readText() }
             .mapNotNull {
                 try {
-                    gson.fromJson(it.second, BlankTape::class.java)
+                    gson.fromJson(it.second, BaseTape::class.java)
                         ?.also { tape ->
                             tape.file = it.first
                         }
@@ -75,7 +72,7 @@ class TapeCatalog {
     fun findResponseByQuery(
         request: okhttp3.Request,
         tapeLimit: List<String>? = null
-    ): Pair<QueryResponse<BlankTape>, RecordedInteractions?> {
+    ): Pair<QueryResponse<BaseTape>, RecordedInteractions?> {
         if (tapes.isEmpty()) return Pair(QueryResponse(), null)
 
         val allowedTapes = tapes.asSequence()
@@ -146,7 +143,7 @@ class TapeCatalog {
      * - HttpStatusCode.NotFound (404) = item
      * - HttpStatusCode.Conflict (409) = null item
      */
-    fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BlankTape> {
+    fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BaseTape> {
         val path = request.url().encodedPath().removePrefix("/")
         val queries = request.url().query()
         val headers = request.headers().toStringPairs()
@@ -219,14 +216,12 @@ class TapeCatalog {
                 bounds?.handle?.let { "[$it] " } ?: "",
                 tape.name
             )
-            callRequest.collectVars(bounds, chap)
             val chain = tape.requestToChain(callRequest)
             okreplay.start(config, tape)
             withContext(Dispatchers.IO) {
                 bounds.observe(tape) {
                     okreplay.intercept(chain)
-                        .collectVars(bounds, chap)
-                        .replaceByTest(bounds, chap)
+                        .boundActions(callRequest, bounds, chap)
                 }
             }?.also { return it }
 
@@ -259,7 +254,7 @@ class TapeCatalog {
             }
 
             else -> {
-                BlankTape.Builder().build().apply {
+                BaseTape.Builder().build().apply {
                     println("Creating new tape/mock of $name".green())
                     createNewInteraction { mock ->
                         mock.requestData = callRequest.toTapeData

@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.measureTimeMillis
 
-class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
-    class Builder(val reBuild: BlankTape? = null, config: (Builder) -> Unit = {}) {
+class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
+    class Builder(val reBuild: BaseTape? = null, config: (Builder) -> Unit = {}) {
         var tapeName: String? = null
             set(value) {
                 field = if (value?.isBlank().isTrue())
@@ -89,9 +89,9 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         /**
          * If [reBuild] is not null, then builder values will be applied to it, else a new tape will be made
          */
-        fun build(): BlankTape {
+        fun build(): BaseTape {
             val returnTape = if (reBuild == null) {
-                BlankTape { tape ->
+                BaseTape { tape ->
                     tape.tapeName = tapeName
                     tape.attractors = attractors
                     tape.mode = if (allowNewRecordings == true)
@@ -144,7 +144,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         /**
          * Will attempt to create a new builder from a non-null [reBuild], else a new tape will be made
          */
-        fun reBuild(reBuild: BlankTape? = null, config: (Builder) -> Unit = {}) =
+        fun reBuild(reBuild: BaseTape? = null, config: (Builder) -> Unit = {}) =
             Builder(reBuild, config).build()
     }
 
@@ -194,7 +194,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     val isValidURL: Boolean
         get() = routingUrl.isValidURL
 
-    fun clone(postClone: (BlankTape) -> Unit = {}) = BlankTape {
+    fun clone(postClone: (BaseTape) -> Unit = {}) = BaseTape {
         it.tapeName = "${tapeName}_clone"
         it.recordedDate = Date()
         it.attractors = attractors?.clone()
@@ -260,6 +260,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
         get() {
             var localField = field
             if (localField.isNullOrEmpty()) {
+                // create a "constant" default
                 localField = ArrayDeque()
                 localField.push(
                     { chap, value ->
@@ -615,10 +616,10 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
     fun saveFile() {
         GlobalScope.launch {
             withContext(Dispatchers.IO) {
-                synchronized(this@BlankTape) {
+                synchronized(this@BaseTape) {
                     savingFile.set(true)
                     val time = measureTimeMillis {
-                        val tree = gson.toJsonTree(this@BlankTape).asJsonObject
+                        val tree = gson.toJsonTree(this@BaseTape).asJsonObject
                         val keepChapters = tree.getAsJsonArray("chapters")
                             .filter {
                                 ((it as JsonObject)["mockUses"] as? JsonPrimitive)
@@ -658,7 +659,7 @@ class BlankTape private constructor(config: (BlankTape) -> Unit = {}) : Tape {
                     println(
                         "Saved File (%d ms): %s".format(
                             time,
-                            this@BlankTape.file?.path.orEmpty()
+                            this@BaseTape.file?.path.orEmpty()
                         )
                     )
                 }

@@ -107,7 +107,7 @@ private fun Application.installFeatures() {
             result = result ?: request.headers["uniqueid"]
             if (result != null) return result.also {
                 activeID = it
-                println("Result ID: $it")
+                println("Unique ID (via header): $it")
             }
 
             return runBlocking {
@@ -115,7 +115,7 @@ private fun Application.installFeatures() {
                 deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
             }.orEmpty().also {
                 activeID = it
-                println("Use ID: $it")
+                println("Unique ID (via body): $it")
             }
         }
 
@@ -123,9 +123,9 @@ private fun Application.installFeatures() {
 
         generate {
             if (it.callId == null)
-                it.getID().also {
-                    activeID = it
-                    println("GenID: $it")
+                it.getID().also { gen ->
+                    activeID = gen
+                    println("Unique ID (via GenID): $gen")
                 }
             else ""
         }

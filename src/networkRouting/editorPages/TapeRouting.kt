@@ -17,7 +17,7 @@ import networkRouting.editorPages.NetworkDataEditor.dataEditor
 import networkRouting.editorPages.TapeEditor.getAllTapesPage
 import networkRouting.editorPages.TapeEditor.getTapePage
 import okhttp3.internal.http.HttpMethod
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 
 @Suppress("RemoveRedundantQualifierName")
 class TapeRouting : RoutingContract(RoutePaths.rootPath) {
@@ -193,7 +193,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val foundTape = tapeCatalog.tapes
             .firstOrNull { it.name == tapeName }
             ?: let {
-                BlankTape.reBuild { it.tapeName = tapeName }
+                BaseTape.reBuild { it.tapeName = tapeName }
                     .also { tapeCatalog.tapes.add(it) }
             }
 
@@ -215,7 +215,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val foundTape = tapeCatalog.tapes
             .firstOrNull { it.name == tapeName }
             ?: let {
-                BlankTape.reBuild { it.tapeName = tapeName }
+                BaseTape.reBuild { it.tapeName = tapeName }
                     .also { tapeCatalog.tapes.add(it) }
             }
 
@@ -302,7 +302,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val chapName = data["chapter"]
         val chap = tape.chapters.firstOrNull { it.name == chapName }
 
-        var newTape: BlankTape? = null
+        var newTape: BaseTape? = null
         var newChap: RecordedInteractions? = null
 
         if (chap == null) {

@@ -3,7 +3,6 @@ package networkRouting.testingManager
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
 import helpers.*
-import helpers.matchers.MatcherCollection
 import helpers.parser.P4Command
 import helpers.parser.Parser_v4
 import io.ktor.application.ApplicationCall
@@ -19,7 +18,6 @@ import kolor.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import networkRouting.RoutingContract
-import networkRouting.testingManager.TestBounds.Companion.DataTypes
 import java.time.Duration
 import java.util.Date
 import kotlin.Exception
@@ -174,7 +172,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                 testBounds = TestBounds(handle, allowedTapes.toMutableList()).also {
                     replacers?.forEach { (t, u) ->
-                        it.replacerData[t] = u
+                        it.boundData[t] = u
                     }
                 }
                 boundManager.add(testBounds)
@@ -203,11 +201,13 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     }
                 }
 
-                var findVars: Int? = null
-                var remappers: Int? = null
+                var seq_Chapters: Int? = null
+                var seq_total: Int? = null
+                var seq_totalC: Int? = null
                 if (!replacers.isNullOrEmpty()) {
-                    findVars = replacers.values.sumBy { it.findVars.size }
-                    remappers = replacers.values.sumBy { it.replacers_body.size }
+                    seq_Chapters = replacers.size
+                    seq_total = replacers.values.size
+                    seq_totalC = replacers.values.sumBy { it.seqSteps.size }
                 }
                 printlnF(
                     "Test Bounds (%s) ready with [%d] tapes:".green() +
@@ -221,14 +221,17 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 )
 
                 println("With:".green())
-                println(" - [${findVars ?: 0}]".cyan() + " Variable finders".green())
-                println(" - [${remappers ?: 0}]".cyan() + " Response modifiers".green())
+                println(" - [${seq_Chapters ?: 0}]".cyan() + " Chapter action/s".green())
+                println(" - [${seq_total ?: 0}]".cyan() + " total added action/s".green())
+                println(" - [${seq_totalC ?: 0}]".cyan() + " total command/s".green())
 
                 call.response.headers.apply {
                     append("tape", allowedTapes)
                     append("handle", handle.toString())
-                    if (remappers != null)
-                        append("mappers", remappers.toString())
+                    if (seq_Chapters != null) {
+                        append("SeqChaps", seq_Chapters.toString())
+                        append("SeqTotalC", seq_totalC.toString())
+                    }
                 }
 
                 call.respondText(status = status) { "" }
@@ -279,14 +282,9 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
-    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers(): MutableMap<String, boundChapterItems>? {
+    private suspend fun PipelineContext<*, ApplicationCall>.getReplacers(): MutableMap<String, BoundChapterItem>? {
         val bodyStr = call.tryGetBody().orEmpty()
-
-        return try {
-            parse_v2(bodyStr)
-        } catch (_: Exception) {
-            null
-        }
+        return parse_v4(bodyStr)
     }
 
     private fun String.toJsonMap(): Map<String, Any> {
@@ -300,221 +298,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             e.printStackTrace()
             mutableMapOf()
         }
-    }
-
-    /**
-     * Example:
-     * ```json
-     * {
-     *   "chap_name": {
-     *     "Body": [{
-     *         "from": "bb",
-     *         "to": "cc"
-     *       },
-     *       {
-     *         "from": "dd",
-     *         "to": "dd"
-     *       }
-     *     ]
-     *   }
-     * }
-     * ```
-     */
-    @Deprecated("Use parse v4")
-    fun parse_v1(body: String): MutableMap<String, *>? {
-        val ret = body.toJsonMap()
-            .mapValues { mv ->
-                (mv.value as LinkedTreeMap<*, *>)
-                    .mapKeys { DataTypes.valueOf(it.key.toString().uppercaseFirstLetter()) }
-                    .mapValues { mvv ->
-                        (mvv.value as List<*>)
-                            .map { (it as LinkedTreeMap<*, *>).map { it.value.toString() } }
-                            .mapNotNull { if (it.size >= 2) it[0] to it[1] else null }
-                            .toMutableList()
-                    }.toMap(mutableMapOf())
-            }.toMutableMap()
-        return ret
-    }
-
-    /**
-     * Example:
-     * ```json
-     * {
-     *   "chap_name": [
-     *     "body{from->to}",
-     *     "body{(from)->@{1}also}",
-     *     "body{(?<gp>from)->@{gp}also}",
-     *     "var{[find]->SaveVar}"
-     *   ],
-     *   "another_chap_name": []
-     * }
-     * ```
-     */
-    @Deprecated("Use parse v4")
-    fun parse_v2(body: String): MutableMap<String, boundChapterItems> {
-        return body.toJsonMap()
-            .mapValues { (_, values) ->
-                (values as? List<*>).orEmpty().asSequence()
-                    .mapNotNull { it as? String }
-                    .map { it.split("{") }
-                    .filter { it.size >= 2 }
-                    .mapNotNull {
-                        val dataContent = it.drop(1).joinToString(separator = "{")
-                            .dropLast(1) // trailing "}"
-                            .split("->") // split by "From -> To"
-
-                        when (dataContent.size) {
-                            in (0..1) -> null
-                            2 -> it.first() to Pair(dataContent[0], dataContent[1])
-                            else -> {
-                                it.first() to Pair(
-                                    dataContent[0],
-                                    dataContent.drop(1).joinToString(separator = "->")
-                                )
-                            }
-                        }
-                    }
-                    .groupBy { it.first }
-                    .mapValues { (_, values) ->
-                        values.map { it.second }.toMutableList()
-                    }
-            }
-            .mapValues { (_, data) ->
-                boundChapterItems().also { bItems ->
-                    data.forEach { (dKey, dValue) ->
-                        when (dKey.toLowerCase()) {
-                            "body" -> {
-                                bItems.replacers_body.clear()
-                                bItems.replacers_body.addAll(dValue)
-                            }
-                            "var" -> {
-                                bItems.findVars.clear()
-                                bItems.findVars.addAll(dValue)
-                            }
-                        }
-                    }
-                }
-            }.toMutableMap()
-    }
-
-    private val seqActReg =
-        """(?<group>\w+):(?<name>\w*):(?<type>\w+):(?<find>\(.*?\)|[\w- ]+|):(?<new>\(.*?\)|[-\w ]*)"""
-            .toRegex()
-
-    /**
-     * Example
-     * ```json
-     *{
-     *  "chap_name": {
-     *    "modify": [
-     *      "body{from->to}",
-     *      "body{(from)->@{1}also}",
-     *      "body{(?<gp>from)->@{gp}also}",
-     *      "var{[find]->SaveVar}"
-     *    ],
-     *    "seqAct": [{
-     *        "when": [
-     *          "when::body:():()",
-     *          "when::any:-:-"
-     *        ],
-     *        "do": [
-     *          "do:thing:use:-:4",
-     *          "do:thing:body::(testing)",
-     *          "do:thing:body:(test):(end)",
-     *          "do:thing:body:(code :):none",
-     *          "do:thing:body:code any:none",
-     *          "do:thing:body:test:  ",
-     *          "do:thing:body:test:",
-     *          "do:thing:body:($):end",
-     *        ]
-     *      },
-     *      {
-     *        "when": [],
-     *        "do": [
-     *          "do:thing2:use:-:4",
-     *          "do:thing2:body::(testing)",
-     *          "do:thing2:body:(test):(end)"
-     *        ]
-     *      }
-     *    ]
-     *  }
-     *}
-     * ```
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Deprecated("Use parse v4")
-    fun parse_v3(body: String): MutableMap<String, boundChapterItems> {
-        return body.toJsonMap().asSequence()
-            .map { it.key to (it.value as? LinkedTreeMap<String, ArrayList<*>>).orEmpty() }
-            .map { (key, values) ->
-                val content = boundChapterItems()
-
-                values.forEach { (t, u) ->
-                    when (t) {
-                        "modify" -> {
-                            val modItems = u.asSequence()
-                                .mapNotNull { it as? String }
-                                .map { it.split("{") }
-                                .filter { it.size >= 2 }
-                                .mapNotNull {
-                                    val dataContent = it.drop(1).joinToString(separator = "{")
-                                        .dropLast(1) // trailing "}"
-                                        .split("->") // split by "From -> To"
-
-                                    when (dataContent.size) {
-                                        in (0..1) -> null
-                                        2 -> it.first() to Pair(dataContent[0], dataContent[1])
-                                        else -> {
-                                            it.first() to Pair(
-                                                dataContent[0],
-                                                dataContent.drop(1).joinToString(separator = "->")
-                                            )
-                                        }
-                                    }
-                                }
-                                .groupBy { it.first }
-                                .mapValues { (_, values) ->
-                                    values.map { it.second }.toMutableList()
-                                }
-
-                            modItems.entries.forEach { (key, data) ->
-                                when (key) {
-                                    "body" -> {
-                                        content.replacers_body.clear()
-                                        content.replacers_body.addAll(data)
-                                    }
-                                    "var" -> {
-                                        content.findVars.clear()
-                                        content.findVars.addAll(data)
-                                    }
-                                }
-                            }
-                        }
-                        "seqAct" -> {
-                            u.asSequence()
-                                .mapNotNull { it as? LinkedTreeMap<String, ArrayList<String>> }
-                                .map { lkm ->
-                                    val bSeqSteps = BoundSeqSteps_2()
-                                    lkm.forEach { (type, data) ->
-                                        data.forEach { actLine ->
-                                            val caster = seqActReg.find(actLine)
-                                                .let { MatcherCollection.castResult(it) }
-                                            val actStep = BoundSeqSteps_2.actStep(caster)
-                                            when (type) {
-                                                "when" -> bSeqSteps.step_When.add(actStep)
-                                                "do" -> bSeqSteps.step_Do.add(actStep)
-                                            }
-                                        }
-                                    }
-                                    bSeqSteps
-                                }
-                                .forEach { content.seqSteps_old.add(it) }
-                        }
-                    }
-                }
-                key to content
-            }
-            .toMap().toMutableMap()
     }
 
     /**
@@ -535,7 +318,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
      * }
      * ```
      */
-    fun parse_v4(body: String): MutableMap<String, boundChapterItems> {
+    fun parse_v4(body: String): MutableMap<String, BoundChapterItem> {
         val parser = Parser_v4()
         return body.toJsonMap().asSequence()
             .map { (key, value) ->
@@ -563,7 +346,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     }
                     .toList()
 
-                val chapItems = boundChapterItems().also {
+                val chapItems = BoundChapterItem().also {
                     it.seqSteps.clear()
                     it.seqSteps.addAll(actionItems)
                 }
@@ -602,18 +385,20 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 } else {
                     requireNotNull(testBounds)
                     replacers.forEach { (t, u) ->
-                        testBounds.replacerData[t] = u
+                        testBounds.boundData[t] = u
                     }
 
-                    val findVars = replacers.values.sumBy { it.findVars.size }
-                    val remappers = replacers.values.sumBy { it.replacers_body.size }
+                    val seq_Chapters = replacers.size
+                    val seq_total = replacers.values.size
+                    val seq_totalC = replacers.values.sumBy { it.seqSteps.size }
 
                     println("Applying the following bound items to test bounds ${testBounds.handle}:".green())
-                    println(" - [$findVars]".cyan() + " Variable finders".green())
-                    println(" - [$remappers]".cyan() + " Response modifiers".green())
+                    println("With:".green())
+                    println(" - [$seq_Chapters]".cyan() + " Chapter action/s".green())
+                    println(" - [$seq_total]".cyan() + " total added action/s".green())
+                    println(" - [$seq_totalC]".cyan() + " total command/s".green())
 
-                    val items = findVars + remappers
-                    call.respondText(status = HttpStatusCode.OK) { "Appended $items to test bounds ${testBounds.handle}" }
+                    call.respondText(status = HttpStatusCode.OK) { "Appended $seq_total action sequences to test bounds ${testBounds.handle}" }
                 }
             }
             // todo; patch

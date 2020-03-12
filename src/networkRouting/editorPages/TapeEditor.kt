@@ -8,7 +8,7 @@ import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -548,7 +548,7 @@ object TapeEditor : EditorModule() {
      * Renders the [total, live, limited, mock] recordings of this [tape] as a table.
      * Note: Nothing is rendered if there are no chapter data
      */
-    private fun FlowContent.displayTapeRecInfo(tape: BlankTape) {
+    private fun FlowContent.displayTapeRecInfo(tape: BaseTape) {
         if (tape.chapters.isEmpty()) {
             p { +"{ no chapters }" }
             return

@@ -178,6 +178,16 @@ val Headers.toPairs: List<Pair<String, String>>
         }
         .toList()
 
+val Headers.toArray: Array<String>
+    get() {
+        val result = mutableListOf<String>()
+        toPairs.forEach {
+            result.add(it.first)
+            result.add(it.second)
+        }
+        return result.toTypedArray()
+    }
+
 /**
  * Returns this [Headers] as a list of "Key: Value", or user defined [format]
  */

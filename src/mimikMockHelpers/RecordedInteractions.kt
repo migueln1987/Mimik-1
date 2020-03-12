@@ -108,8 +108,15 @@ class RecordedInteractions {
         get() = responseData != null
 
     override fun toString(): String {
-        return "%s; Uses: %d".format(
-            name, mockUses
+        val stateStr = when (mockUses) {
+            MockUseStates.ALWAYS.state -> "Always"
+            MockUseStates.DISABLE.state -> "Disabled"
+            MockUseStates.DISABLEDLIMITED.state -> "Disabled - limited)"
+            else -> "Limited"
+        }
+
+        return "%s; Uses: %d (%s)".format(
+            name, mockUses, stateStr
         )
     }
 

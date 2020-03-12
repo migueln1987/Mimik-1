@@ -17,7 +17,7 @@ import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.Responsedata
 import okhttp3.internal.http.HttpMethod
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 
 @Suppress("RemoveRedundantQualifierName")
 class MimikMock : RoutingContract(RoutePaths.rootPath) {
@@ -48,7 +48,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
-    private suspend fun ApplicationCall.processPutMock(): QueryResponse<BlankTape> {
+    private suspend fun ApplicationCall.processPutMock(): QueryResponse<BaseTape> {
         val headers = request.headers
         var mockParams = headers.entries().asSequence()
             .filter { it.key.startsWith("mock", true) }
@@ -316,12 +316,12 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
     /**
      * Attempts to find an existing tape suitable tape (by name) or creates a new one.
      */
-    private fun getTape(mockParams: Map<String, String>): QueryResponse<BlankTape> {
+    private fun getTape(mockParams: Map<String, String>): QueryResponse<BaseTape> {
         val paramTapeName = mockParams["tape_name"]?.split("/")?.last()
         // todo; add an option for sub-directories
         // val paramTapeDir = mockParams["tape_name"]?.replace(paramTapeName ?: "", "")
 
-        val result = QueryResponse<BlankTape> {
+        val result = QueryResponse<BaseTape> {
             status = HttpStatusCode.NotFound
             item = tapeCatalog.tapes.firstOrNull { it.name.equals(paramTapeName, true) }
                 ?.also { status = HttpStatusCode.Found }
@@ -329,7 +329,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         if (result.status != HttpStatusCode.Found) {
             result.status = HttpStatusCode.Created
-            result.item = BlankTape.Builder {
+            result.item = BaseTape.Builder {
                 it.tapeName = paramTapeName
                 it.routingURL = mockParams["tape_url"]
                 it.allowNewRecordings = mockParams["tape_allowliverecordings"].isTrue(true)

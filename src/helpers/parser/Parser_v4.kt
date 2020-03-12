@@ -4,7 +4,26 @@ import helpers.firstNotNullResult
 import helpers.matchers.MatcherCollection
 import helpers.matchers.MatcherResult
 import helpers.matchers.matchResults
+import kolor.red
 
+/**
+ * Example
+ * ```json
+ * {
+ *   "aaa":[
+ *      [
+ *          "?request:body:(some\w+)->toVar",
+ *          "response:body:((test:))->(@{1}@{toVar})"
+ *      ],
+ *      '
+ *      [
+ *          "var:regCode->(true)",
+ *          "response:body:(code: )-(code: @{regCode})"
+ *      ]
+ *   ]
+ * }
+ * ```
+ */
 class Parser_v4 {
     /**
      * cond: is this a conditional
@@ -254,8 +273,17 @@ class Parser_v4 {
      *
      * Invalid [input]s will return a [P4Command] with all options turned off
      */
-    fun parseToSteps(input: String): P4Command =
-        P4Command(parseToContents(input))
+    fun parseToSteps(input: String): P4Command {
+        val cmd = P4Command(parseToContents(input))
+        if (cmd.toString() != input) {
+            val sb = StringBuilder()
+                .appendln("== Parsed P4Command != input".red())
+                .appendln("== Input:  $input".red())
+                .appendln("== Parsed: $cmd".red())
+            println(sb.toString())
+        }
+        return cmd
+    }
 
     fun isValid_Request(action: List<MatcherResult>): Boolean {
         fun find(name: String): Boolean =

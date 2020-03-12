@@ -14,14 +14,14 @@ import okreplay.Request
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 
 class ReplayTapeTests {
-    lateinit var testObject: BlankTape
+    lateinit var testObject: BaseTape
 
     @Before
     fun setup() {
-        testObject = BlankTape.Builder().build()
+        testObject = BaseTape.Builder().build()
     }
 
     @Test

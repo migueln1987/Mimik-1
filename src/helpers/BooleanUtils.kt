@@ -54,6 +54,7 @@ inline fun <T> tryOrNull(action: () -> T?): T? {
     return try {
         action.invoke()
     } catch (e: Exception) {
+        e.printStackTrace()
         null
     }
 }

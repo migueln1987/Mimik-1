@@ -9,7 +9,7 @@ import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.*
 import okhttp3.Headers
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 import java.util.Date
 
 abstract class EditorModule {
@@ -692,12 +692,12 @@ abstract class EditorModule {
     /**
      * Saves key/value data to a tape. Reusing tape is retrieved using "name_pre".
      */
-    fun Map<String, String>.saveToTape(): BlankTape {
+    fun Map<String, String>.saveToTape(): BaseTape {
         var isNewTape = true
         val nowTape = tapeCatalog.tapes.firstOrNull { it.name == get("name_pre") }
             ?.also { isNewTape = false }
 
-        val modTape = BlankTape.reBuild(nowTape) { tape ->
+        val modTape = BaseTape.reBuild(nowTape) { tape ->
             // subDirectory = get("Directory")?.trim()
             val hostValue = get("hostValue")?.toIntOrNull() ?: RandomHost().value
             tape.tapeName = get("tapeName")?.trim() ?: hostValue.toString()
@@ -721,7 +721,7 @@ abstract class EditorModule {
         return modTape
     }
 
-    fun Map<String, String>.saveChapter(tape: BlankTape): RecordedInteractions {
+    fun Map<String, String>.saveChapter(tape: BaseTape): RecordedInteractions {
         val modChap = tape.chapters
             .firstOrNull { it.name == get("name_pre") }
             ?: let { tape.createNewInteraction() }
@@ -1285,7 +1285,7 @@ abstract class EditorModule {
     class ActiveData(private val params: Parameters) {
         private val tapeCatalog by lazy { TapeCatalog.Instance }
 
-        var tape: BlankTape? = null
+        var tape: BaseTape? = null
         var chapter: RecordedInteractions? = null
         var networkData: Networkdata? = null
 

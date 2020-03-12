@@ -6,13 +6,12 @@ import helpers.matchers.MatcherResult
 import helpers.matchers.matchResults
 import mimikMockHelpers.MockUseStates
 import networkRouting.testingManager.TestBounds
-import networkRouting.testingManager.boundChapterItems
+import networkRouting.testingManager.BoundChapterItem
 import okhttp3.Headers
 
-class P4Action {
-    // todo; below vars are for testing, replace-ish with actual items
+class P4Action(config: (P4Action) -> Unit = {}) {
     lateinit var bounds: TestBounds
-    lateinit var chapItems: boundChapterItems
+    lateinit var chapItems: BoundChapterItem
     lateinit var in_headers: Headers
     lateinit var in_body: String
     lateinit var out_headers: Headers
@@ -20,12 +19,11 @@ class P4Action {
 
     val scopeVars: MutableMap<String, String> = mutableMapOf()
 
+    init {
+        config.invoke(this)
+    }
+
     fun setup(config: (P4Action) -> Unit) {
-        //    var byChap = bounds.replacerData[chap.name] ?: return this
-//    var in_headers = request.headers()
-//    var in_body = request.body()?.content().orEmpty()
-//    var out_headers = headers()
-//    var out_body = body()?.content().orEmpty()
         config.invoke(this)
     }
 
@@ -300,10 +298,12 @@ class P4Action {
             | 3     | yes    | yes     |
             */
             var result: String? = null
+
             /**
              * DeTemplated successful source matches
              */
             val mResults: MutableList<MatcherCollection> = mutableListOf()
+
             /** Type of data which `result` holds
              * - 0: none
              * - 1: bool
@@ -600,7 +600,7 @@ class P4Action {
 
                                             1 -> { // replace all (of the highest index) matches in the body
                                                 mResults
-                                                    .flatMap { it[it.lastIndex] }
+                                                    .flatMap { it[0] }
                                                     .sortedByDescending { it.range.first }
                                                     .forEach {
                                                         out_body = out_body.replaceRange(

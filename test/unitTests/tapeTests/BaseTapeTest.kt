@@ -15,15 +15,15 @@ import okreplay.TapeMode
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import tapeItems.BlankTape
+import tapeItems.BaseTape
 
-class BlankTapeTest {
+class BaseTapeTest {
 
-    lateinit var testObject: BlankTape
+    lateinit var testObject: BaseTape
 
     @Before
     fun setup() {
-        testObject = BlankTape.Builder().build()
+        testObject = BaseTape.Builder().build()
     }
 
     @Test
@@ -51,7 +51,7 @@ class BlankTapeTest {
             it.routingPath = RequestAttractorBit(path)
         }
 
-        testObject = BlankTape.Builder {
+        testObject = BaseTape.Builder {
             it.tapeName = name
             it.routingURL = url
             it.attractors = attractorData
@@ -78,7 +78,7 @@ class BlankTapeTest {
     @Test
     fun uppercaseJsonName() {
         val name = "/name"
-        testObject = BlankTape.Builder {
+        testObject = BaseTape.Builder {
             it.tapeName = name
         }.build()
 
