@@ -1,9 +1,6 @@
 package networkRouting.testingManager
 
-import com.google.gson.Gson
-import com.google.gson.internal.LinkedTreeMap
 import helpers.*
-import helpers.parser.P4Command
 import helpers.parser.Parser_v4
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -20,9 +17,10 @@ import kotlinx.coroutines.sync.withPermit
 import networkRouting.RoutingContract
 import java.time.Duration
 import java.util.Date
-import kotlin.Exception
 
-@Suppress("RemoveRedundantQualifierName")
+/**
+ * Server handle which Testers will use to start/ stop/ modify test bounds
+ */
 class TestManager : RoutingContract(RoutePaths.rootPath) {
     private enum class RoutePaths(val path: String) {
         START("start"),
@@ -108,6 +106,15 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             }
     }
 
+    /**
+     * Required. Starts a test bound.
+     *
+     * @param handle (Opt) How the bound will be referenced in the future.
+     * @param time (default: 5m) Duration the test will last.
+     * - When the test extends this time, it will receive 404's
+     * @param tape (Req) CSV list of tapes to be added. (no spaces)
+     * @param body (Opt) Sequence actions to be applied to the active tape chapters.
+     */
     private val Route.start: Route
         get() = route(RoutePaths.START.path) {
             /**
@@ -141,7 +148,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-                var testBounds: TestBounds? = null
+                var testBounds: TestBounds?
                 var replaceHandleName = false
 
                 if (handle.isNullOrBlank()) {
@@ -238,6 +245,12 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
+    /**
+     * Append tapes to the mentioned test bound
+     *
+     * @param handle (Req) What test bound to append items to.
+     * @param tape (Req) CSV list of tapes to be added. (no spaces)
+     */
     private val Route.append: Route
         get() = route(RoutePaths.APPEND.path) {
             /**
@@ -284,76 +297,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
     private suspend fun PipelineContext<*, ApplicationCall>.getReplacers(): MutableMap<String, BoundChapterItem>? {
         val bodyStr = call.tryGetBody().orEmpty()
-        return parse_v4(bodyStr)
-    }
-
-    private fun String.toJsonMap(): Map<String, Any> {
-        if (isEmpty()) return mapOf()
-        return try {
-            Gson()
-                .fromJson(this, LinkedTreeMap::class.java).orEmpty()
-                .map { it.key.toString() to it.value }
-                .toMap()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            mutableMapOf()
-        }
-    }
-
-    /**
-     * Example
-     * ```json
-     * {
-     *   "aaa":[
-     *      [
-     *          "?request:body:(some\w+)->toVar",
-     *          "response:body:((test:))->(@{1}@{toVar})"
-     *      ],
-     *      '
-     *      [
-     *          "var:regCode->(true)",
-     *          "response:body:(code: )-(code: @{regCode})"
-     *      ]
-     *   ]
-     * }
-     * ```
-     */
-    fun parse_v4(body: String): MutableMap<String, BoundChapterItem> {
-        val parser = Parser_v4()
-        return body.toJsonMap().asSequence()
-            .map { (key, value) ->
-                @Suppress("UNCHECKED_CAST")
-                key to (value as? ArrayList<ArrayList<String>>).orEmpty()
-            }
-            .map { (chap, data) ->
-                val actionItems = data.asSequence()
-                    .map { dStr ->
-                        // process the strings into lexicon bites
-                        val parsedItems = dStr.asSequence()
-                            .map { parser.parseToContents(it) }
-                            .filter { parser.isValid(it) }
-                            .toList()
-
-                        // If any of the string lines were invalid
-                        // then reject the whole array to be safe.
-                        if (parsedItems.size == dStr.size)
-                            parsedItems
-                        else listOf()
-                    }
-                    .filter { it.isNotEmpty() }
-                    .map { lexM ->
-                        lexM.map { P4Command(it) }
-                    }
-                    .toList()
-
-                val chapItems = BoundChapterItem().also {
-                    it.seqSteps.clear()
-                    it.seqSteps.addAll(actionItems)
-                }
-
-                chap to chapItems
-            }
-            .toMap().toMutableMap()
+        return Parser_v4.parseBody(bodyStr)
     }
 
     private val Route.modify: Route

@@ -575,10 +575,10 @@ class P4Action(config: (P4Action) -> Unit = {}) {
 
                                             3 -> {
                                                 // todo; test which should be used, lastNotNull or last.last
-                                                val uu = mResults.lastNotNullResult {
-                                                    it.lastIndexMatch()
-                                                }
-                                                val repRange = mResults.last().last().range
+                                                val repRange = mResults
+                                                    .lastNotNullResult { it.lastIndexMatch() }?.range
+                                                    ?: (0..0)
+//                                                val repRange = mResults.last().last().range
                                                 headList[step.source_name!!] = headList[step.source_name!!]
                                                     ?.firstOrNull()
                                                     ?.replaceRange(

@@ -14,7 +14,7 @@ import java.nio.charset.Charset
 import kotlin.test.fail
 
 class TestManagerTest {
-    val p4Parser by lazy { Parser_v4() }
+//    val p4Parser by lazy { Parser_v4() }
 
     @Test
     fun observerScope() {
@@ -93,7 +93,7 @@ class TestManagerTest {
         val bounds = TestBounds("", mutableListOf())
         bounds.boundData[chapName] = BoundChapterItem().also { chap ->
             actionsResults
-                .map { (cmd, _, _) -> p4Parser.parseToSteps(cmd) }
+                .map { (cmd, _, _) -> Parser_v4.parseToSteps(cmd) }
                 .also { chap.seqSteps.add(it) }
         }
 

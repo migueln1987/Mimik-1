@@ -295,6 +295,9 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
             .iterator()
     }
 
+    /**
+     * Finds the highest matching index, and returns the last instance of this index.
+     */
     fun lastIndexMatch(): MatcherResult {
         if (matchBundles.isEmpty())
             return MatcherResult.EMPTY

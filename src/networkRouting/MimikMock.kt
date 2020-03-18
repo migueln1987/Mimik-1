@@ -19,7 +19,11 @@ import mimikMockHelpers.Responsedata
 import okhttp3.internal.http.HttpMethod
 import tapeItems.BaseTape
 
-@Suppress("RemoveRedundantQualifierName")
+/**
+ * Server handle for creating mock tapes/ chapters from an API call
+ *
+ * @see <a href="0.0.0.0:4321/mock">mock</a>
+ */
 class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
     val arrayReg = "(?<!\\\\),".toRegex()
@@ -270,7 +274,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
     /**
      * Filters this [key, values] map into a list of Attractor bits.
-     * Function also sets [optional] and [required] flags
+     * Function also sets optional and required flags
      */
     private fun Map<String, List<String>>.filterAttractorKeys(
         key: String,

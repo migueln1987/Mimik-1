@@ -12,11 +12,15 @@ import io.ktor.util.pipeline.PipelineContext
 import java.io.File
 import kotlin.math.max
 
-@Suppress("RemoveRedundantQualifierName")
+/**
+ * Server handle which responds with the age of a file.
+ *
+ * This is used in the file watcher, to determine if a file was modified
+ */
 class FetchResponder : RoutingContract(RoutePaths.rootPath) {
 
     private enum class RoutePaths(val path: String) {
-        ageCheck("ageCheck");
+        AgeCheck("ageCheck");
 
         companion object {
             const val rootPath = "fetch"
@@ -30,7 +34,7 @@ class FetchResponder : RoutingContract(RoutePaths.rootPath) {
     }
 
     private val Route.ageCheck: Route
-        get() = route(RoutePaths.ageCheck.path) {
+        get() = route(RoutePaths.AgeCheck.path) {
             post { ageCheckAction() }
         }
 

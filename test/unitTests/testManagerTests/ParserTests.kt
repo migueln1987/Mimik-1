@@ -14,9 +14,9 @@ import okhttp3.Headers
 import org.junit.Assert
 import org.junit.Test
 
+@Suppress("KDocUnresolvedReference", "PropertyName", "PrivatePropertyName")
 class ParserTests {
     val testObject by lazy { TestManager() }
-    val parse4Class by lazy { Parser_v4() }
 
     //    @Test
     fun parse_v3_ManyChaps() {
@@ -167,7 +167,7 @@ class ParserTests {
 //        )
     }
 
-    val regexPattern: String
+    private val regexPattern: String
         get() = """
 (?<cond>
     (?=[~?!])
@@ -210,7 +210,7 @@ class ParserTests {
 )?
         """.replace("""( {2}|\n|\r)""".toRegex(), "")
 
-    val validInputCombos = mapOf(
+    private val validInputCombos = mapOf(
         // == Requests
         // === Head
         "?request:head" to listOf(
@@ -411,7 +411,7 @@ class ParserTests {
     )
 
     // Combos which match the syntax, but aren't computable
-    val invalidInputCombos = mapOf(
+    private val invalidInputCombos = mapOf(
         // not enough source info
         "request:head->{dd}" to listOf(
             "source", "rType", "rIn", "rInH", "act", "aM"
@@ -447,7 +447,7 @@ class ParserTests {
         )
     )
 
-    val inputRequireCond = mapOf(
+    private val inputRequireCond = mapOf(
         "request:head" to listOf(
             "source", "rType", "rIn", "rInH"
         ),
@@ -525,7 +525,7 @@ class ParserTests {
         return map { (value, items) ->
             Triple(
                 value,
-                parse4Class.parseToContents(value),
+                Parser_v4.parseToContents(value),
                 items
             )
         }
@@ -584,14 +584,14 @@ class ParserTests {
 
     @Test
     fun parse_v4_expectPattern() {
-        Assert.assertEquals(regexPattern, parse4Class.toString())
+        Assert.assertEquals(regexPattern, Parser_v4.toString())
     }
 
     @Test
     fun parse_v4_ValidCombos() {
         validInputCombos.toResultMap()
             .forEach { (input, parsed, expected) ->
-                parse4Class.compareParsedToExpected(input, parsed, expected)
+                Parser_v4.compareParsedToExpected(input, parsed, expected)
             }
     }
 
@@ -599,7 +599,7 @@ class ParserTests {
     fun parse_v4_InvalidCombos() {
         invalidInputCombos.toResultMap()
             .forEach { (input, parsed, expected) ->
-                parse4Class.compareParsedToExpected(input, parsed, expected, false)
+                Parser_v4.compareParsedToExpected(input, parsed, expected, false)
             }
     }
 
@@ -607,11 +607,7 @@ class ParserTests {
     fun parse_v4_expectAsCondOrAct() {
         inputRequireCond.toResultMap()
             .forEach { (_, parsed, _) ->
-                parse4Class.also { p4 ->
-                    Assert.assertFalse(
-                        p4.isValid_Request(parsed)
-                    )
-                }
+                Assert.assertFalse(Parser_v4.isValid_Request(parsed))
             }
     }
 
@@ -734,7 +730,7 @@ class ParserTests {
             }
         """.trimIndent()
 
-        val result = testObject.parse_v4(body)
+        val result = Parser_v4.parseBody(body)
 
         Assert.assertTrue(result.containsKey("aa"))
         Assert.assertEquals(1, result["aa"]!!.seqSteps.size)
@@ -1374,7 +1370,7 @@ class ParserTests {
                 }
 
                 exp_env.envChapterUse?.also { use ->
-                    setup.chapItems = BoundChapterItem() { it.stateUse = use }
+                    setup.chapItems = BoundChapterItem { it.stateUse = use }
                 }
 
                 p4MockEnv.in_headers?.also { setup.in_headers = it }
@@ -1385,7 +1381,7 @@ class ParserTests {
 
             // Process inputs for results
             val steps = commands.asSequence()
-                .map { it to parse4Class.parseToSteps(it) }
+                .map { it to Parser_v4.parseToSteps(it) }
                 .onEach {
                     fun errorMsg() = "Processed command does not match input" +
                             "\nInput: ${it.first}" +
@@ -1443,13 +1439,13 @@ class ParserTests {
             if (exp_env.out_headers != null) {
                 val resultHeaders = testObj.out_headers
                     .toMultimap().orEmpty()
-                exp_env.out_headers!!.toMultimap().orEmpty().forEach { t, u ->
+                exp_env.out_headers!!.toMultimap().orEmpty().forEach { (t, u) ->
                     Assert.assertTrue(
                         "Missing Header key: $t",
                         resultHeaders.containsKey(t)
                     )
 
-                    val rHeadVals = resultHeaders[t]!!
+                    val rHeadVals = resultHeaders[t] ?: listOf()
                     fun errorMsg(expKey: String) = "Missing header value: {$t : $expKey}" +
                             "\n\n${resultHeaders.toJson}"
 

@@ -19,7 +19,6 @@ import networkRouting.editorPages.TapeEditor.getTapePage
 import okhttp3.internal.http.HttpMethod
 import tapeItems.BaseTape
 
-@Suppress("RemoveRedundantQualifierName")
 class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
     enum class RoutePaths(val path: String) {
