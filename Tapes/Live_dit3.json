@@ -1,0 +1,28 @@
+{
+ "tapeName": "Live_dit3",
+ "recordedDate": "Jan 18, 2020 10:39:25 PM",
+ "modifiedDate": "Jan 18, 2020 11:19:58 PM",
+ "attractors": {
+  "routingPath": {
+   "value": "fiserv/cbes/perform.do"
+  },
+  "queryMatchers": [
+   {
+    "allowAllInputs": true
+   }
+  ],
+  "headerMatchers": [
+   {
+    "allowAllInputs": true
+   }
+  ],
+  "bodyMatchers": [
+   {
+    "allowAllInputs": true
+   }
+  ]
+ },
+ "routingUrl": "https://dit3-cardvalet-ca.fiservapps.com",
+ "chapters": [],
+ "tapeMode": "READ_ONLY"
+}

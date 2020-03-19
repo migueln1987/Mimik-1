@@ -1,5 +1,5 @@
-val ktor_version: String by project
-val kotlin_version: String by project
+val ktor_version = "1.3.2"
+val kotlin_version = "1.3.50"
 val logback_version: String by project
 val fuel_version: String by project
 val ktlint by configurations.creating
@@ -7,6 +7,7 @@ val ktlint by configurations.creating
 plugins {
     application
     kotlin("jvm") version "1.3.50"
+    idea
 }
 
 group = "com.fiserv.mimik"
@@ -17,10 +18,16 @@ application {
     //"io.ktor.server.netty.EngineMain"
 }
 
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
+}
+
 repositories {
-    mavenLocal()
+    jcenter()
     mavenCentral()
-    maven("http://jcenter.bintray.com")
     maven("http://kotlin.bintray.com/ktor")
 }
 

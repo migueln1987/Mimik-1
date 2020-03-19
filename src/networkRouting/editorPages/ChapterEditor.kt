@@ -216,6 +216,14 @@ object ChapterEditor : EditorModule() {
                     }
 
                     tr {
+                        th { +"Action Sequences" }
+                        td {
+                            div {
+                                ParserEditor()
+                            }
+                        }
+                    }
+                    tr {
                         th { +"Uses" }
                         td {
                             text("Enabled: ")

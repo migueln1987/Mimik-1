@@ -1,0 +1,58 @@
+{
+ "tapeName": "FavIcon",
+ "recordedDate": "Dec 12, 2019 3:32:20 PM",
+ "modifiedDate": "Jan 2, 2020 12:29:51 PM",
+ "chapters": [
+  {
+   "recordedDate": "Dec 12, 2019 3:32:20 PM",
+   "modifiedDate": "Jan 2, 2020 12:30:06 PM",
+   "chapterName": "get-FavIcon",
+   "attractors": {
+    "routingPath": {
+     "value": "favicon.ico"
+    },
+    "headerMatchers": [
+     {
+      "value": "pragma: no-cache"
+     },
+     {
+      "value": "referer: http://10.0.2.2:2202/branding/66220004/mtac.html"
+     },
+     {
+      "value": "x-requested-with: com.fiserv.cardvalet.cbc.mock"
+     }
+    ]
+   },
+   "mockUses": -1,
+   "requestData": {
+    "method": "GET",
+    "url": "http://local.host/favicon.ico",
+    "headers": {
+     "namesAndValues": [
+      "Connection",
+      "keep-alive",
+      "Pragma",
+      "no-cache",
+      "Cache-Control",
+      "no-cache",
+      "User-Agent",
+      "Mozilla/5.0 (Linux; Android 9; AOSP on IA Emulator Build/PSR1.180720.117; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/69.0.3497.100 Mobile Safari/537.36",
+      "Accept",
+      "image/webp,image/apng,image/*,*/*;q\u003d0.8",
+      "Referer",
+      "http://10.0.2.2:2202/branding/66220004/mtac.html",
+      "Accept-Encoding",
+      "gzip, deflate",
+      "Accept-Language",
+      "en-US",
+      "X-Requested-With",
+      "com.fiserv.cardvalet.cbc.mock",
+      "host",
+      "local.host"
+     ]
+    }
+   }
+  }
+ ],
+ "tapeMode": "READ_ONLY"
+}
