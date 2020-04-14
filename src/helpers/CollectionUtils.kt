@@ -111,3 +111,5 @@ fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> {
         }
     }
 }
+
+fun <T> List<T>.toArrayList() = ArrayList(this)

@@ -148,9 +148,6 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 }
                 if (!canContinue) return@post
 
-                var testBounds: TestBounds?
-                var replaceHandleName = false
-
                 if (handle.isNullOrBlank()) {
                     handle = createUniqueName()
                     printlnF(
@@ -160,8 +157,9 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     )
                 }
 
-                testBounds = boundManager.firstOrNull { it.handle == handle }
+                var testBounds = boundManager.firstOrNull { it.handle == handle }
 
+                var replaceHandleName = false
                 if (testBounds != null) {
                     if (testBounds.state != BoundStates.Stopped) {
                         printlnF(

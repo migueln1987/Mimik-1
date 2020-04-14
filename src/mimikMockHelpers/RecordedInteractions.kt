@@ -4,6 +4,9 @@ import helpers.RandomHost
 import helpers.attractors.AttractorMatches
 import helpers.attractors.RequestAttractors
 import helpers.isTrue
+import helpers.parser.P4Command
+import helpers.parser.Parser_v4
+import helpers.toArrayList
 import helpers.toTapeData
 import java.util.Date
 
@@ -50,6 +53,46 @@ class RecordedInteractions {
     var alwaysLive: Boolean? = false
 
     var attractors: RequestAttractors? = null
+
+
+    /**
+     * Sequence actions for this object, called each time this chapter is used
+     */
+    @Transient
+    var seqActions: ArrayList<ArrayList<P4Command>>? = null
+        get() {
+            if (field == null)
+                field = arrayListOf()
+
+            if (field?.isEmpty().isTrue()) {
+                field = seqActions_data.orEmpty().map {
+                    it.map { Parser_v4.parseToSteps(it) }.toArrayList()
+                }.toArrayList()
+            }
+
+            return field
+        }
+
+    /**
+     * Sequence actions, in string form, for exporting to a json
+     */
+    var seqActions_data: ArrayList<ArrayList<String>>? = null
+        get() {
+            if (field == null)
+                field = arrayListOf()
+            return field
+        }
+        private set
+
+
+    /**
+     * Converts all the data sequence actions to string actions, to prepare for json exporting
+     */
+    fun prepareSeqForExport() {
+        seqActions_data = seqActions?.map {
+            it.map { it.toString() }.toArrayList()
+        }?.toArrayList()
+    }
 
     /**
      * Remaining uses of this mock interaction.

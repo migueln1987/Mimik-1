@@ -9,6 +9,9 @@ import networkRouting.testingManager.TestBounds
 import networkRouting.testingManager.BoundChapterItem
 import okhttp3.Headers
 
+/**
+ * Class which processes the [P4Command]s
+ */
 class P4Action(config: (P4Action) -> Unit = {}) {
     lateinit var bounds: TestBounds
     lateinit var chapItems: BoundChapterItem

@@ -9,6 +9,15 @@ import java.io.File
 import kotlin.math.abs
 import kotlin.random.Random
 
+fun FlowOrMetaDataContent.unsafeStyle(type: String? = null, block: Unsafe.() -> Unit = {}) =
+    style(type) { unsafe(block) }
+
+fun FlowOrPhrasingOrMetaDataContent.unsafeScript(
+    type: String? = null,
+    src: String? = null,
+    block: Unsafe.() -> Unit = {}
+) = script(type, src) { unsafe { block.invoke(this) } }
+
 /**
  * Creates a line (2 "<[br]>") for each [lines] count
  */
@@ -38,7 +47,7 @@ fun FlowOrPhrasingContent.makeToggleButton(
     target: String,
     isExpanded: Boolean = false
 ) {
-    script { unsafe { +"setupTogggButtonTarget('$target');" } }
+    script { unsafe { +"setupToggleButtonTarget('$target');" } }
 
     button(
         type = ButtonType.button,
@@ -76,18 +85,16 @@ fun FlowContent.toggleArea(
     }
 
     val rngName = "toggles_${RandomHost().value}"
-    script {
-        unsafe {
-            +"var $rngName = setupToggleArea();%s".format(
-                if (isExpanded) {
-                    """
-                        waitForElem($rngName[1], function(elem) {
-                            toggleView($rngName[0], $rngName[1]);
-                            });
-                    """.trimIndent()
-                } else ""
-            )
-        }
+    unsafeScript {
+        +"var $rngName = setupToggleArea();%s".format(
+            if (isExpanded) {
+                """
+                    waitForElem($rngName[1], function(elem) {
+                        toggleView($rngName[0], $rngName[1]);
+                        });
+                """.trimIndent()
+            } else ""
+        )
     }
 }
 

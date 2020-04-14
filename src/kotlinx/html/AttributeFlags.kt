@@ -62,6 +62,9 @@ var CommonAttributeGroupFacade.width: String
         styleProxy("width", value)
     }
 
+/**
+ * 'Height' style of this html attribute
+ */
 var CommonAttributeGroupFacade.height: String
     get() = styleProxy("height", null)
     set(value) {
@@ -108,6 +111,170 @@ enum class DisplayFlags {
     }
 }
 
+class PaddingConfigs(val attributeGroup: CommonAttributeGroupFacade) {
+    /**
+     * Padding which applies to all the sides
+     *
+     * @param value Size in px
+     */
+    var all: String
+        get() = attributeGroup.styleProxy("padding", null)
+        set(value) {
+            attributeGroup.styleProxy("padding", value)
+        }
+
+    /**
+     * Padding which applies to the top and bottom sides
+     *
+     * Note: this is a helper property, "get" value uses the "top" value
+     *
+     * @param value Size in px
+     */
+    var vertical: String
+        get() = attributeGroup.styleProxy("padding-top", null)
+        set(value) {
+            attributeGroup.styleProxy("padding-top", value)
+            attributeGroup.styleProxy("padding-bottom", value)
+        }
+
+    /**
+     * Padding which applies to the left and right sides
+     *
+     * Note: this is a helper property, "get" value uses the "left" value
+     *
+     * @param value Size in px
+     */
+    var horizontal: String
+        get() = attributeGroup.styleProxy("padding-left", null)
+        set(value) {
+            attributeGroup.styleProxy("padding-left", value)
+            attributeGroup.styleProxy("padding-right", value)
+        }
+
+    /**
+     * Padding which applies to the left sidee
+     *
+     * @param value Size in px
+     */
+    var left: String
+        get() = attributeGroup.styleProxy("padding-left", null)
+        set(value) {
+            attributeGroup.styleProxy("padding-left", value)
+        }
+
+    /**
+     * Padding which applies to the right side
+     *
+     * @param value Size in px
+     */
+    var right: String
+        get() = attributeGroup.styleProxy("padding-right", null)
+        set(value) {
+            attributeGroup.styleProxy("padding-right", value)
+        }
+
+    /**
+     * Padding which applies to the top side
+     *
+     * @param value Size in px
+     */
+    var top: String
+        get() = attributeGroup.styleProxy("padding-top", null)
+        set(value) {
+            attributeGroup.styleProxy("padding-top", value)
+        }
+
+    /**
+     * Padding which applies to the bottom side
+     *
+     * @param value Size in px
+     */
+    var bottom: String
+        get() = attributeGroup.styleProxy("padding-bottom", null)
+        set(value) {
+            attributeGroup.styleProxy("padding-bottom", value)
+        }
+}
+
+/**
+ * Accessor to this element's padding attributes
+ */
+fun CommonAttributeGroupFacade.padding(padConfig: PaddingConfigs.() -> Unit) =
+    padConfig.invoke(PaddingConfigs(this))
+
+class BackgroundConfigs(private val attributeGroup: CommonAttributeGroupFacade) {
+    var color: String
+        get() = attributeGroup.styleProxy("background-color", null)
+        set(value) {
+            attributeGroup.styleProxy("background-color", value)
+        }
+}
+
+fun CommonAttributeGroupFacade.background(backgroundConfig: BackgroundConfigs.() -> Unit) =
+    backgroundConfig.invoke(BackgroundConfigs(this))
+
+class BorderConfigs(private val attributeGroup: CommonAttributeGroupFacade) {
+
+    /**
+     * Raw 'border' attribute field
+     */
+    var raw: String
+        get() = attributeGroup.styleProxy("border", null)
+        set(value) {
+            attributeGroup.styleProxy("border", value)
+        }
+
+    fun all(config: SubConfigs.() -> Unit) =
+        config.invoke(SubConfigs())
+
+    fun left(config: SubConfigs.() -> Unit) =
+        config.invoke(SubConfigs("left"))
+
+    fun right(config: SubConfigs.() -> Unit) =
+        config.invoke(SubConfigs("right"))
+
+    fun top(config: SubConfigs.() -> Unit) =
+        config.invoke(SubConfigs("top"))
+
+    fun bottom(config: SubConfigs.() -> Unit) =
+        config.invoke(SubConfigs("bottom"))
+
+    inner class SubConfigs(private val type: String? = null) {
+        private val edgeType: String
+            get() = type?.let { "-$it" }.orEmpty()
+
+        var color: String
+            get() = attributeGroup.styleProxy("border$edgeType-color", null)
+            set(value) {
+                attributeGroup.styleProxy("border$edgeType-color", value)
+            }
+
+        var style: String
+            get() = attributeGroup.styleProxy("border$edgeType-style", null)
+            set(value) {
+                attributeGroup.styleProxy("border$edgeType-style", value)
+            }
+
+        var width: String
+            get() = attributeGroup.styleProxy("border$edgeType-width", null)
+            set(value) {
+                attributeGroup.styleProxy("border$edgeType-width", value)
+            }
+
+        init {
+            color = "inherit"
+            style = "solid"
+            width = "1px"
+        }
+    }
+}
+
+/**
+ * Style of border around this element
+ */
+fun CommonAttributeGroupFacade.border(borderConfig: BorderConfigs.() -> Unit) =
+    borderConfig.invoke(BorderConfigs(this))
+
 var CommonAttributeGroupFacade.display: DisplayFlags
     get() = tryOrNull { DisplayFlags.toValue(styleProxy("display", null)) }
         ?: DisplayFlags.inline
@@ -131,10 +298,10 @@ val styleProxy: CommonAttributeGroupFacade.(String, String?) -> String = { key, 
             isThrow { style } -> "$key: $value".ensureSuffix(";").also { style = it }
             else -> {
                 val grab = styleRegex(key).find(style)?.groups?.get(1)
-                style = if (grab == null)
-                    style + "$key: $value".ensureSuffix(";")
-                else
-                    style.replaceRange(grab.range, value)
+                style = when (grab) {
+                    null -> style + "$key: $value".ensureSuffix(";")
+                    else -> style.replaceRange(grab.range, value)
+                }
                 style
             }
         }

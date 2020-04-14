@@ -770,8 +770,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val params = this["reqQuery"]
             .toPairs()?.toList()
         val headers = this["reqHeaders"].toPairs()
-            ?.filter { it.second != null }
-            ?.map { it.first to it.second!! }?.toMutableList()
+            ?.map { it.first to it.second }?.toMutableList()
             ?.apply {
                 if (isLocalhostCall) add(("localhost" to "true"))
             }?.toTypedArray()

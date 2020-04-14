@@ -6,6 +6,9 @@ import TapeCatalog
 import helpers.tryGetBody
 import io.ktor.application.*
 import io.ktor.features.*
+import io.ktor.http.content.files
+import io.ktor.http.content.static
+import io.ktor.http.content.staticRootFolder
 import io.ktor.response.respondRedirect
 import io.ktor.routing.get
 import io.ktor.routing.routing
@@ -23,6 +26,7 @@ import networkRouting.editorPages.TapeRouting
 import networkRouting.testingManager.TestManager
 import networkRouting.port
 import org.slf4j.event.Level
+import java.io.File
 
 object Ports {
     const val config = 4321
@@ -61,6 +65,11 @@ fun Application.module(testing: Boolean = false) {
             DataGen().init(this)
             FetchResponder().init(this)
             TestManager().init(this)
+
+            static("assets") {
+                staticRootFolder = File("resources")
+                static("libs") { files("libs") }
+            }
 
             get { call.respondRedirect(TapeRouting.RoutePaths.rootPath) }
         }

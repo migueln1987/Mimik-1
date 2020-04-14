@@ -17,10 +17,14 @@ object ChapterEditor : EditorModule() {
 
         head {
             script { unsafe { +JS.all } }
+            script(src = "../assets/libs/Sortable.js") {}
         }
 
         body {
             setupStyle()
+            unsafeStyle {
+                +Libs_CSS.Sortable.value
+            }
             BreadcrumbNav(pData)
 
             if (!pData.newChapter) {
@@ -219,7 +223,7 @@ object ChapterEditor : EditorModule() {
                         th { +"Action Sequences" }
                         td {
                             div {
-                                ParserEditor()
+                                SequenceViewer(pData.seqActions)
                             }
                         }
                     }

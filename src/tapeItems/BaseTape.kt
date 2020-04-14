@@ -618,6 +618,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             withContext(Dispatchers.IO) {
                 synchronized(this@BaseTape) {
                     savingFile.set(true)
+                    this@BaseTape.chapters.forEach { it.prepareSeqForExport() }
                     val time = measureTimeMillis {
                         val tree = gson.toJsonTree(this@BaseTape).asJsonObject
                         val keepChapters = tree.getAsJsonArray("chapters")

@@ -4,6 +4,7 @@ import TapeCatalog
 import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.parser.P4Command
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlinx.html.*
@@ -22,6 +23,7 @@ abstract class EditorModule {
 
     companion object {
         val randomHost = RandomHost()
+
         /**
          * "{ no data }"
          */
@@ -252,7 +254,7 @@ abstract class EditorModule {
 
         SetupToggButton_func(
             """
-                function setupTogggButtonTarget(target) {
+                function setupToggleButtonTarget(target) {
                     waitForElem(target, function(elem) {
                         if (!elem.classList.contains("hideableContent"))
                             elem.classList.add("hideableContent");
@@ -292,7 +294,7 @@ abstract class EditorModule {
                     var togBtn = togDiv.previousElementSibling.previousElementSibling;
 
                     togBtn.onclick = function() { toggleView(togBtn, togDiv); }
-                    setupTogggButtonTarget(togDiv);
+                    setupToggleButtonTarget(togDiv);
                     return [togBtn, togDiv];
                 }
             """
@@ -322,6 +324,81 @@ abstract class EditorModule {
                     return result.toString()
                 }
         }
+
+        val value: String
+            get() = init.trimIndent()
+    }
+
+    enum class Libs_CSS(private val init: String) {
+        Sortable(
+            """
+                .sjs_ghost {
+                  opacity: .5;
+                  background: #C8EBFB;
+                }
+            
+                .sjs_group {
+                  display: flex;
+                  flex-direction: column;
+                  padding-left: 0;
+                  margin-bottom: 0;
+                }
+            
+                .sjs_group-item {
+                  position: relative;
+                  display: block;
+                  padding: .75rem 0.5rem;
+                  margin-bottom: -1px;
+                  background-color: #fff;
+                  border: 1px solid rgba(0, 0, 0, .125);
+                }
+            
+                .nested-sortable,
+                .nested-1,
+                .nested-2,
+                .nested-3 {
+                  margin-top: 4px;
+                  margin-bottom: 4px;
+                }
+            
+                .nested-1 {
+                  background-color: #e6e6e6;
+                }
+            
+                .nested-2 {
+                  background-color: #cccccc;
+                }
+            
+                .nested-3 {
+                  background-color: #b3b3b3;
+                }
+            
+                .sjs_col {
+                  flex-basis: 0;
+                  flex-grow: 1;
+                  max-width: 100%;
+                }
+            
+                .sjs_row {
+                  display: -ms-flexbox;
+                  display: flex;
+                  flex-wrap: wrap;
+                  margin-right: -15px;
+                  margin-left: -15px;
+                }
+            
+                .sjs_handle {
+                  display: inline;
+                  cursor: move;
+                }
+            
+                .sjs_noDrag {}
+            
+                .inline {
+                  display: inline;
+                }
+            """
+        );
 
         val value: String
             get() = init.trimIndent()
@@ -1335,6 +1412,9 @@ abstract class EditorModule {
          */
         fun hardChapName(default: String = RandomHost().valueAsUUID) =
             expectedChapName ?: default
+
+        val seqActions: ArrayList<ArrayList<P4Command>>
+            get() = chapter?.seqActions.orEmpty().toArrayList()
 
         val expectedNetworkType
             get() = params["network"]?.trim().orEmpty()

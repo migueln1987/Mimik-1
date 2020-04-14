@@ -5,6 +5,7 @@ import helpers.matchers.MatcherResult
 class P4Command {
     val isCond
         get() = cStSrc >= 0
+
     /**
      * Optional condition flag
      *
@@ -18,6 +19,7 @@ class P4Command {
      * - False: StSrc -> fails, this will be skipped
      */
     var cStOpt = false
+
     /**
      * State Search flag; What kind of state to look for.
      *
@@ -44,6 +46,7 @@ class P4Command {
      * Source is the `use` field
      */
     var isType_U = false
+
     /**
      * True: wanting to set `use` on another chapter
      */
@@ -61,6 +64,7 @@ class P4Command {
         get() = (source_name != null) or (source_match != null)
     var source_name: String? = null
     var source_match: String? = null
+
     /**
      * - 0: any (scoped then bound)
      * - 1: scoped (limited to current steps)
@@ -82,9 +86,13 @@ class P4Command {
         firstOrNull { it.groupName == field }
 
     /**
-     * Constructs a SeqStep with all options turned off
+     * Constructs a SeqStep with all options turned off.
+     *
+     * @param setup Optional lambda config of this object
      */
-    constructor()
+    constructor(setup: (P4Command) -> Unit = {}){
+        setup.invoke(this)
+    }
 
     /**
      * Constructs a SeqStep using [items].
@@ -205,6 +213,10 @@ class P4Command {
             }
         }
 
+
+        if(sb.toString().isEmpty())
+            return "testing Command"
+        else
         return sb.toString()
     }
 }
