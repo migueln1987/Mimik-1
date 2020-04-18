@@ -1,6 +1,5 @@
 @file:Suppress("PackageDirectoryMismatch")
-
-package com.fiserv.mimik
+package mimik
 
 import TapeCatalog
 import helpers.tryGetBody

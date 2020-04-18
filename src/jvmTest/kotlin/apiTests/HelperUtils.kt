@@ -1,7 +1,7 @@
 package apiTests
 
 import VCRConfig
-import com.fiserv.mimik.module
+import mimik.module
 import io.ktor.server.testing.TestApplicationCall
 import io.ktor.server.testing.TestApplicationEngine
 import io.ktor.server.testing.TestApplicationRequest

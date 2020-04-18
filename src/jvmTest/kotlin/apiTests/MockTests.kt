@@ -1,7 +1,7 @@
 package apiTests
 
 import com.beust.klaxon.internal.firstNotNullResult
-import com.fiserv.mimik.Ports
+import mimik.Ports
 import helpers.isValidJSON
 import helpers.isTrue
 import helpers.orFalse
@@ -403,7 +403,6 @@ class MockTests : ApiTests {
                     Assert.assertNull(mock.responseData)
                     Assert.assertNotEquals(mockBody, it.content)
                 }
-
 
             handleRequest(HttpMethod.Post, "/mail", Ports.live)
                 .response {

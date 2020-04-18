@@ -1,6 +1,6 @@
 package networkRouting.editorPages
 
-import com.fiserv.mimik.Ports
+import mimik.Ports
 import com.github.kittinunf.fuel.core.ResponseResultOf
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
@@ -770,8 +770,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val params = this["reqQuery"]
             .toPairs()?.toList()
         val headers = this["reqHeaders"].toPairs()
-            ?.filter { it.second != null }
-            ?.map { it.first to it.second!! }?.toMutableList()
+            ?.map { it.first to it.second }?.toMutableList()
             ?.apply {
                 if (isLocalhostCall) add(("localhost" to "true"))
             }?.toTypedArray()

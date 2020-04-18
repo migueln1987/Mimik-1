@@ -1,3 +1,5 @@
+@file:Suppress("unused", "KDocUnresolvedReference", "RemoveRedundantQualifierName")
+
 package helpers
 
 import TapeCatalog
@@ -25,7 +27,6 @@ import okio.Buffer
 import org.w3c.dom.NodeList
 import java.io.IOException
 import java.nio.charset.Charset
-import java.util.TreeMap
 import javax.xml.bind.DatatypeConverter
 
 // == okHttp3
@@ -34,7 +35,7 @@ val okhttp3.Response.toJson: String
         return try {
             body()?.byteStream()?.let { stream ->
                 (Parser.default().parse(stream) as JsonObject)
-                    .toJsonString(true, true)
+                    .toJsonString(prettyPrint = true, canonical = true)
             }
         } catch (_: Exception) {
             null
@@ -62,8 +63,7 @@ fun RequestBody?.content(default: String = ""): String {
 fun ResponseBody?.content(default: String = ""): String {
     return if (this == null) default
     else try {
-        val data = tryOrNull { use { bytes() } }
-        if (data == null) return ""
+        val data = tryOrNull { use { bytes() } } ?: return ""
         val dataStr = String(data)
         val isBase64 = dataStr.isBase64
 
@@ -81,17 +81,7 @@ fun ResponseBody?.content(default: String = ""): String {
  */
 fun Headers.toMultimap(caseSensitive: Boolean): Map<String, List<String>> {
     if (!caseSensitive) return this.toMultimap()
-
-    var result = TreeMap<String, ArrayList<String>>()
-    (0..size() - 1).forEach { i ->
-        val name = name(i)
-        if (!result.containsKey(name))
-            result[name] = ArrayList()
-        var data = result.getValue(name)
-        data.add(value(i))
-    }
-
-    return result
+    return names().map { it to values(it) }.toMap()
 }
 
 val StringValues.toHeaders: Headers
@@ -257,8 +247,8 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
             override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
             override fun bodyAsText() = bodyData.orEmpty()
 
-            override fun newBuilder() = TODO()
-            override fun toYaml() = TODO()
+            override fun newBuilder() = null
+            override fun toYaml() = null
         }
     }
 
@@ -290,15 +280,15 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
             override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
             override fun bodyAsText() = bodyData.orEmpty()
 
-            override fun newBuilder() = TODO()
-            override fun toYaml() = TODO()
+            override fun newBuilder() = null
+            override fun toYaml() = null
         }
     }
 
 fun ResponseBody?.clone(): ResponseBody? {
     return tryOrNull {
         this?.source()?.use { source ->
-            source.request(java.lang.Long.MAX_VALUE)
+            source.request(Long.MAX_VALUE)
             ResponseBody.create(
                 contentType(), contentLength(),
                 source.buffer.clone()
@@ -423,8 +413,7 @@ val okhttp3.Request.contentHash: Int
     get() {
         val filterHeaders = headers().asIterable()
             .filterNot { h -> RequestAttractors.skipHeaders.any { h.first == it } }
-            .map { it.first + ": " + it.second }
-            .joinToString(separator = "\n")
+            .joinToString(separator = "\n") { it.first + ": " + it.second }
 
         return "%s%s%s%s".format(
             method(),
@@ -630,7 +619,7 @@ val String.asContentType: ContentType
 fun StringBuilder.toJson(): String {
     return if (toString().isValidJSON) {
         (Parser.default().parse(this) as JsonObject)
-            .toJsonString(true, true)
+            .toJsonString(prettyPrint = true, canonical = true)
     } else ""
 }
 
@@ -669,13 +658,14 @@ val com.github.kittinunf.fuel.core.Request.toRequestData: Requestdata
  * Converts a (fuel) [Response] to [Responsedata]
  */
 val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
-    get() = Responsedata {
-        it.code = statusCode
-        it.headers = headers.toOkHeaders
+    get() = Responsedata { response ->
+        response.code = statusCode
+        response.headers = headers.toOkHeaders
 
         val data = body().toByteArray()
         val isImage = headers[HttpHeaders.ContentType].any { it.startsWith("image") }
-        it.body = if (isImage)
+
+        response.body = if (isImage)
             DatatypeConverter.printBase64Binary(data)
         else
             data.toString(Charset.defaultCharset())

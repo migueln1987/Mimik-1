@@ -150,14 +150,21 @@ class TestManagerTest {
         val bodyOut = "abc def xyz"
 
         val boundReplace = mutableListOf(
-            "f" to "P",                     // normal
+            // normal
             // "abc def xyz" -> "abc deP xyz"
-            "x(.{2})" to "+@{1}_@{1}+",     // indexed
+            "f" to "P",
+
+            // indexed
             // "abc deP xyz" -> "abc deP +yz_yz+"
-            "(a)(?<tt>.)" to "@{1}333@{tt}",  // index and local named var
+            "x(.{2})" to "+@{1}_@{1}+",
+
+            // index and local named var
             // "abc deP +yz_yz+" -> "a333bc deP +yz_yz+"
-            "d" to "@{testVar}"             // test bound named var
+            "(a)(?<tt>.)" to "@{1}333@{tt}",
+
+            // test bound named var
             // "a333bc deP +yz_yz+" -> "a333bc 456eP +yz_yz+"
+            "d" to "@{testVar}"
         )
 
         val bounds = TestBounds("", mutableListOf())
