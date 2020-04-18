@@ -1,22 +1,13 @@
-val ktor_version = "1.3.0"
-val kotlin_version = "1.3.50"
-val logback_version: String by project
-val fuel_version: String by project
+val ktor_version = "1.3.2"
+val fuel_version = "2.2.1"
 val ktlint by configurations.creating
+
+version = "0.8.0"
 
 plugins {
     idea
     application
-    kotlin("jvm") version "1.3.50"
-}
-
-group = "com.fiserv.mimik"
-version = "0.8.0"
-
-application {
-    idea
-    mainClassName = "$group.ApplicationKt"
-    //"io.ktor.server.netty.EngineMain"
+    kotlin("jvm") version embeddedKotlinVersion
 }
 
 idea {
@@ -26,17 +17,20 @@ idea {
     }
 }
 
+application {
+    mainClassName = "mimik.ApplicationKt"
+}
+
 repositories {
-    jcenter()
-//    mavenLocal()
-    mavenCentral()
+    maven("https://jcenter.bintray.com")
     maven("https://kotlin.bintray.com/ktor")
+    mavenCentral()
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8", kotlin_version))
+    implementation(kotlin("stdlib-jdk8", embeddedKotlinVersion))
 
-    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("io.github.microutils:kotlin-logging:1.7.6")
 
     implementation("io.ktor:ktor-server-core:$ktor_version")
