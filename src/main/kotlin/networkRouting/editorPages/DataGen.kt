@@ -1,6 +1,6 @@
 package networkRouting.editorPages
 
-import com.fiserv.mimik.Ports
+import mimik.Ports
 import com.github.kittinunf.fuel.core.ResponseResultOf
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost

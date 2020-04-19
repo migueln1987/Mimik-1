@@ -1,20 +1,25 @@
-val ktor_version = "1.3.2"
-val kotlin_version = "1.3.71"
+val ktor_version = "1.3.0"
 val fuel_version = "2.2.1"
 val ktlint by configurations.creating
+
+version = "0.8.0"
 
 plugins {
     idea
     application
-    kotlin("jvm") version "1.3.71"
+    kotlin("jvm") version embeddedKotlinVersion
 }
-
-group = "com.fiserv.mimik"
-version = "0.8.0"
 
 application {
     idea
-    mainClassName = "$group.ApplicationKt"
+    mainClassName = "mimik.ApplicationKt"
+}
+
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
 }
 
 repositories {
@@ -24,7 +29,7 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8", kotlin_version))
+    implementation(kotlin("stdlib-jdk8", embeddedKotlinVersion))
 
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("io.github.microutils:kotlin-logging:1.7.6")
@@ -49,14 +54,6 @@ dependencies {
 
     ktlint("com.pinterest:ktlint:0.36.0")
 }
-
-kotlin {
-    sourceSets["main"].kotlin.srcDirs("src")
-    sourceSets["test"].kotlin.srcDirs("test")
-}
-
-sourceSets["main"].resources.srcDirs("resources")
-sourceSets["test"].resources.srcDirs("testresources")
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
