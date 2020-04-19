@@ -532,7 +532,9 @@ class ParserTests {
     }
 
     private fun Parser_v4.compareParsedToExpected(
-        input: String, parsed: List<MatcherResult>, expected: List<String>,
+        input: String,
+        parsed: List<MatcherResult>,
+        expected: List<String>,
         expectAsValid: Boolean = true
     ) {
         println("Comparing matches for: $input")
@@ -1058,9 +1060,12 @@ class ParserTests {
 
                 // 3.2.2.2 Clearing the variable
                 listOf(
-                    "var[testA]->{123}",// variable we will clear
-                    "var[testB]->{456}",// proof the variables are being set
-                    "var[testA]:{.+}->{}"// clear the variable
+                    // variable we will clear
+                    "var[testA]->{123}",
+                    // proof the variables are being set
+                    "var[testB]->{456}",
+                    // clear the variable
+                    "var[testA]:{.+}->{}"
                 ).toMockSet("3.2.2.2.a") {
                     it.boundVars = (envBoundVars + ("testB" to "456")).toMutableMap()
                 }
@@ -1174,8 +1179,10 @@ class ParserTests {
                 // 5.1 Require true
                 // 5.1.A & continue
                 listOf(
-                    "?response:body:{test: (\\d+)}->&hold", // collect the value to scoped
-                    "var[hold]:{\\d+}->result"// export variable for assert testing
+                    // collect the value to scoped
+                    "?response:body:{test: (\\d+)}->&hold",
+                    // export variable for assert testing
+                    "var[hold]:{\\d+}->result"
                 ).toMockSet("5.1.A") {
                     it.boundVars = (envBoundVars + ("result" to "22")).toMutableMap()
                 },
@@ -1191,8 +1198,10 @@ class ParserTests {
                 // 5.2 Require false
                 // 5.2.A & continue
                 listOf(
-                    "!response:body:{other: (\\d+)}->&hold",// no match (as requested),'true' -> &hold
-                    "?var[hold]->result"// if we saved to &hold, then export it
+                    // no match (as requested),'true' -> &hold
+                    "!response:body:{other: (\\d+)}->&hold",
+                    // if we saved to &hold, then export it
+                    "?var[hold]->result"
                 ).toMockSet("5.2.A") {
                     it.boundVars = (envBoundVars + ("result" to "true")).toMutableMap()
                 },
@@ -1285,9 +1294,12 @@ class ParserTests {
             arrayOf(
                 // 6.1 Data collection to output
                 listOf(
-                    "request:body:{code.+?(\\d+)}->&hold1",// grab "code" data
-                    "request:body:{other.+?(\\d+)}->&hold2",// grab "other" data
-                    "?&var[hold1]",// ensure we have both items of data
+                    // grab "code" data
+                    "request:body:{code.+?(\\d+)}->&hold1",
+                    // grab "other" data
+                    "request:body:{other.+?(\\d+)}->&hold2",
+                    // ensure we have both items of data
+                    "?&var[hold1]",
                     "?&var[hold2]",
                     // Create a local var which we do var processing on
                     "&var[hold3]->{_@{hold1}@{hold2}}",

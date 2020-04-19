@@ -1,4 +1,4 @@
-val ktor_version = "1.3.2"
+val ktor_version = "1.3.0"
 val fuel_version = "2.2.1"
 val ktlint by configurations.creating
 
@@ -10,15 +10,16 @@ plugins {
     kotlin("jvm") version embeddedKotlinVersion
 }
 
+application {
+    idea
+    mainClassName = "mimik.ApplicationKt"
+}
+
 idea {
     module {
         isDownloadJavadoc = true
         isDownloadSources = true
     }
-}
-
-application {
-    mainClassName = "mimik.ApplicationKt"
 }
 
 repositories {
@@ -53,14 +54,6 @@ dependencies {
 
     ktlint("com.pinterest:ktlint:0.36.0")
 }
-
-kotlin {
-    sourceSets["main"].kotlin.srcDirs("src")
-    sourceSets["test"].kotlin.srcDirs("test")
-}
-
-sourceSets["main"].resources.srcDirs("resources")
-sourceSets["test"].resources.srcDirs("testresources")
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {

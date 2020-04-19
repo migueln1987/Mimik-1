@@ -31,7 +31,7 @@ fun FlowContent.SequenceViewer(seqGroups: ArrayList<ArrayList<P4Command>>) {
 
     fun sortableLevel1(name: String): String {
         return """
-            Sortable.create(${name}, {
+            Sortable.create($name, {
                 group: 'level_1',
                 handle: '.sjs_handle',
                 ghostClass: 'sjs_ghost',
@@ -202,7 +202,6 @@ fun FlowContent.ParserEditor() {
                 }
             }
         }
-
 
         tbody {
             tr {

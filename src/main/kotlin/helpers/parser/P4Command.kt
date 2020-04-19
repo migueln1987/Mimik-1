@@ -90,7 +90,7 @@ class P4Command {
      *
      * @param setup Optional lambda config of this object
      */
-    constructor(setup: (P4Command) -> Unit = {}){
+    constructor(setup: (P4Command) -> Unit = {}) {
         setup.invoke(this)
     }
 
@@ -212,11 +212,7 @@ class P4Command {
                 sb.append("{").append(act_match).append("}")
             }
         }
-
-
-        if(sb.toString().isEmpty())
-            return "testing Command"
-        else
+        
         return sb.toString()
     }
 }

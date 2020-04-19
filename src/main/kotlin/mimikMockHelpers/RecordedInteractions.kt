@@ -54,7 +54,6 @@ class RecordedInteractions {
 
     var attractors: RequestAttractors? = null
 
-
     /**
      * Sequence actions for this object, called each time this chapter is used
      */
@@ -83,7 +82,6 @@ class RecordedInteractions {
             return field
         }
         private set
-
 
     /**
      * Converts all the data sequence actions to string actions, to prepare for json exporting

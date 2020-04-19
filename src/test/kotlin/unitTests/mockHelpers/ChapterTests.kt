@@ -11,7 +11,6 @@ class ChapterTests {
 
     val gson by lazy { Gson() }
 
-
     @Test
     fun loadableSeqData() {
         val useClass = RecordedInteractions()

@@ -135,7 +135,6 @@ class BaseTapeTest {
         Assert.assertEquals(testHost, routeUrl.host())
 
         Assert.assertEquals(testRequest.url().host(), routeUrl.host())
-
     }
 
     @Test
