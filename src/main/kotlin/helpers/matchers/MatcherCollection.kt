@@ -12,6 +12,8 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
     var matchBundles: MutableList<List<MatcherResult?>> = mutableListOf()
     var filterText = ""
         private set
+    var inputStr = ""
+        private set
     private val filterTextChars
         get() = filterText.toHashSet()
 
@@ -46,6 +48,11 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
 
     init {
         this.filterText = filterText.orEmpty()
+    }
+
+    operator fun invoke(config: MatcherCollection.() -> Unit = {}): MatcherCollection {
+        config.invoke(this)
+        return this
     }
 
     /**
@@ -122,15 +129,29 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
             countResults = matchCount(filterTextChars, result.toHashSet())
 
         matchBundles.add(
-            listOf(
-                MatcherResult {
-                    it.groupIndex = 0
-                    it.value = result
-                    it.range = (0..result.length)
-                    it.isLiteral = true
-                    it.litMatchCnt = countResults ?: result.length
-                })
+            listOf(MatcherResult {
+                it.groupIndex = 0
+                it.value = result
+                it.range = (0..result.length)
+                it.isLiteral = true
+                it.litMatchCnt = countResults ?: result.length
+            })
         )
+        return this
+    }
+
+    fun loadItems(vararg items: String): MatcherCollection {
+        items.forEach { item ->
+            matchBundles.add(
+                listOf(MatcherResult {
+                    it.groupIndex = 0
+                    it.value = item
+                    it.range = (0..item.length)
+                    it.isLiteral = true
+                    it.litMatchCnt = item.length
+                })
+            )
+        }
         return this
     }
 
@@ -139,9 +160,10 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
      * @param literalComp If this [matchResult] should be processed like a String or [MatchResult]
      */
     fun loadResult(matchResult: MatchResult, literalComp: Boolean = false): MatcherCollection {
-        if (literalComp)
-        // input should be a string of literal-like chars
-        // so no sub-group processing is needed
+        if (literalComp) {
+            // input should be a string of literal-like chars
+            // so no sub-group processing is needed
+            inputStr = (matchResult.accessField("input") as? String).orEmpty()
             matchBundles.add(
                 listOf(
                     MatcherResult {
@@ -153,7 +175,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
                         it.litMatchCnt = newRange.size
                     })
             )
-        else
+        } else
             loadResults(matchResult)
         return this
     }
@@ -178,6 +200,8 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
         }
 
         matcher?.also { mm ->
+            inputStr = (mm.accessField("text") as? String).orEmpty()
+
             @Suppress("UNCHECKED_CAST")
             val namedGroups = (mm.pattern().accessField("namedGroups") as? Map<String, Int>)
                 .orEmpty()

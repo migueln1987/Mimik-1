@@ -16,8 +16,9 @@ object ChapterEditor : EditorModule() {
         val pData = params.toActiveEdit
 
         head {
-            script { unsafe { +JS.all } }
+            unsafeScript { +JS.all }
             script(src = "../assets/libs/Sortable.js") {}
+            script(src = "../assets/libs/htmlUtils.js") {}
         }
 
         body {
@@ -66,7 +67,7 @@ object ChapterEditor : EditorModule() {
                     disabled = true
                 }
 
-                val isLive = pData.chapter?.alwaysLive.isTrue()
+                val isLive = pData.chapter?.alwaysLive.isTrue
                 table {
                     tr {
                         th {
@@ -103,23 +104,21 @@ object ChapterEditor : EditorModule() {
                                     onKeyUp = nameAction + "value = value.$replaceChars;"
                                 }
 
-                                script {
-                                    unsafe {
-                                        +"""
-                                            nameChap.addEventListener('paste', (event) => {
-                                                var paste = getPasteResult(event);
-                                                var selEnd = nameChap.selectionEnd || paste.length;
-                                                
-                                                var newVal = paste.$replaceChars;
-                                                if (newVal != paste) {
-                                                    nameChap.value = newVal;
-                                                    nameChap.selectionStart = selEnd;
-                                                    nameChap.selectionEnd = selEnd;
-                                                    event.preventDefault();
-                                                }
-                                            });
-                                        """.trimIndent()
-                                    }
+                                unsafeScript {
+                                    +"""
+                                        nameChap.addEventListener('paste', (event) => {
+                                            var paste = getPasteResult(event);
+                                            var selEnd = nameChap.selectionEnd || paste.length;
+                                            
+                                            var newVal = paste.$replaceChars;
+                                            if (newVal != paste) {
+                                                nameChap.value = newVal;
+                                                nameChap.selectionStart = selEnd;
+                                                nameChap.selectionEnd = selEnd;
+                                                event.preventDefault();
+                                            }
+                                        });
+                                    """.trimIndent()
                                 }
 
                                 text(" ")
@@ -279,7 +278,7 @@ object ChapterEditor : EditorModule() {
                             infoText("(optional, not used for incoming calls)")
                         }
                         td {
-                            toggleArea(id = "requestDataDiv") {
+                            toggleArea(contentId = "requestDataDiv") {
                                 if (isLive) appendClass("opacity50")
 
                                 table {
@@ -355,7 +354,7 @@ object ChapterEditor : EditorModule() {
                             }
                         }
                         td {
-                            toggleArea(id = "responseDataDiv") {
+                            toggleArea(contentId = "responseDataDiv") {
                                 if (isLive) appendClass("opacity50")
 
                                 table {
@@ -407,11 +406,11 @@ object ChapterEditor : EditorModule() {
                                                 )
                                                 br()
                                                 checkBoxInput(name = "responseAwait") {
-                                                    checked = pData.chapter?.awaitResponse.isTrue()
+                                                    checked = pData.chapter?.awaitResponse.isTrue
                                                     if (pData.chapter?.awaitResponse == null)
                                                         disabled = true
                                                     onClick = """
-                                                        if (checked && ${pData.chapter?.awaitResponse.isFalse()})
+                                                        if (checked && ${pData.chapter?.awaitResponse.isFalse})
                                                             if (confirm(${R.getProperty("chapAwaitConfirm")})) {
                                                                 responseDiv.classList.add('opacity50');
                                                                 return true;

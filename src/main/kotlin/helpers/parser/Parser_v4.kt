@@ -66,80 +66,97 @@ object Parser_v4 {
         private val cond
             get() = """
                 (?<cond>
-                    (?=[~?!])
-                    (?<cP>~)?
-                    (?:(?<cT>\?)|(?<cF>!))?
+                  (?=[~?!])
+                  (?<cP>~)?
+                  (?:(?<cT>\?)|(?<cF>!))?
                 )?
             """
 
         private val source
             get() = """
-                    (?<source>
-                        $rType|$vType|$uType
-                    )
-                """
+                (?<source>
+                  $rType|$vType|$uType
+                )
+            """
 
         private val rType
             get() = """
-                    (?<rType>
-                        (?:$rIn|$rOut)
-                        $match
-                    )
-                """
+                (?<rType>
+                  (?:$rIn|$rOut)
+                  $match
+                )
+            """
 
         private val rIn
             get() = """
-                    (?<rIn>request:(?:
-                        (?<rInH>head(?:\[(?<rInHN>\w+)\])?)|
-                        (?<rInB>body))
-                    )
-                """
+                (?<rIn>request:(?:
+                  (?<rInH>head(?:\[(?<rInHN>\w+)\])?)|
+                  (?<rInB>body))
+                )
+            """
 
         private val rOut
             get() = """
-                    (?<rOut>response:(?:
-                        (?<rOutH>head(?:\[(?<rOutHN>\w+)\])?)|
-                        (?<rOutB>body))
-                    )
-                """
+                (?<rOut>response:(?:
+                  (?<rOutH>head(?:\[(?<rOutHN>\w+)\])?)|
+                  (?<rOutB>body))
+                )
+            """
 
         private val match
             get() = """
-                    (?::\{
-                        (?<rM>.*?)
-                    \}$toEOM)?
-                """
+                (?::\{
+                  (?<rM>.*?)
+                \}$toEOM)?
+            """
 
         private val vType
             get() = """
-                    (?<vType>
-                        (?:(?<vS>&)|(?<vb>b)|)?
-                        var
-                        (?:\[(?<vN>$varName)\])?
-                        (?::\{(?<vM>.+?)\}$toEOM)?
-                    )
-                """
+                (?<vType>
+                  (?<vbound>
+                    (?:(?<vC>&)|(?<vB>%))?
+                    (?<vU>\^)?
+                  )?
+                  var
+                  (?:\[(?<vN>$varName)\])?
+                  (?::\{(?<vM>.+?)\}$toEOM)?
+                )
+            """
 
         private val uType
             get() = """
-                    (?<uType>use
-                        (?:\[(?<uN>[a-zA-Z][!-+\--~]*)\])?
-                        (?::\{(?<uM>[\d=,.<>]+)\})?
-                    )
-                """
+                (?<uType>use
+                  (?:\[(?<uN>[a-zA-Z][!-+\--~]*)\])?
+                  (?::\{(?<uM>[\d=,.<>]+)\})?
+                )
+            """
 
-        private val varName
-            get() = "[a-zA-Z]\\w*"
+        /**
+         * Valid variable names (+ suffix flags)
+         * 1) must start with a letter
+         * 2) body can contain: letters, numbers, and underscores
+         * 3) ending flags can be: ?, #, @, _?, _#, _\d
+         */
+        val varName
+            get() = "[a-zA-Z]\\w*([?#@]*(?:_[\\d#?]*)?)"
 
         private val act
             get() = """
-                    (?<act>->(?:
-                        (?:\{(?<aM>.*?)\}$toEOA)|
-                        (?<aV>
-                            (?<aVS>&)?
-                            (?<aVN>$varName)
-                        )
-                    ))?
+                (?<act>->
+                  (?:
+                    (?:\{(?<aM>.*?)\}(?=\s|$))|
+                    (?<aV>
+                      (?<aSVL>
+                        (?<aSC>&)|(?<aSB>%)
+                      )?
+                      (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
+                      (?<aVT>
+                        (?<aVE>\?)?(?<aVC>\#)?(?<aVR>@)?
+                        (?<aVX>_(?:(?<aVS>\#(?<aVI>\d+)?)|(?<aVL>\?)))?
+                      )?
+                    )
+                  )
+                )?
                 """
     }
 
@@ -156,17 +173,21 @@ object Parser_v4 {
      * - content = &?\w+
      * - final = '.+?' or ".+?"
      */
-    private const val variableMatch = """((?<content>&?\w+)|(?<final>['"].+?['"]))"""
+    private val variableMatch = "(%s|%s|%s)".format(
+        "(?<index>\\d+)",
+        "(?<content>${Groups.varName})",
+        "(?<final>['\"].+?['\"])"
+    )
 
     /**
      * Translates template items '@{...}' into resolved strings.
      *
-     * @param finder string to deTemplate
+     * @param finder String to deTemplate
      * @param vars (variable to look for, search Scoped only)
      */
     fun deTemplate(
         finder: String,
-        vars: (String, Boolean) -> String?
+        vars: (String, Int) -> String?
     ): String {
         // todo; update the Actions to reflect the updated deTemplating actions
         /* Actions:
@@ -228,7 +249,7 @@ object Parser_v4 {
                     .mapNotNull {
                         when (it.groupName) {
                             "" -> null
-                            "content" -> it
+                            "index", "content" -> it
                             "final" -> { // remove bounding quotes (single or double)
                                 it.clone { b ->
                                     b.value = b.value!!.drop(1).dropLast(1)
@@ -238,13 +259,22 @@ object Parser_v4 {
                         }
                     }
                     .firstNotNullResult {
-                        val (temValue, isScoped) = it.value.orEmpty()
-                            .let { v -> v.trimStart('&') to v.startsWith("&") }
+                        val (temValue, scope) = it.value.orEmpty()
+                            .let { v ->
+                                Pair(
+                                    v.trimStart('&', '%'),
+                                    when (v[0]) {
+                                        '&' -> 1 // Chapter
+                                        '%' -> 2 // Test Bounds
+                                        else -> 0 // Sequence
+                                    }
+                                )
+                            }
                         // 'final', index, or var -> string or empty
                         if (it.groupName == "final")
                             temValue
                         else
-                            vars.invoke(temValue, isScoped)
+                            vars.invoke(temValue, scope)
                     }
                     .orEmpty()
 
@@ -344,7 +374,8 @@ object Parser_v4 {
      */
     fun parseToSteps(input: String): P4Command {
         val cmd = P4Command(parseToContents(input))
-        if (cmd.toString() != input) {
+        val cmdStr = cmd.toString()
+        if (cmdStr != input && cmdStr != "Invalid") {
             val sb = StringBuilder()
                 .appendln("== Parsed P4Command != input".red())
                 .appendln("== Input:  $input".red())

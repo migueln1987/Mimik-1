@@ -42,6 +42,7 @@ fun main(args: Array<String> = arrayOf()) {
     embeddedServer(Netty, env).start(true)
 }
 
+@KtorExperimentalAPI
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
     installFeatures()
@@ -67,7 +68,7 @@ fun Application.module(testing: Boolean = false) {
             TestManager().init(this)
 
             static("assets") {
-                staticRootFolder = File("resources")
+                staticRootFolder = File("src/main/resources")
                 static("libs") { files("libs") }
             }
 

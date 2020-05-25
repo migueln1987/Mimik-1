@@ -12,13 +12,38 @@ import okhttp3.Headers
 /**
  * Class which processes the [P4Command]s
  */
+@Suppress("PropertyName", "FunctionName", "LocalVariableName")
 class P4Action(config: (P4Action) -> Unit = {}) {
-    lateinit var bounds: TestBounds
-    lateinit var chapItems: BoundChapterItem
+    lateinit var testBounds: TestBounds
+    lateinit var chapBounds: BoundChapterItem
     lateinit var in_headers: Headers
     lateinit var in_body: String
     lateinit var out_headers: Headers
     lateinit var out_body: String
+    private val varSuffixes = """(\w+?)([?#]*(?:_(?:#\d+|[?#]))?)""".toRegex()
+
+    @Suppress("EnumEntryName")
+    private enum class DataType {
+        /** No data set */
+        None,
+
+        /** Request/ Response */
+        rType,
+
+        /** Variable */
+        vType,
+
+        /** Uses */
+        uType
+    }
+
+    private enum class RDataType(val type: Int) {
+        Unknown(0), Request(-1), Response(1)
+    }
+
+    private enum class ResultType {
+        None, Bool, String
+    }
 
     val scopeVars: MutableMap<String, String> = mutableMapOf()
 
@@ -33,52 +58,19 @@ class P4Action(config: (P4Action) -> Unit = {}) {
     fun processCommands(steps: List<P4Command>) {
         scopeVars.clear()
 
-        /**
-         * Returns the requested key or key's value
-         * @param keyName Key's name to look by
-         * @param scopedOnly Range of what vars to check<pre>
-         *  - True: check ONLY the Scoped vars
-         *  - False: Scoped, then Bound
-         * </pre>
+        /** Type of data the command is working on */
+        var xType = DataType.None
+
+        /** True: Previous command was a successful optional step */
+        var pCmdIsOpt = false
+
+        /** Currently processed data
+         * <content to process, Flag A, Flag B>
          */
-        fun varKeyVal(keyName: String, scopedOnly: Boolean): String? {
-            val outVal = if (scopedOnly)
-                scopeVars[keyName]
-            else
-                scopeVars[keyName] ?: bounds.boundVars[keyName]
-            return if (outVal.isNullOrEmpty())
-                null else outVal
-        }
-
-        /**
-         * Converts "@{..}" content in the string with variables or empty strings.
-         *
-         * - If nothing matches, then [stepMatch] is returned unchanged
-         */
-        fun deTemStr(
-            stepMatch: String?,
-            useSourceItems: (String) -> String? = { null }
-        ): String {
-            return Parser_v4.deTemplate(stepMatch.orEmpty()) { name, scp ->
-                useSourceItems(name) ?: varKeyVal(name, scp)
-            }
-        }
-
-        fun varKeys_scoped() = scopeVars.keys
-        fun varKeys() = bounds.boundVars.keys
-
-        /**
-         * 0: none
-         * 1: rType
-         * 2: vType
-         * 3: uType
-         */
-        var xType = 0
-        var pCond = -1
-
         val processData: MutableList<Triple<String, Int, Int>> = mutableListOf()
 
-        forSteps@ for (step in steps) {
+        execStep@ for (step in steps) {
+            if (!step.isValid) continue@execStep
             processData.clear()
 
             /* Part 1: Convert source types into more digestible content
@@ -86,7 +78,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
             - BoundSeqSteps
 
             = Output
-            - xType = 1 (rType), 2 (vType), 3 (uType)
+            - xType = (rType), (vType), or (uType)
             - [processData] = <content string, flag A, flag B>
             - r_headers
             */
@@ -96,23 +88,19 @@ class P4Action(config: (P4Action) -> Unit = {}) {
              * (r/v/u type){...}
              */
             val incMatch = if (step.source_match != null) 1 else 0
+            val hasMatcher = step.source_match != null
             var r_headers: Headers? = null
 
             when {
                 step.isType_R -> {
-                    xType = 1
-                    /**
-                     * (-1) = Request
-                     * (0) = nothing
-                     * (1) = Response
-                     */
-                    var rType = 0
+                    xType = DataType.rType
+                    var rType = RDataType.Unknown
                     var r_body: String? = null
 
                     // retrieve headers or body based on request/ response
                     when {
                         step.isRequest -> {
-                            rType = -1
+                            rType = RDataType.Request
                             if (step.isHead)
                                 r_headers = in_headers
                             else if (step.isBody)
@@ -120,7 +108,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                         }
 
                         step.isResponse -> {
-                            rType = 1
+                            rType = RDataType.Response
                             if (step.isHead)
                                 r_headers = out_headers
                             else if (step.isBody)
@@ -131,140 +119,150 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                     // Create `processData`
                     when {
                         step.source_HasSubItem -> {
-                            if (r_headers != null) {
-                                val addData = when (step.source_name == null) {
-                                    // type 1
-                                    true -> r_headers.names()
-                                        .map { Triple(it, rType, 1) }
+                            when {
+                                r_headers != null -> {
+                                    when (step.source_name == null) {
+                                        // type 1
+                                        true -> r_headers.names(true)
+                                            .map { Triple(it, rType.type, 1) }
 
-                                    // type 2 or 3
-                                    false -> {
-                                        if (incMatch == 0)
-                                            r_headers.values(step.source_name!!)
-                                                .map { Triple(it, rType, 2) }
-                                        else
-                                            r_headers.names()
-                                                .map { Triple(it, rType, 3) }
+                                        // type 2 or 3
+                                        false -> {
+                                            if (!hasMatcher) // type 2
+                                                r_headers.names(true)
+                                                    .map { Triple(it, rType.type, 2) }
+                                            else // type 3
+                                                r_headers.values(step.source_name!!)
+                                                    .map { Triple(it, rType.type, 3) }
+                                        }
+                                    }.also { processData.addAll(it) }
+
+                                    if (processData.isEmpty()) {
+                                        val hasSrcName = if (step.source_name != null) 1 else 0
+                                        processData.add(Triple("", rType.type, 1 + hasSrcName + incMatch))
                                     }
                                 }
 
-                                processData.addAll(addData)
-                            } else if (r_body != null) {
-                                processData.add(
-                                    Triple(r_body.orEmpty(), rType, incMatch)
-                                )
+                                r_body != null -> {
+                                    processData.add(
+                                        Triple(r_body.orEmpty(), rType.type, incMatch)
+                                    )
+                                }
                             }
                         }
 
+                        // type 0
                         else -> {
-                            if (r_headers != null) {
-                                processData.add(
-                                    Triple(r_headers.size().toString(), rType, 0)
-                                )
-                            } else if (r_body != null) {
-                                processData.add(
-                                    Triple(r_body, rType, 0)
-                                )
+                            when {
+                                r_headers != null -> {
+                                    r_headers.names(true).forEach {
+                                        processData.add(Triple(it, rType.type, 0))
+                                    }
+                                    if (processData.isEmpty())
+                                        processData.add(Triple("", rType.type, 0))
+                                }
+                                r_body != null -> {
+                                    processData.add(
+                                        Triple(r_body, rType.type, 0)
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
                 step.isType_V -> {
-                    xType = 2
+                    xType = DataType.vType
                     when {
                         step.source_HasSubItem -> {
-                            when (step.source_name == null) {
-                                true -> {
-                                    if (step.varType in (0..1)) // 0 or 1
-                                        varKeys_scoped().forEach {
-                                            processData.add(Triple(it, 1, 1))
-                                        }
+                            val scopeData = mutableMapOf<String, String>()
+                            scopeData.putAll(scopeByLevel(step.varLevel))
 
-                                    varKeys().forEach {
-                                        processData.add(Triple(it, 2, 1))
+                            if (step.varSearchUp) {
+                                (step.varLevel..2).forEach { level ->
+                                    scopeData.putIfAbsent(scopeByLevel(level))
+                                }
+                            }
+
+                            when (step.source_name == null) {
+                                // type 1
+                                true -> {
+                                    scopeData.keys.forEach {
+                                        processData.add(Triple(it, step.varLevel, 1))
                                     }
+                                    if (processData.isEmpty())
+                                        processData.add(Triple("", step.varLevel, 1))
                                 }
 
+                                // type 2 or 3
                                 false -> {
-                                    var procSeq: Sequence<Pair<Map.Entry<String, String>, Int>> = emptySequence()
-
-                                    if (step.varType in (0..1)) // 0 or 1
-                                        procSeq += scopeVars.asSequence()
-                                            .map { it to 1 }
-
-                                    procSeq += bounds.boundVars.asSequence()
-                                        .map { it to 2 }
-
-                                    procSeq
-                                        .filter { it.first.key == step.source_name }
-                                        .map { (data, flag) ->
-                                            Pair(
-                                                if (step.source_match == null)
-                                                    data.value else data.key,
-                                                flag
-                                            )
+                                    scopeData.asSequence()
+                                        .filter { it.key == step.source_name }
+                                        .map { data ->
+                                            if (step.source_match == null)
+                                                (data.key to 2) // type 2
+                                            else
+                                                (data.value to 3) // type 3
                                         }
-                                        .forEach { (str, flagA) ->
-                                            processData.add(Triple(str, flagA, 2 + incMatch))
+                                        .forEach { (str, type) ->
+                                            processData.add(Triple(str, step.varLevel, type))
                                         }
+
+                                    if (processData.isEmpty())
+                                        processData.add(Triple("", step.varLevel, 2 + incMatch))
                                 }
                             }
                         }
 
+                        // type 0
                         else -> {
-                            when (step.varType) {
-                                0 -> {
-                                    val vItems = kotlin.math.max(varKeys_scoped().size, varKeys().size).toString()
-                                    processData.add(
-                                        Triple(vItems, 0, 0)
-                                    )
-                                }
-
-                                1 -> processData.add(
-                                    Triple(varKeys_scoped().size.toString(), 1, 0)
-                                )
-
-                                2 -> processData.add(
-                                    Triple(varKeys().size.toString(), 2, 0)
+                            when (step.varLevel) {
+                                0 -> scopeVars
+                                1 -> chapBounds.scopeVars
+                                2 -> testBounds.scopeVars
+                                else -> null
+                            }.orEmpty().keys.forEach {
+                                processData.add(
+                                    Triple(it, step.varLevel, 0)
                                 )
                             }
+                            if (processData.isEmpty())
+                                processData.add(Triple("", step.varLevel, 0))
                         }
                     }
                 }
 
                 step.isType_U -> {
-                    xType = 3
+                    xType = DataType.uType
                     when {
                         step.source_HasSubItem -> {
                             when (step.source_name == null) {
+                                // type 1
                                 true -> { // local
                                     processData.add(
-                                        Triple(chapItems.stateUse.toString(), 1, 1)
+                                        Triple(chapBounds.stateUse.toString(), 1, 1)
                                     )
                                 }
 
+                                // type 2 or 3
                                 else -> { // other chapter
-                                    val otherBounds = bounds.boundData[step.source_name!!]
+                                    val otherBounds = testBounds.boundData[step.source_name!!]?.stateUse.toString()
 
                                     when (step.source_match == null) {
-                                        true -> processData.add(
-                                            Triple((otherBounds != null).toString(), 2, 2)
-                                        )
+                                        // type 2
+                                        true -> Triple(otherBounds, 2, 2)
 
-                                        false -> processData.add(
-                                            Triple(
-                                                otherBounds?.stateUse?.toString().orEmpty(),
-                                                2, 3
-                                            )
-                                        )
-                                    }
+                                        // type 3
+                                        false -> Triple(otherBounds, 2, 3)
+                                    }.also { processData.add(it) }
                                 }
                             }
                         }
 
+                        // type 0
                         else -> {
-                            val useState = MockUseStates.isEnabled(chapItems.stateUse).toString()
+//                            val useState = MockUseStates.isEnabled(chapBounds.stateUse).toString()
+                            val useState = chapBounds.stateUse.toString()
                             processData.add(
                                 Triple(useState, 1, 0)
                             )
@@ -273,13 +271,13 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                 }
             }
 
-            if (xType == 0)
+            if (xType == DataType.None)
                 break // unknown type, don't continue
 
             /* Part 2: Process match data
             == Assumptions
             1. `processData` will always have at least something
-            2. 3rd field will be the same in all the items
+            2. 3rd field (flag B) will be the same in all the items
 
             == Actions
             = Inputs
@@ -300,125 +298,102 @@ class P4Action(config: (P4Action) -> Unit = {}) {
             | 2     | yes    | no      |
             | 3     | yes    | yes     |
             */
-            var result: String? = null
-
             /**
-             * DeTemplated successful source matches
+             * De-Templated successful source matches
              */
             val mResults: MutableList<MatcherCollection> = mutableListOf()
 
-            /** Type of data which `result` holds
-             * - 0: none
-             * - 1: bool
-             * - 2: string
-             */
-            var resType = 0
-            var step2_done = false
-            var sourceFlags = (-2 to -2)
+            val (_, sFlagA, sFlagB) = processData.first()
 
-            for ((content, flagA, flagB) in processData) {
+            var resultExists = false
+            var resultCount = 0
+            val resultSpread by lazy { mutableListOf<String>() }
+            var resultUseVal: Int? = null
+            processStep@ for ((content, _, flagB) in processData) {
                 when (flagB) {
-                    0 -> { // contains data?
-                        result = if (step.isType_U)
-                            content else
-                            content.isNotEmpty().toString()
-                        resType = 1
-                        step2_done = true
-                    }
-
-                    1 -> { // has key (headers/ vars) or has match (body)
-                        if (step.isType_U) { // special processing is needed
-                            val mResult = processUseNumber(content, deTemStr(step.source_match))
-
-                            if (step.source_match == null) {
-                                resType = 1
-                                result = (mResult != null).toString()
-                            } else {
-                                if (mResult == null) {
-                                    resType = 1
-                                    result = "false"
-                                } else {
-                                    resType = 2
-                                    result = mResult.toString()
-                                    mResults.add(
-                                        MatcherCollection().loadResult(result)
-                                    )
-                                }
+                    0 -> {
+                        when {
+                            step.isType_R || step.isType_V -> {
+                                resultExists = resultExists || content.isNotEmpty()
+                                if (content.isNotEmpty())
+                                    resultCount++
+                                resultSpread.add(content)
                             }
-                        } else {
-                            val mResult = deTemStr(step.source_match).matchResults(content)
-                            if (mResult.hasMatches) {
-                                mResults.add(mResult)
-                                result = if (step.isHead or step.isType_V) {
-                                    resType = 1
-                                    mResult.hasMatches.toString()
-                                } else {
-                                    resType = 2
-                                    mResult.last().value.orEmpty()
-                                }
+                            step.isType_U -> {
+                                resultUseVal = content.toIntOrNull()
                             }
                         }
                     }
 
-                    2 -> { // if we are here, then `content` is all we need for now
-                        result = content
-                        resType = if (step.isType_U && step.source_match == null)
-                            1 else 2
-                        step2_done = true // we only want the first item
+                    1 -> {
+                        when {
+                            step.isType_R || step.isType_V -> {
+                                val mResult = deTemStr(step.source_match, step.varSearchUp)
+                                    .matchResults(content)
+                                if (mResult.hasMatches)
+                                    mResults.add(mResult)
+                                resultExists = resultExists || mResult.hasMatches
+                                resultCount += mResult.matchCount
+                                mResult.matchBundles.mapNotNull { it.last()?.value }
+                                    .forEach { resultSpread.add(it) }
+//                                    resultSpread.add(mResult.inputStr)
+                            }
+                            step.isType_U -> {
+                                resultUseVal = processUseNumber(content, deTemStr(step.source_match, step.varSearchUp))
+                                if (resultUseVal != null)
+                                    mResults.add(
+                                        MatcherCollection().loadResult(resultUseVal.toString())
+                                    )
+                            }
+                        }
                     }
 
-                    3 -> { // matched content
-                        when (xType) {
-                            1 -> {
-                                if (step.isHead) {
-                                    r_headers?.values(content)?.forEach {
-                                        val mResult = deTemStr(step.source_match).matchResults(it)
-                                        if (mResult.hasMatches) {
-                                            mResults.add(mResult)
-                                            resType = 2
-                                            result = mResult.last().value
-                                        }
+                    2 -> {
+                        when {
+                            step.isType_R -> {
+                                if (content == step.source_name) {
+                                    resultExists = true
+                                    if (r_headers != null) {
+                                        val values = r_headers.values(content)
+                                        resultCount = values.size
+                                        resultSpread.addAll(values)
+                                        break@processStep
                                     }
                                 }
                             }
+                            step.isType_V -> {
+                                if (content == step.source_name)
+                                    resultExists = true
+                            }
+                            step.isType_U -> {
+                                resultUseVal = content.toIntOrNull()
+                            }
+                        }
+                    }
 
-                            2 -> {
-                                val kValue = varKeyVal(content, flagA == 1)
-                                val mResult = deTemStr(step.source_match).matchResults(kValue)
-                                if (mResult.hasMatches) {
+                    3 -> {
+                        when {
+                            step.isType_R || step.isType_V -> {
+                                val mResult = deTemStr(step.source_match, step.varSearchUp)
+                                    .matchResults(content)
+                                if (mResult.hasMatches)
                                     mResults.add(mResult)
-                                    resType = 2
-                                    result = mResult.last().value
+                                resultExists = resultExists || mResult.hasMatches
+                                resultCount += mResult.matchCount
+                                mResult.matchBundles.forEach {
+                                    resultSpread.add(it.last()?.value.orEmpty())
                                 }
                             }
-
-                            3 -> {
-                                // todo; testing
-                                val mResult = processUseNumber(content, deTemStr(step.source_match))
-
-                                if (step.source_match == null) {
-                                    resType = 1
-                                    result = (mResult != null).toString()
-                                } else {
-                                    if (mResult == null) {
-                                        resType = 1
-                                        result = "false"
-                                    } else {
-                                        resType = 2
-                                        result = mResult.toString()
-                                        mResults.add(
-                                            MatcherCollection().loadResult(result!!)
-                                        )
-                                    }
-                                }
+                            step.isType_U -> {
+                                resultUseVal = processUseNumber(content, deTemStr(step.source_match, step.varSearchUp))
+                                if (resultUseVal != null)
+                                    mResults.add(
+                                        MatcherCollection().loadResult(resultUseVal.toString())
+                                    )
                             }
                         }
                     }
                 }
-
-                if (result != null)
-                    sourceFlags = (flagA to flagB)
-                if (step2_done) break
             }
 
             /* Part 3: If this is a conditional, determine if it passed/ failed
@@ -430,76 +405,56 @@ class P4Action(config: (P4Action) -> Unit = {}) {
             - canAction = true/ false
             - break (if condition failed)
             */
-            /**
-             * True: the previous step state set the 'successful condition' flag
-             */
-            fun hasStPass() = pCond != -1
+            val result by lazy {
+                when {
+                    step.isType_R || step.isType_V -> resultExists
+                    step.isType_U -> MockUseStates.isEnabled(resultUseVal)
+                    else -> false
+                }
+            }
 
-            var canAction = false
+            /** Result of 'was the source successful' */
+            var canAction: Boolean
+
             if (step.isCond) {
-                when (resType) {
-                    0 -> { // 'Not' cases
-                        when (step.cStSrc) {
-                            0 -> {
-                                if (!hasStPass()) continue@forSteps
-                                result = "true"
-                                canAction = true
-                            }
-                            2 -> {
-                                result = "true"
-                                canAction = true
-                                pCond = step.cStSrc
-                            }
-                        }
+                canAction = when (step.cStSrc) {
+                    0 -> { // optional only
+                        if (!pCmdIsOpt) continue@execStep
+                        true
                     }
-
-                    1 -> {
-                        canAction = when (step.cStSrc) {
-                            0 -> {
-                                if (hasStPass()) {
-                                    result == "true"
-                                } else false
-                            }
-                            1 -> result == "true"
-                            2 -> result == "false"
-                            else -> false
-                        }
+                    1 -> { // Requires true
+                        pCmdIsOpt = result && step.cStOpt
+                        result
                     }
-
-                    2 -> {
-                        when (step.cStSrc) {
-                            0 -> {
-                                if (hasStPass()) {
-                                    if (result.isNullOrEmpty()) {
-                                        result = "true"
-                                        canAction = true
-                                    }
-                                }
-                            }
-                            1 -> {
-                                if (!result.isNullOrEmpty()) {
-                                    pCond = step.cStSrc
-                                    canAction = true
-                                }
-                            }
-                            2 -> {
-                                if (result.isNullOrEmpty()) {
-                                    pCond = step.cStSrc
-                                    result = "true"
-                                    canAction = true
-                                }
-                            }
-                        }
+                    2 -> { // Requires false
+                        pCmdIsOpt = !result && step.cStOpt
+                        !result
                     }
+                    else -> false
                 }
 
                 // is a ("? or !" cond) + (not optional) + (no CanAction)
                 // then stop all future steps
                 if (step.cStSrc > 0 && !step.cStOpt && !canAction)
-                    break@forSteps // cond failed, disallow any further steps from running
+                    break@execStep // cond failed, disallow any further steps from running
             } else {
-                pCond = -1 //  reset the state
-                canAction = true // result != null
+                pCmdIsOpt = false
+                canAction = true
+            }
+
+            /**
+             * De-template the action matcher
+             */
+            fun stepDeTempMatcher() = deTempMatcher(step, mResults)
+
+            fun matchToList() = listOf(stepDeTempMatcher())
+
+            fun String?.updateRange(rmData: MatcherResult): String {
+                return this?.replaceRange(
+                    rmData.range.first,
+                    rmData.range.last,
+                    stepDeTempMatcher()
+                ) ?: ""
             }
 
             /* Part 4: Process the step's action
@@ -509,52 +464,77 @@ class P4Action(config: (P4Action) -> Unit = {}) {
             = Input
             - hasAction (bool)
             - canAction (bool)
-            - result (string)
+            - results: exists, count, spread, useVal
             - mresult (resultCollection)
-            - xType (1: rType, 2: vtype, 3: uType)
-            - sourceFlags
-
-             */
-            if (step.hasAction && canAction) {
+            - xType (rType, vtype, uType)
+            - sourceFlags: sFlagA, sFlagB
+           */
+            if (canAction && step.hasAction) {
                 when {
                     // saving data to a variable
                     step.act_name != null -> {
-                        if (step.act_nameScoped)
-                            scopeVars[step.act_name!!] = result!!
-                        else
-                            bounds.boundVars[step.act_name!!] = result!!
-                    }
+                        val actKey = step.act_name!!.replace(varSuffixes) { it.groupValues[1] }
+                        val outputKeys = mutableMapOf<String, String>()
 
-                    // we are saving data to the source
-                    step.act_match != null -> {
-                        if (sourceFlags.first == -1) // -1's are only used on the Request
-                            continue@forSteps // can't change inputs
+                        // Process data to outputKeys
+                        outputKeys[actKey] = resultSpread.firstOrNull() ?: result.toString()
+                        if (step.act_nExists)
+                            outputKeys["$actKey?"] = resultExists.toString()
+                        if (step.act_nCount)
+                            outputKeys["$actKey#"] = resultCount.toString()
+                        if (step.act_nResult)
+                            outputKeys["$actKey@"] = result.toString()
+                        if (resultUseVal != null) {
+                            outputKeys[actKey] = if (step.isCond)
+                                MockUseStates.isEnabled(resultUseVal).toString() else
+                                resultUseVal.toString()
+                        }
+                        if (step.act_nSpread) {
+                            when (step.act_nSpreadType) {
+                                -1 -> {
+                                    resultSpread.forEachIndexed { index, data ->
+                                        outputKeys["${actKey}_$index"] = data
+                                    }
+                                }
+                                -2 -> {
+                                    outputKeys["${actKey}_?"] = resultSpread.last()
+                                }
+                                in 0..Int.MAX_VALUE -> {
+                                    var usingLast = false
+                                    val (data, index) = if (resultSpread.hasIndex(step.act_nSpreadType))
+                                        resultSpread[step.act_nSpreadType] to step.act_nSpreadType
+                                    else {
+                                        usingLast = true
+                                        resultSpread.last() to resultSpread.size
+                                    }
 
-                        /**
-                         * De-template the action matcher
-                         */
-                        fun matchDeTemp(): String {
-                            return deTemStr(step.act_match) { name ->
-                                val tryInt = name.toIntOrNull()
-                                mResults.firstNotNullResult {
-                                    if (tryInt != null)
-                                        it[tryInt].lastOrNull()?.value
-                                    else
-                                        it[name].lastOrNull()?.value
+                                    if (usingLast) {
+                                        outputKeys["$actKey#"] = index.toString()
+                                        outputKeys["${actKey}_?"] = data
+                                    } else
+                                        outputKeys["${actKey}_$index"] = data
                                 }
                             }
                         }
 
-                        fun matchToList() = listOf(matchDeTemp())
+                        outputKeys.forEach { (key, data) ->
+                            updateScopeVar(step.act_scopeLevel, key) { data }
+                        }
+                    }
+
+                    // we are saving data to the source
+                    step.act_match != null -> {
+                        if (sFlagA == -1) // -1's are only used on the Request
+                            continue@execStep // can't change inputs
 
                         when (xType) {
-                            1 -> { // response
+                            DataType.rType -> { // response
                                 when {
                                     step.isHead -> {
                                         val headList = out_headers.toMultimap()
                                             .toMutableMap()
 
-                                        when (sourceFlags.second) {
+                                        when (sFlagB) {
                                             -2 -> { // used in the "Not match" cases
                                                 if (!step.source_name.isNullOrEmpty())
                                                     headList[step.source_name!!] = matchToList()
@@ -586,7 +566,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                                                     ?.firstOrNull()
                                                     ?.replaceRange(
                                                         repRange.first, repRange.last,
-                                                        matchDeTemp()
+                                                        stepDeTempMatcher()
                                                     ).orEmpty()
                                                     .let { listOf(it) }
                                             }
@@ -596,10 +576,9 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                                     }
 
                                     step.isBody -> {
-                                        when (sourceFlags.second) {
-                                            // -2 : not matched, use all of the out value
+                                        when (sFlagB) {
                                             // 0 : replace all of the body with out value
-                                            -2, 0 -> out_body = matchDeTemp()
+                                            0 -> out_body = stepDeTempMatcher()
 
                                             1 -> { // replace all (of the highest index) matches in the body
                                                 mResults
@@ -609,7 +588,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                                                         out_body = out_body.replaceRange(
                                                             it.range.first,
                                                             it.range.last,
-                                                            matchDeTemp()
+                                                            stepDeTempMatcher()
                                                         )
                                                     }
                                             }
@@ -618,14 +597,11 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                                 }
                             }
 
-                            2 -> { // var
-                                when (sourceFlags.second) {
+                            DataType.vType -> {
+                                when (sFlagB) {
                                     -2 -> { // not matches
                                         step.source_name?.also { keyName ->
-                                            when (step.varType) {
-                                                1 -> scopeVars[keyName] = matchDeTemp()
-                                                0, 2 -> bounds.boundVars[keyName] = matchDeTemp()
-                                            }
+                                            updateScopeVar(step.varLevel, keyName) { stepDeTempMatcher() }
                                         }
                                     }
 
@@ -633,63 +609,158 @@ class P4Action(config: (P4Action) -> Unit = {}) {
 
                                     1 -> { // create/ set the matched keys to "empty"
                                         mResults.asSequence()
-                                            .map { it[0] }
-                                            .filter { it.isNotEmpty() }
-                                            .mapNotNull { it.first().value }
-                                            .forEach {
-                                                when (sourceFlags.first) {
-                                                    1 -> scopeVars[it] = matchDeTemp()
-                                                    2 -> bounds.boundVars[it] = matchDeTemp()
-                                                }
+                                            .map { it.inputStr to it.matchBundles.last().last() }
+                                            .mapNotNull { (key, rKey) ->
+                                                if (rKey == null)
+                                                    null else (key to rKey)
+                                            }.map { (key, rKey) ->
+                                                key to key.updateRange(rKey)
+                                            }.forEach { (key, newKey) ->
+                                                updateScopeKey(sFlagA, key, newKey)
                                             }
                                     }
 
                                     2 -> { // save data to the found key
-                                        if (result != null)
-                                            when (sourceFlags.first) {
-                                                1 -> scopeVars[step.source_name!!] = matchDeTemp()
-                                                2 -> bounds.boundVars[step.source_name!!] = matchDeTemp()
-                                            }
+                                        updateScopeVar(sFlagA, step.source_name!!) { stepDeTempMatcher() }
                                     }
 
                                     3 -> { // save data at key's matched value. Adding a new key if needed
-                                        val varKey = processData.first().first
-                                        mResults
-                                            .flatMap { it[0] }
-                                            .forEach { rmData ->
-                                                fun String?.updateRange(): String {
-                                                    return this?.replaceRange(
-                                                        rmData.range.first,
-                                                        rmData.range.last,
-                                                        matchDeTemp()
-                                                    ) ?: ""
-                                                }
-
-                                                when (sourceFlags.first) {
-                                                    1 -> scopeVars[varKey] =
-                                                        scopeVars[varKey].updateRange()
-                                                    2 -> bounds.boundVars[varKey] =
-                                                        bounds.boundVars[varKey].updateRange()
-                                                }
-                                            }
+                                        val rData = if (mResults.isEmpty())
+                                            null else mResults.last().matchBundles.last().last()
+                                        if (rData == null)
+                                            updateScopeVar(sFlagA, step.source_name.orEmpty()) { stepDeTempMatcher() }
+                                        else
+                                            updateScopeVar(sFlagA, step.source_name.orEmpty()) { it.updateRange(rData) }
                                     }
                                 }
                             }
 
-                            3 -> { // use
-                                when (sourceFlags.first) {
-                                    1 -> {
-                                        // second; 0 or 1, only valid set-to option is a number
-                                        val asInt = matchDeTemp().toIntOrNull()
-                                        if (asInt != null)
-                                            chapItems.stateUse = asInt
+                            DataType.uType -> {
+                                val asInt = stepDeTempMatcher().toIntOrNull()
+                                if (asInt != null)
+                                    when (sFlagA) {
+                                        1 -> chapBounds.stateUse = asInt
+                                        2 -> testBounds.boundData[step.source_name!!]?.stateUse = asInt
                                     }
-                                }
                             }
+
+                            else -> Unit
                         }
                     }
                 }
             }
+        }
+    }
+
+    fun updateScopeVar(level: Int, key: String, action: (String?) -> String) {
+        val currentData = when (level) {
+            0 -> scopeVars[key]
+            1 -> chapBounds.scopeVars[key]
+            2 -> testBounds.scopeVars[key]
+            else -> null
+        }
+
+        when (level) {
+            0 -> scopeVars[key] = action(currentData)
+            1 -> chapBounds.scopeVars[key] = action(currentData)
+            2 -> testBounds.scopeVars[key] = action(currentData)
+        }
+    }
+
+    fun updateScopeKey(level: Int, oldKey: String, newKey: String) {
+        val currentData = when (level) {
+            0 -> scopeVars[oldKey]
+            1 -> chapBounds.scopeVars[oldKey]
+            2 -> testBounds.scopeVars[oldKey]
+            else -> null
+        } ?: return
+
+        when (level) {
+            0 -> scopeVars.remove(oldKey)
+            1 -> chapBounds.scopeVars.remove(oldKey)
+            2 -> testBounds.scopeVars.remove(oldKey)
+        }
+
+        when (level) {
+            0 -> scopeVars[newKey] = currentData
+            1 -> chapBounds.scopeVars[newKey] = currentData
+            2 -> testBounds.scopeVars[newKey] = currentData
+        }
+    }
+
+    fun deTempMatcher(
+        p4Command: P4Command,
+        deTempList: MutableList<MatcherCollection>
+    ): String = deTempMatcher(p4Command.act_match, p4Command.varSearchUp, deTempList)
+
+    /**
+     * De-template the action matcher
+     */
+    fun deTempMatcher(
+        matcherStr: String?,
+        searchUpScope: Boolean,
+        deTempList: MutableList<MatcherCollection>
+    ): String {
+        return deTemStr(matcherStr, searchUpScope) { name ->
+            val tryInt = name.toIntOrNull()
+            deTempList.firstNotNullResult {
+                if (tryInt != null)
+                    it[tryInt].lastOrNull()?.value
+                else
+                    it[name].lastOrNull()?.value
+            }
+        }
+    }
+
+    /**
+     * Returns variables, based on the scope [level]
+     */
+    fun scopeByLevel(
+        level: Int,
+        filter: (Map.Entry<String, String>) -> Boolean = { true }
+    ) = when (level) {
+        0 -> scopeVars
+        1 -> chapBounds.scopeVars
+        2 -> testBounds.scopeVars
+        else -> mutableMapOf()
+    }.filter { filter.invoke(it) }
+
+    /**
+     * Returns the requested key or key's value
+     * @param keyName Key's name to look by
+     * @param scope Where to search for the data<pre>
+     *  - 0: Sequence
+     *  - 1: Chapter
+     *  - 2: Test Bounds
+     * </pre>
+     * @param searchUpScope If the search should continue up the variable hierarchy
+     */
+    private fun varKeyVal(keyName: String, scope: Int, searchUpScope: Boolean): String? {
+        val scopeData = mutableMapOf<String, String>()
+        scopeData.putAll(scopeByLevel(scope) { it.key == keyName })
+
+        if (searchUpScope) {
+            (scope..2).forEach { level ->
+                scopeData.putIfAbsent(scopeByLevel(level) { it.key == keyName })
+            }
+        }
+        return scopeData.firstOrNull()
+    }
+
+    /**
+     * Converts "@{..}" content in the string with variables or empty strings.
+     *
+     * [useSourceItems] is used/searched first, then Sequence/Chapter/Bound variable are searched
+     *
+     * - If nothing matches, then [stepMatch] is returned unchanged
+     */
+    private fun deTemStr(
+        stepMatch: String?,
+        searchUpScope: Boolean,
+        useSourceItems: (String) -> String? = { null }
+    ): String {
+        return Parser_v4.deTemplate(stepMatch.orEmpty()) { name, scope ->
+            useSourceItems(name) ?: varKeyVal(name, scope, searchUpScope)
         }
     }
 

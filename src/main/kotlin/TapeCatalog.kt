@@ -114,7 +114,7 @@ class TapeCatalog {
                     items == null -> null
                     items.size == 1 -> items.first()
                     else -> items.firstMatchNotNull(
-                        { it.alwaysLive.isTrue() },
+                        { it.alwaysLive.isTrue },
                         { it.awaitResponse },
                         { useMatchesTest(it) { uses -> uses == MockUseStates.ALWAYS.state } },
                         { useMatchesTest(it) { uses -> uses in (1..Int.MAX_VALUE) } }

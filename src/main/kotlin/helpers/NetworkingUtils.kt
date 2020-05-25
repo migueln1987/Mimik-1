@@ -167,6 +167,13 @@ fun ResponseHeaders.append(key: String, values: List<String>) =
 
 fun Headers.contains(key: String, value: String) = values(key).contains(value)
 
+/** Returns an immutable (optional) case-sensitive set of header names. */
+fun Headers.names(caseSensitive: Boolean): Set<String> {
+    return if (caseSensitive) {
+        (0 until size()).map { name(it) }.toSet()
+    } else names()
+}
+
 /**
  * Converts the [Headers] into a list of Key/Value pairs
  */
@@ -277,7 +284,7 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
             override fun getCharset() = contentCharset
             override fun getEncoding() = charset.name()
 
-            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
+            override fun hasBody() = bodyData.isNullOrEmpty().isFalse
             override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
             override fun bodyAsText() = bodyData.orEmpty()
 
@@ -310,7 +317,7 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
             override fun getCharset() = contentCharset
             override fun getEncoding() = charset.name()
 
-            override fun hasBody() = bodyData.isNullOrEmpty().isFalse()
+            override fun hasBody() = bodyData.isNullOrEmpty().isFalse
             override fun body() = bodyData?.toByteArray() ?: byteArrayOf()
             override fun bodyAsText() = bodyData.orEmpty()
 

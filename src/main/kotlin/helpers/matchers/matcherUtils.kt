@@ -6,7 +6,7 @@ import helpers.isTrue
  * Returns true if this [MatchResult] contains any matching groups
  */
 val MatchResult?.hasMatch: Boolean
-    get() = this?.groups?.isNotEmpty().isTrue()
+    get() = this?.groups?.isNotEmpty().isTrue
 
 private val logMatchChars = false
 

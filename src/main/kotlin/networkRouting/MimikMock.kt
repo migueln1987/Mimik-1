@@ -26,7 +26,7 @@ import tapeItems.BaseTape
  */
 class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
-    val arrayReg = "(?<!\\\\),".toRegex()
+    val arrayReg = """"(?<!\\),""".toRegex()
 
     private enum class RoutePaths(val path: String) {
         MOCK("");
@@ -72,7 +72,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             .filterNot { it.key.startsWith("filter", true) }
         val attractors = createRequestAttractor(request.headers)
         val uniqueFilters = createUniqueFilters(request.headers)
-        val alwaysLive = if (mockParams["live"].isTrue()) true else null
+        val alwaysLive = if (mockParams["live"].isStrTrue()) true else null
 
         // Step 1: get existing tape or create a new tape
         val query = getTape(mockParams)
@@ -96,7 +96,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         query.item?.alwaysLive = alwaysLive
 
-        if (mockParams["tape_save"].isTrue())
+        if (mockParams["tape_save"].isStrTrue())
             tape.saveFile()
 
         if (mockParams.containsKey("tape_only")) return query.also {
@@ -123,7 +123,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 //            chapter.requestData = RequestTapedata()
 
         val hasAwait = mockParams.containsKey("await")
-        val awaitResponse = mockParams["await"].isTrue()
+        val awaitResponse = mockParams["await"].isStrTrue()
 
 //        val requestMock = RequestTapedata() { builder ->
 //            builder.method = mockParams["method"]
@@ -146,8 +146,8 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         // Method will have a body and filter isn't allowing bodies
         if (HttpMethod.requiresRequestBody(mockParams["method"].orEmpty()) &&
-            (attractors.bodyMatchers.isNullOrEmpty().isTrue() ||
-                    attractors.bodyMatchers?.all { it.hardValue.isBlank() }.isTrue())
+            (attractors.bodyMatchers.isNullOrEmpty().isTrue ||
+                    attractors.bodyMatchers?.all { it.hardValue.isBlank() }.isTrue)
         ) // add the default "accept all bodies" to calls requiring a body
             attractors.bodyMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
 
@@ -160,7 +160,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             // In case we want to update an existing chapter's name
             updateChapter.chapterName = interactionName ?: updateChapter.name
 
-            updateChapter.responseData = if (alwaysLive.isTrue() || (hasAwait && awaitResponse))
+            updateChapter.responseData = if (alwaysLive.isTrue || (hasAwait && awaitResponse))
                 null
             else Responsedata { rData ->
                 rData.code = mockParams["response_code"]?.toIntOrNull()
@@ -176,7 +176,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             }
 
             val useRequest = mockParams["use"]
-            updateChapter.mockUses = if (mockParams["readonly"].isTrue()) {
+            updateChapter.mockUses = if (mockParams["readonly"].isStrTrue()) {
                 when (useRequest?.toLowerCase()) {
                     "disable" -> MockUseStates.DISABLE
                     else -> MockUseStates.ALWAYS
@@ -336,7 +336,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             result.item = BaseTape.Builder {
                 it.tapeName = paramTapeName
                 it.routingURL = mockParams["tape_url"]
-                it.allowNewRecordings = mockParams["tape_allowliverecordings"].isTrue(true)
+                it.allowNewRecordings = mockParams["tape_allowliverecordings"].isStrTrue(true)
             }.build()
                 .also { tapeCatalog.tapes.add(it) }
         }

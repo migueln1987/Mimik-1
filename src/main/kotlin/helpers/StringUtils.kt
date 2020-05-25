@@ -25,8 +25,8 @@ fun String.uppercaseFirstLetter() = take(1).toUpperCase() + drop(1)
  * If this string starts with the given [prefix] (in order of input), returns a copy of this string
  * with the prefix removed. Otherwise, returns this string.
  */
-fun String.removePrefixs(vararg prefixs: CharSequence) =
-    prefixs.fold(this) { acc, t -> acc.removePrefix(t) }
+fun String.removePrefixes(vararg prefixes: CharSequence) =
+    prefixes.fold(this) { acc, t -> acc.removePrefix(t) }
 
 /**
  * If this string does not start with the given [prefix],
@@ -90,7 +90,7 @@ val String?.longestLine: String?
  *
  * If the value is null, [default] is returned instead, which is initially 'false'
  */
-fun String?.isTrue(default: Boolean = false) = this?.toBoolean() ?: default
+fun String?.isStrTrue(default: Boolean = false) = this?.toBoolean() ?: default
 
 /**
  * Returns [true] if the input is a valid json

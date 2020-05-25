@@ -11,25 +11,25 @@ class BooleanTests {
     @Test
     fun nullableIsTrue() {
         val testTrue: Boolean? = true
-        Assert.assertTrue(testTrue.isTrue())
+        Assert.assertTrue(testTrue.isTrue)
     }
 
     @Test
     fun nullableNulltIsTrue() {
         val testTrue: Boolean? = null
-        Assert.assertFalse(testTrue.isTrue())
+        Assert.assertFalse(testTrue.isTrue)
     }
 
     @Test
     fun nullableIsFalse() {
         val testFalse: Boolean? = true
-        Assert.assertFalse(testFalse.isFalse())
+        Assert.assertFalse(testFalse.isFalse)
     }
 
     @Test
     fun nullableNulltIsFalse() {
         val testFalse: Boolean? = null
-        Assert.assertFalse(testFalse.isFalse())
+        Assert.assertFalse(testFalse.isFalse)
     }
 
     @Test

@@ -12,7 +12,7 @@ object DeleteModule : EditorModule() {
             ?.also { tape ->
                 when (val chapterName = call.parameters["chapter"]) {
                     null -> {
-                        if (tapeCatalog.tapes.remove(tape) && tape.file?.exists().isTrue())
+                        if (tapeCatalog.tapes.remove(tape) && tape.file?.exists().isTrue)
                             tape.file?.delete()
                         call.respondRedirect(TapeRouting.RoutePaths.ALL.path)
                     }

@@ -9,7 +9,7 @@ import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
 import tapeItems.BaseTape
-import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.max
 
 object TapeEditor : EditorModule() {
@@ -50,7 +50,7 @@ object TapeEditor : EditorModule() {
                         }
 
                         td {
-                            if (t.file?.exists().isTrue()) {
+                            if (t.file?.exists().isTrue) {
                                 p { +"File path: ${t.file?.path}" }
                                 p { +"File size: ${t.file?.fileSize()}" }
                             } else {
@@ -159,9 +159,8 @@ object TapeEditor : EditorModule() {
         val folders = mutableListOf(subDirectoryDefault)
             .apply { addAll(root.getFolders()) }
         head {
-            script {
-                unsafe {
-                    +"""
+            unsafeScript {
+                +"""
                     function setRoutingUrlStates(url) {
                         parsedUrl.innerText = preVerifyURL(url);
                         var isDisabled = parsedUrl.innerText.startsWith("{");
@@ -172,8 +171,7 @@ object TapeEditor : EditorModule() {
                         SaveNewCalls.disabled = disableChapters;
                         SaveAddChapters.disabled = disableChapters;
                     }
-                    """.trimIndent().appendLines(JS.all)
-                }
+                """.trimIndent().appendLines(JS.all)
             }
         }
 
@@ -429,7 +427,7 @@ object TapeEditor : EditorModule() {
                                 checkBoxInput(name = "allowPassthrough") {
                                     id = "allowPassthrough"
                                     disabled = true
-                                    checked = pData.tape?.alwaysLive.isTrue()
+                                    checked = pData.tape?.alwaysLive.isTrue
                                     onChange = """
                                         setIsDisabled(SaveNewCalls, checked)
                                         if (document.getElementById('ChapterData'))
@@ -451,12 +449,12 @@ object TapeEditor : EditorModule() {
                                 checkBoxInput(name = "SaveNewCalls") {
                                     id = "SaveNewCalls"
                                     disabled = true
-                                    checked = pData.tape?.isWritable.isTrue()
+                                    checked = pData.tape?.isWritable.isTrue
                                 }
 
                                 if (!pData.newTape) {
                                     linebreak()
-                                    toggleArea(id = "ChapterData") {
+                                    toggleArea(contentId = "ChapterData") {
                                         displayTapeChapters(pData)
                                     }
                                 }
@@ -473,7 +471,7 @@ object TapeEditor : EditorModule() {
                                 } else
                                     div { id = "SaveAddChapters" }
 
-                                script { unsafe { +"setRoutingUrlStates(RoutingUrl.value)" } }
+                                unsafeScript { +"setRoutingUrlStates(RoutingUrl.value)" }
                             }
                         }
                     }
@@ -491,7 +489,7 @@ object TapeEditor : EditorModule() {
                                         value = pData.hardTapeName("")
                                     }
 
-                                    if (pData.tape?.file?.exists().isNotTrue()) {
+                                    if (pData.tape?.file?.exists().isNotTrue) {
                                         hiddenInput(name = "tape") { value = pData.hardTapeName() }
                                         hiddenInput(name = "resumeEdit") { value = "true" }
 
@@ -666,26 +664,24 @@ object TapeEditor : EditorModule() {
             return
         linebreak()
 
-        script {
-            unsafe {
-                +"""
-                    function setupHoverStat(row, hvItem, hvContent){
-                        hvContent.style.height = row.cells[0].clientHeight + 'px';
+        unsafeScript {
+            +"""
+                function setupHoverStat(row, hvItem, hvContent){
+                    hvContent.style.height = row.cells[0].clientHeight + 'px';
 
-                        hvItem.onmouseenter = function() {
-                            hvContent.style.left = row.cells[0].getBoundingClientRect().right + 'px';
-                            hvContent.style.display = "unset";
-                            setTimeout(function() {
-                                hvContent.style.opacity = 1.0;
-                            }, 10);
-                        }
-                        hvItem.onmouseleave = function() {
-                            hvContent.style.opacity = 0;
-                            hvContent.style.display = "none";
-                        }
+                    hvItem.onmouseenter = function() {
+                        hvContent.style.left = row.cells[0].getBoundingClientRect().right + 'px';
+                        hvContent.style.display = "unset";
+                        setTimeout(function() {
+                            hvContent.style.opacity = 1.0;
+                        }, 10);
                     }
-                """.trimIndent()
-            }
+                    hvItem.onmouseleave = function() {
+                        hvContent.style.opacity = 0;
+                        hvContent.style.display = "none";
+                    }
+                }
+            """.trimIndent()
         }
         table {
             thead {
@@ -713,7 +709,7 @@ object TapeEditor : EditorModule() {
 
     private fun TBODY.addChapterRow(data: ActiveData, chap: RecordedInteractions) {
         val tape = data.hardTapeName()
-        val chapID = abs(chap.hashCode())
+        val chapID = chap.hashCode().absoluteValue
 
         val chapRow = "chapRow_$chapID"
         val namePreview = "namePrev_$chapID"
@@ -869,7 +865,7 @@ object TapeEditor : EditorModule() {
                             th { +"Response" }
                             td {
                                 +when {
-                                    chap.alwaysLive.isTrue() -> "Live"
+                                    chap.alwaysLive.isTrue -> "Live"
                                     chap.awaitResponse -> "Await"
                                     else -> (chap.responseData?.code ?: 0).toString()
                                 }
@@ -881,8 +877,8 @@ object TapeEditor : EditorModule() {
                         }
                     }
                 }
-                script {
-                    unsafe { +"setupHoverStat($chapRow, $namePreview, $itemPrev);" }
+                unsafeScript {
+                    +"setupHoverStat($chapRow, $namePreview, $itemPrev);"
                 }
 //                script {
 //                    unsafe {

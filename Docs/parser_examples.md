@@ -1,9 +1,20 @@
 Style:
 (is a conditional) (source (source item)) (find content) -> (action)
 
-**Notes**
+#Notes
+= Mock variable definitions
+
+| item | use                                  |
+| ---- | ------------------------------------ |
+| `a#` | search variable (ref: `a1` and `a2`) |
+| `a1` | header item                          |
+| `a1` | variable item                        |
+| `bb` | matcher matcher                      |
+| `cc` | variable                             |
+| `dd` | replacement content                  |
+
 = Matchers
-1) input matchers (`bb`) process index values as "no valid input" and are skipped
+1) input matchers (`bb`) which equate as "no valid input" and are skipped
 2) output matchers (`dd`) can use index/ groups from the input matcher (`bb`)
 
 = Source item inputs (`a1`)
@@ -26,13 +37,14 @@ Example 2: `request:body:{w}->{aa }  b}`
 Becomes 2: `request:body:{w}->{aa }\ b}`
 
 2. Using variable in the matcher
- - `@{...}` will attempt to use scoped then bound vars
- - `@{&...}` will only use scoped vars
+ - `@{...}` Sequence variable
+ - `@{&...}` Chapter variable
+ - `@{%...}` Test Bound variable
 
 = Output actions (`->....`)
-1. 
-1. Appending `&` before a char assigns the variable as scoped only
- - scoped vars exist only within it's action sequence list
+1. Appending a `&` before a char escapes it to the chapter
+2. Appending a `%` before a char escapes it to the test bounds
+3. Escaped variables are accessed from the current level and down
 
 # Request/ Response
 
@@ -100,12 +112,23 @@ Becomes 2: `request:body:{w}->{aa }\ b}`
 | response:body:{bb}->{dd} | replace matching content of `bb` with the content of `dd` | self      |
 
 # Variables
-== Var prefixes ==
-| prefix | action           | example |
-| ------ | ---------------- | ------- |
-|        | Bound and Scoped | var     |
-| s      | Scoped           | svar    |
-| b      | Bound            | bvar    |
+## Var prefixes
+
+| prefix | scope                  | example |
+| ------ | ---------------------- | ------- |
+|        | current sequence       | var     |
+| &      | chapter                | &var    |
+| %      | test bounds ("global") | %var    |
+
+## Var suffix
+
+Note: Only affects items which can have multiple results
+
+| prefix | contents                 | use         | example data             |
+| ------ | ------------------------ | ----------- | ------------------------ |
+|        | true/ false              | ->result    | true/false               |
+| #      | number of results        | ->result#   | 0 -> ####                |
+| \_#    | results as (key + "\_#") | ->result\_# | result_0, result_1, etc. |
 
 ## Conditionals
 

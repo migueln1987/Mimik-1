@@ -13,14 +13,12 @@ object NetworkDataEditor : EditorModule() {
         val pData = params.toActiveEdit
 
         head {
-            script {
-                unsafe {
-                    +"""
+            unsafeScript {
+                +"""
                     function toParsedUrl(url) {
                         parsedUrl.innerText = preVerifyURL(url);
                     }
                 """.trimIndent().appendLines(JS.all)
-                }
             }
         }
 
@@ -95,9 +93,8 @@ object NetworkDataEditor : EditorModule() {
                                         onKeyUp = "toParsedUrl(value)"
                                     }
 
-                                    script {
-                                        unsafe {
-                                            +"""
+                                    unsafeScript {
+                                        +"""
                                             requestUrl.addEventListener('paste', (event) => {
                                                 var paste = getPasteResult(event);
                                                 
@@ -110,7 +107,6 @@ object NetworkDataEditor : EditorModule() {
                                                 }
                                             });
                                         """.trimIndent()
-                                        }
                                     }
 
                                     br()
@@ -129,7 +125,7 @@ object NetworkDataEditor : EditorModule() {
                                             }
                                         }
                                     }
-                                    script { unsafe { +"toParsedUrl(requestUrl.value);" } }
+                                    unsafeScript { +"toParsedUrl(requestUrl.value);" }
                                 }
                             }
 
@@ -179,8 +175,8 @@ object NetworkDataEditor : EditorModule() {
                                         }
                                     }
 
-                                    script {
-                                        unsafe { +"responseCodeDes.selectedIndex = responseCode.selectedIndex;" }
+                                    unsafeScript {
+                                        +"responseCodeDes.selectedIndex = responseCode.selectedIndex;"
                                     }
                                 }
                             }
@@ -197,9 +193,8 @@ object NetworkDataEditor : EditorModule() {
                                 id = name
                             }
 
-                            script {
-                                unsafe {
-                                    +"""
+                            unsafeScript {
+                                +"""
                                     netHeaders.addEventListener('paste', (event) => {
                                         var paste = getPasteResult(event);
                                         var selEnd = netHeaders.selectionEnd || paste.length;
@@ -211,7 +206,6 @@ object NetworkDataEditor : EditorModule() {
                                         event.preventDefault();
                                     });
                                 """.trimIndent()
-                                }
                             }
                         }
                     }
@@ -235,26 +229,24 @@ object NetworkDataEditor : EditorModule() {
                                             onKeyPress = "keypressNewlineEnter(networkBody);"
                                             +pData.networkData?.body.orEmpty()
                                         }
-                                        script {
-                                            unsafe {
-                                                +"""
-                                                    networkBody.addEventListener('paste', (event) => {
-                                                        var paste = getPasteResult(event);
-                                                        var selEnd = networkBody.selectionEnd || paste.length;
-                                                        
-                                                        var formatted = prettyJson(paste);
-                                                        if (formatted != paste) {
-                                                            networkBody.value = formatted;
-                                                            selEnd.selectionStart = selEnd;
-                                                            selEnd.selectionEnd = selEnd;
-                                                            networkBody.style.height = (networkBody.scrollHeight - 4) + 'px';
-                                                            event.preventDefault();
-                                                        }
-                                                    });
-                                                    formatParentFieldWidth(networkBody);
-                                                    beautifyField(networkBody);
-                                                """.trimIndent()
-                                            }
+                                        unsafeScript {
+                                            +"""
+                                                networkBody.addEventListener('paste', (event) => {
+                                                    var paste = getPasteResult(event);
+                                                    var selEnd = networkBody.selectionEnd || paste.length;
+                                                    
+                                                    var formatted = prettyJson(paste);
+                                                    if (formatted != paste) {
+                                                        networkBody.value = formatted;
+                                                        selEnd.selectionStart = selEnd;
+                                                        selEnd.selectionEnd = selEnd;
+                                                        networkBody.style.height = (networkBody.scrollHeight - 4) + 'px';
+                                                        event.preventDefault();
+                                                    }
+                                                });
+                                                formatParentFieldWidth(networkBody);
+                                                beautifyField(networkBody);
+                                            """.trimIndent()
                                         }
                                     }
 
@@ -278,7 +270,7 @@ object NetworkDataEditor : EditorModule() {
                                     "genReqParseAttr"
                                 )
                                 checkBoxInput(name = "parseAttractors") {
-                                    checked = pData.chapter?.attractors?.isInitial.isTrue()
+                                    checked = pData.chapter?.attractors?.isInitial.isTrue
                                 }
                                 linebreak()
                             }

@@ -3,7 +3,7 @@ package helpers
 import java.util.UUID
 import java.util.UUID.nameUUIDFromBytes
 import kotlin.experimental.and
-import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.random.Random
 
@@ -18,7 +18,7 @@ class RandomHost(init: Int? = null) {
         private set
 
     init {
-        value = init?.let { abs(it) } ?: nextRandom()
+        value = init?.absoluteValue ?: nextRandom()
     }
 
     /**
@@ -37,7 +37,7 @@ class RandomHost(init: Int? = null) {
         }
 
         // positive value between 5-10 chars
-        val length = max(useMin, abs(useRandom.nextInt(useMax)))
+        val length = max(useMin, useRandom.nextInt(useMax).absoluteValue)
 
         val byteData = ByteArray(length)
         useRandom.nextBytes(byteData)
@@ -65,10 +65,10 @@ class RandomHost(init: Int? = null) {
     fun nextRandom(bound: Int? = null): Int {
         value = when (bound) {
             null, 0 -> random.nextInt()
-            else -> random.nextInt(abs(bound))
+            else -> random.nextInt(bound.absoluteValue)
         }
 
-        if (value < 0) value = abs(value)
+        if (value < 0) value = value.absoluteValue
         return value
     }
 }

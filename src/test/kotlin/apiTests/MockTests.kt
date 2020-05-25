@@ -435,7 +435,7 @@ class MockTests : ApiTests {
                 .response {
                     Assert.assertEquals(HttpStatusCode.OK, it.status())
                     Assert.assertTrue(tape.chapters.isNotEmpty())
-                    Assert.assertTrue(tape.chapters.first().alwaysLive.isTrue())
+                    Assert.assertTrue(tape.chapters.first().alwaysLive.isTrue)
                 }
         }
     }

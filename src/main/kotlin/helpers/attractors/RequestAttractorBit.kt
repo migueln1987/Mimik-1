@@ -23,7 +23,7 @@ class RequestAttractorBit {
     var optional: Boolean? = null
 
     var required: Boolean
-        get() = optional.isNotTrue()
+        get() = optional.isNotTrue
         set(value) {
             optional = !value
         }
@@ -54,8 +54,8 @@ class RequestAttractorBit {
     override fun toString(): String {
         return "Req: %b %s %s".format(
             required,
-            if (except.isTrue()) "-!" else "+",
-            if (allowAllInputs.isTrue())
+            if (except.isTrue) "-!" else "+",
+            if (allowAllInputs.isTrue)
                 "AllowAll" else "{$hardValue}"
         )
     }

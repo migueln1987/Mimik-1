@@ -205,7 +205,7 @@ abstract class EditorModule {
                     var deleteBtn = document.createElement("button");
                     deleteBtn.type = "button";
                     deleteBtn.innerText = "Delete";
-                    deleteBtn.onclick = function() { node.remove(); };
+                    deleteBtn.onclick = function() { node.remove() };
                     return deleteBtn;
                 }
             """
@@ -293,8 +293,8 @@ abstract class EditorModule {
                     var togDiv = scriptTag.previousElementSibling;
                     var togBtn = togDiv.previousElementSibling.previousElementSibling;
 
-                    togBtn.onclick = function() { toggleView(togBtn, togDiv); }
-                    setupToggleButtonTarget(togDiv);
+                    togBtn.onclick = function() { toggleView(togBtn, togDiv) };
+                    togDiv.classList.add("hideableContent");
                     return [togBtn, togDiv];
                 }
             """
@@ -338,8 +338,6 @@ abstract class EditorModule {
                 }
             
                 .sjs_group {
-                  display: flex;
-                  flex-direction: column;
                   padding-left: 0;
                   margin-bottom: 0;
                 }
@@ -389,7 +387,7 @@ abstract class EditorModule {
             
                 .sjs_handle {
                   display: inline;
-                  cursor: move;
+                  cursor: row-resize;
                 }
             
                 .sjs_noDrag {}
@@ -405,70 +403,68 @@ abstract class EditorModule {
     }
 
     fun FlowOrMetaDataContent.setupStyle() {
-        style {
-            unsafe {
-                +"""
-                    table {
-                        font: 1em Arial;
-                        border: 1px solid black;
-                        width: 100%;
-                    }
-                    
-                    button {
-                        cursor: pointer;
-                    }
-                    
-                    button:disabled {
-                        cursor: default;
-                    }
-                    
-                    .inputButton {
-                        border: 1px solid #ccc;
-                        border-radius: 4px;
-                    }
+        unsafeStyle {
+            +"""
+                table {
+                    font: 1em Arial;
+                    border: 1px solid black;
+                    width: 100%;
+                }
+                
+                button {
+                    cursor: pointer;
+                }
+                
+                button:disabled {
+                    cursor: default;
+                }
+                
+                .inputButton {
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                }
 
-                    th {
-                        background-color: #ccc;
-                        width: auto;
-                    }
-                    td {
-                        background-color: #eee;
-                    }
-                    th, td {
-                        text-align: left;
-                        padding: 0.4em 0.4em;
-                    }
+                th {
+                    background-color: #ccc;
+                    width: auto;
+                }
+                td {
+                    background-color: #eee;
+                }
+                th, td {
+                    text-align: left;
+                    padding: 0.4em 0.4em;
+                }
 
-                    .btn_50wide {
-                        width: 50%
-                    }
-                    .tb_25wide {
-                        width: 25%
-                    }
-                    .center{ text-align: center; }
-                    .infoText {
-                        font-size: 14px;
-                        color: #555
-                    }
-                    
-                    .opacity50 { opacity: 0.5; }
-                    
-                    .radioDiv {
-                        width: 40%;
-                        padding: 6px;
-                    }
-                    
-                    .hoverExpand:hover {
-                        width: -webkit-fill-available;
-                    }
-                    """.trimIndent()
-                    .appendLines(
-                        breadcrumbStyle,
-                        collapsibleStyle,
-                        tooltipStyle,
-                        calloutStyle
-                    )
-            }
+                .btn_50wide {
+                    width: 50%
+                }
+                .tb_25wide {
+                    width: 25%
+                }
+                .center{ text-align: center; }
+                .infoText {
+                    font-size: 14px;
+                    color: #555
+                }
+                
+                .opacity50 { opacity: 0.5; }
+                
+                .radioDiv {
+                    width: 40%;
+                    padding: 6px;
+                }
+                
+                .hoverExpand:hover {
+                    width: -webkit-fill-available;
+                }
+                """.trimIndent()
+                .appendLines(
+                    breadcrumbStyle,
+                    collapsibleStyle,
+                    tooltipStyle,
+                    calloutStyle
+                )
         }
     }
 
@@ -864,8 +860,8 @@ abstract class EditorModule {
 
                 val allowAll = allTrue(
                     it.value == ".*",
-                    it.optional.isNotTrue(),
-                    it.except.isNotTrue()
+                    it.optional.isNotTrue,
+                    it.except.isNotTrue
                 )
 
                 if (allowAll) {
@@ -945,7 +941,7 @@ abstract class EditorModule {
         bit: List<RequestAttractorBit>?,
         info: TableQueryMatcher
     ) {
-        val isAllowAny = bit?.any { it.allowAllInputs.isTrue() }.orFalse || info.allowAnyCheckState.orFalse
+        val isAllowAny = bit?.any { it.allowAllInputs.isTrue }.orFalse || info.allowAnyCheckState.orFalse
 
         tooltipText("Allow any input: ", "allowAnyInputInput")
         checkBoxInput(name = info.allowAny_ID) {
@@ -964,9 +960,8 @@ abstract class EditorModule {
             if (isAllowAny)
                 appendStyles("color: #A0A0A0")
 
-            script {
-                unsafe {
-                    +"""
+            unsafeScript {
+                +"""
                     var ${info.rowID} = 0;
                     function addNew${info.nameShort}Filter(expandableField) {
                         var newrow = ${info.tableId}.insertRow(${info.tableId}.rows.length-1);
@@ -994,15 +989,14 @@ abstract class EditorModule {
                             actionBtns.append(document.createElement("br"));
                             actionBtns.append(document.createElement("br"));
                             var formatBtn = createBtn("Beautify Body");
-                            formatBtn.onclick = function() { beautifyField(valueInput); };
+                            formatBtn.onclick = function() { beautifyField(valueInput) };
                             actionBtns.append(formatBtn);
                         }
                     }
                     """.trimIndent()
-                        .appendLines(
-                            JS.FormatParentFieldWidth_func.value
-                        )
-                }
+                    .appendLines(
+                        JS.FormatParentFieldWidth_func.value
+                    )
             }
 
             thead {
@@ -1013,7 +1007,7 @@ abstract class EditorModule {
                 }
             }
             tbody {
-                bit?.filter { it.allowAllInputs.isNotTrue() }
+                bit?.filter { it.allowAllInputs.isNotTrue }
                     ?.forEachIndexed { index, bit ->
                         appendBit(bit, index, info)
                     }
@@ -1053,12 +1047,10 @@ abstract class EditorModule {
                         value = placeholder
                     }
 
-                script {
-                    unsafe {
-                        +"formatParentFieldWidth($fieldName);".let {
-                            if (info.valueIsBody)
-                                it + "beautifyField($fieldName);" else it
-                        }
+                unsafeScript {
+                    +"formatParentFieldWidth($fieldName);".let {
+                        if (info.valueIsBody)
+                            it + "beautifyField($fieldName);" else it
                     }
                 }
                 // todo; reset value button
@@ -1105,9 +1097,8 @@ abstract class EditorModule {
         table {
             id = "headerTable"
 
-            script {
-                unsafe {
-                    +"""
+            unsafeScript {
+                +"""
                     var headerID = 0;
                     function addNewHeaderRow() {
                         var newrow = headerTable.insertRow(headerTable.rows.length-1);
@@ -1129,7 +1120,6 @@ abstract class EditorModule {
                         actionBtns.append(cloneBtn);
                     }
                     """.trimIndent()
-                }
             }
 
             thead {
@@ -1309,12 +1299,8 @@ abstract class EditorModule {
                         }
                     }
 
-                    script {
-                        unsafe {
-                            +"""
-                            $divID.style.maxHeight = ($tableID.scrollHeight + 14) + 'px';
-                        """.trimIndent()
-                        }
+                    unsafeScript {
+                        +"$divID.style.maxHeight = ($tableID.scrollHeight + 14) + 'px';"
                     }
                 }
             }
@@ -1355,7 +1341,7 @@ abstract class EditorModule {
                 +bodyData
             }
 
-            script { unsafe { +"beautifyField($areaID);" } }
+            unsafeScript { +"beautifyField($areaID);" }
         }
     }
 
@@ -1551,18 +1537,16 @@ abstract class EditorModule {
             }
 
             // Append a `down caret` to headers which have children
-            script {
-                unsafe {
-                    +"""
-                        Array.from(document.getElementsByClassName('navHeader')).forEach(
-                            function(item) {
-                                var next = item.nextElementSibling;
-                                if (next != null && next.classList.contains('subnav-content'))
-                                    item.classList.add('caret-down');
-                            }
-                        );
+            unsafeScript {
+                +"""
+                    Array.from(document.getElementsByClassName('navHeader')).forEach(
+                        function(item) {
+                            var next = item.nextElementSibling;
+                            if (next != null && next.classList.contains('subnav-content'))
+                                item.classList.add('caret-down');
+                        }
+                    );
                 """.trimIndent()
-                }
             }
         }
         br()

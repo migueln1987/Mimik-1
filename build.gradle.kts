@@ -1,6 +1,5 @@
 val ktor_version = "1.3.0"
 val fuel_version = "2.2.1"
-val ktlint by configurations.creating
 
 version = "0.8.0"
 
@@ -8,6 +7,7 @@ plugins {
     idea
     application
     kotlin("jvm") version embeddedKotlinVersion
+    id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
 }
 
 application {
@@ -50,33 +50,11 @@ dependencies {
     implementation("com.airbnb.okreplay:okreplay:1.6.0")
     implementation("com.beust:klaxon:5.2")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
-    testImplementation("io.mockk:mockk:1.9.3")
-
-    ktlint("com.pinterest:ktlint:0.36.0")
+    testImplementation("io.mockk:mockk:1.10.0")
 }
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
-    }
-
-    register<JavaExec>("ktlint") {
-        group = "verification"
-        description = "Check Kotlin code style."
-        classpath = ktlint
-        main = "com.pinterest.ktlint.Main"
-        args("src/**/*.kt", "--verbose")
-    }
-
-    named<Task>("check") {
-        dependsOn(ktlint)
-    }
-
-    register<JavaExec>("ktlintFormat") {
-        group = "formatting"
-        description = "Fix Kotlin code style deviations."
-        classpath = ktlint
-        main = "com.pinterest.ktlint.Main"
-        args("-F", "src/**/*.kt")
     }
 }

@@ -6,7 +6,7 @@ import io.ktor.http.Parameters
 import io.ktor.util.toMap
 import okhttp3.Headers
 import java.io.File
-import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.random.Random
 
 fun FlowOrMetaDataContent.unsafeStyle(type: String? = null, block: Unsafe.() -> Unit = {}) =
@@ -47,7 +47,7 @@ fun FlowOrPhrasingContent.makeToggleButton(
     target: String,
     isExpanded: Boolean = false
 ) {
-    script { unsafe { +"setupToggleButtonTarget('$target');" } }
+    unsafeScript { +"setupToggleButtonTarget('$target');" }
 
     button(
         type = ButtonType.button,
@@ -69,7 +69,7 @@ fun FlowOrPhrasingContent.makeToggleButton(
  */
 fun FlowContent.toggleArea(
     isExpanded: Boolean = false,
-    id: String? = null,
+    contentId: String? = null,
     classes: String? = null,
     element: DIV.() -> Unit
 ) {
@@ -79,8 +79,9 @@ fun FlowContent.toggleArea(
 
     br()
     div(classes = classes) {
-        if (id != null)
-            this.id = id
+        if (!isExpanded)
+            display = DisplayFlags.none
+        (contentId ?: tryOrNull { id })?.also { id = it }
         element.invoke(this)
     }
 
@@ -171,17 +172,15 @@ fun FlowContent.toolTip(
         .split('\n')
 
     div(classes = spanClasses) {
-        val thisId = "tooltip_${abs(property.hashCode() + Random.nextInt())}"
+        val thisId = "tooltip_${(property.hashCode() + Random.nextInt()).absoluteValue}"
         id = thisId
         splitLines.eachHasNext({ +it }, { br() })
-        script {
-            unsafe {
-                +"""
-                    $thisId.style.marginLeft = -($thisId.clientWidth / 2) + 'px';
-                    if ($thisId.getBoundingClientRect().x < 0)
-	                    $thisId.style.marginLeft = -(($thisId.clientWidth / 2) + $thisId.getBoundingClientRect().x) + 'px';
-                """.trimIndent()
-            }
+        unsafeScript {
+            +"""
+                $thisId.style.marginLeft = -($thisId.clientWidth / 2) + 'px';
+                if ($thisId.getBoundingClientRect().x < 0)
+                    $thisId.style.marginLeft = -(($thisId.clientWidth / 2) + $thisId.getBoundingClientRect().x) + 'px';
+            """.trimIndent()
         }
     }
 }
@@ -238,11 +237,13 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
 
 fun FlowContent.calloutWindow(
     calloutID: String = "",
-    headerDiv: DIV.() -> Unit = { +"" },
-    container: DIV.() -> Unit
+    windowDiv: DIV.() -> Unit = { },
+    headerDiv: DIV.() -> Unit = { },
+    container: DIV.() -> Unit = {}
 ) {
     div(classes = "callout") {
         id = calloutID
+        windowDiv.invoke(this)
         div(classes = "callout-header") { headerDiv.invoke(this) }
         span(classes = "closebtn") {
             onClick = "parentElement.style.top = -parentElement.clientHeight + 'px';"
@@ -262,7 +263,7 @@ fun FlowContent.refreshWatchWindow(
     extraAppend: () -> List<Pair<String, String>>? = { null }
 ) {
     if (file == null) return
-    val fileID = abs(file.hashCode())
+    val fileID = file.hashCode().absoluteValue
     val extras = extraAppend.invoke() ?: listOf()
     val watchType = extras.firstOrNull { it.first == "type" }?.second ?: "file"
     val watchName = extras.firstOrNull { it.first == "name" }?.second ?: file.nameWithoutExtension
@@ -270,37 +271,40 @@ fun FlowContent.refreshWatchWindow(
         ?: file.lastModified().toString()
     val refreshNotifID = "refreshNotif_$fileID"
 
-    div(classes = "callout") {
-        id = "refreshWatch_$fileID"
-        appendStyles("z-index: 18", "opacity: 0.4")
-        onMouseOver = "this.style.opacity = 1;"
-        onMouseOut = "this.style.opacity = 0.4;"
+    div {
+        div(classes = "callout") {
+            id = "refreshWatch_$fileID"
+            appendStyles("z-index: 18", "opacity: 0.4")
+            onMouseOver = "this.style.opacity = 1;"
+            onMouseOut = "this.style.opacity = 0.4;"
 
-        div(classes = "callout-container") {
-            checkBoxInput {
-                id = "refreshOn_$fileID"
-                checked = false
-                onChange = "if(checked) runWatcher();"
-            }
-            +" Observing $watchType: $watchName"
-            br()
-            div {
-                style = "text-align: center;"
-                id = "refreshBlink_$fileID"
-                +"."
+            div(classes = "callout-container") {
+                checkBoxInput {
+                    id = "refreshOn_$fileID"
+                    checked = false
+                    onChange = "if(checked) runWatcher();"
+                }
+                +" Observing $watchType: $watchName"
+                br()
+                div {
+                    style = "text-align: center;"
+                    id = "refreshBlink_$fileID"
+                    +"."
+                }
             }
         }
-    }
 
-    calloutWindow(refreshNotifID, { +"New Data" }) {
-        a {
-            href = "javascript:window.location.reload(true)"
-            +"Refresh page"
+        calloutWindow(refreshNotifID,
+            { visibility = VisibilityFlags.hidden },
+            { +"New Data" }
+        ) {
+            a {
+                href = "javascript:window.location.reload(true)"
+                +"Refresh page"
+            }
         }
-    }
 
-    script {
-        unsafe {
+        unsafeScript {
             val ageID = "lastAge_$fileID"
             val appender = StringBuilder().apply {
                 extras.forEach { appendln("formData.append('%s', '%s');".format(it.first, it.second)) }
@@ -313,6 +317,7 @@ fun FlowContent.refreshWatchWindow(
 
             +"""
                 $refreshNotifID.style.top = -$refreshNotifID.clientHeight + 'px';
+                setTimeout(function() { $refreshNotifID.style.visibility = ""; }, 2000);
                 
                 var observeCnt_$fileID = 0;
                 function runWatcher() {

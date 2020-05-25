@@ -3,25 +3,24 @@ package helpers
 /**
  * Returns true only if [value] equals true. [null] returns false.
  */
-fun Boolean?.isTrue() = this == true
+val Boolean?.isTrue get() = this == true
 
 /**
  * Returns [true] if [value] does not equal [true].
  *
  * (null || false) = true
  */
-fun Boolean?.isNotTrue() = (this == true).not()
+val Boolean?.isNotTrue get() = (this == true).not()
 
 /**
  * Returns true only if [value] equals false. [null] returns false.
  */
-fun Boolean?.isFalse() = this == false
+val Boolean?.isFalse get() = this == false
 
 /**
  * Attempts to return [this] value, or [false] (when [this] is null)
  */
-val Boolean?.orFalse
-    get() = this ?: false
+val Boolean?.orFalse get() = this ?: false
 
 /**
  * Returns true if all the inputs are true
@@ -50,11 +49,21 @@ inline fun isThrow(action: () -> Unit = {}): Boolean {
  * Attempts to get data from [action], or returns a null.
  * Throws return null.
  */
-inline fun <T> tryOrNull(action: () -> T?): T? {
+inline fun <T> tryOrNull(
+    printStackTrace: Boolean = false,
+    action: () -> T?
+): T? {
     return try {
         action.invoke()
     } catch (e: Exception) {
-        e.printStackTrace()
+        if (printStackTrace)
+            e.printStackTrace()
         null
     }
 }
+
+/** Returns if this object is null */
+val Any?.isNull get() = this == null
+
+/** Returns if this object is not null */
+val Any?.isNotNull get() = this != null

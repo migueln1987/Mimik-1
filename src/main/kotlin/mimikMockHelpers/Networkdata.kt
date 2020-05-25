@@ -19,5 +19,5 @@ abstract class Networkdata {
      * Returns if this object is an image (based on the header Content-Type)
      */
     val isImage: Boolean
-        get() = tapeHeaders.get(HttpHeaders.ContentType)?.contains("image").isTrue()
+        get() = tapeHeaders.get(HttpHeaders.ContentType)?.contains("image").isTrue
 }

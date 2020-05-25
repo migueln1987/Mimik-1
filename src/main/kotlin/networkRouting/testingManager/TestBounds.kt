@@ -129,13 +129,15 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
      */
     val boundData = mutableMapOf<String, BoundChapterItem>()
 
-    val boundVars: MutableMap<String, String> = mutableMapOf()
+    val scopeVars: MutableMap<String, String> = mutableMapOf()
 }
 
 class BoundChapterItem(config: (BoundChapterItem) -> Unit = {}) {
     var stateUse: Int? = null // = MockUseStates.ALWAYS.state
 
     val seqSteps: MutableList<List<P4Command>> = mutableListOf()
+
+    var scopeVars: MutableMap<String, String> = mutableMapOf()
 
     init {
         config.invoke(this)
@@ -191,8 +193,8 @@ fun okhttp3.Response.boundActions(
     val byChap = bounds.boundData[chap.name] ?: return this
 
     val actionClass = P4Action { setup ->
-        setup.bounds = bounds
-        setup.chapItems = byChap
+        setup.testBounds = bounds
+        setup.chapBounds = byChap
         setup.in_headers = request.headers()
         setup.in_body = request.body()?.content().orEmpty()
         setup.out_headers = headers()

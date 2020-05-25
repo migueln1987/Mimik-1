@@ -200,9 +200,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
         head {
             setupStyle()
-            script {
-                unsafe { +JS.all }
-            }
+            unsafeScript { +JS.all }
         }
 
         body {
@@ -406,7 +404,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.url.asHttpUrl.toParameters
-                                        val isValid = data?.isEmpty().isFalse()
+                                        val isValid = data?.isEmpty().isFalse
                                         useCustom = !isValid
                                         radioInput(name = "reqQuery") {
                                             checked = isValid
@@ -431,7 +429,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         val data = actChap.recentRequest?.url.asHttpUrl.toParameters
                                         radioInput(name = "reqQuery") {
                                             id = "reqCustomQuery"
-                                            checked = data?.isEmpty().isFalse() || useCustom
+                                            checked = data?.isEmpty().isFalse || useCustom
                                             value = (data ?: "").toString()
                                         }
                                         infoText("Custom Queries") { inlineDiv }
@@ -640,7 +638,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         }
 
                         td {
-                            val isLocalhostCall = actItem?.isLocalhostCall.isTrue()
+                            val isLocalhostCall = actItem?.isLocalhostCall.isTrue
 
                             postButton(name = "Action") {
                                 formAction = RoutePaths.ResponseGen.path
@@ -734,7 +732,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                 th {
                                     +"Body"
                                     val isBase64 = actItem.tapeHeaders[HttpHeaders.ContentType]
-                                        ?.startsWith("image").isTrue()
+                                        ?.startsWith("image").isTrue
                                     if (isBase64)
                                         infoText("[Base64]")
                                 }
@@ -745,10 +743,8 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         readonly = true
                                         +actItem.body.orEmpty()
                                     }
-                                    script {
-                                        unsafe {
-                                            +"beautifyField(getScriptElem().previousElementSibling);"
-                                        }
+                                    unsafeScript {
+                                        +"beautifyField(getScriptElem().previousElementSibling);"
                                     }
                                 }
                             }

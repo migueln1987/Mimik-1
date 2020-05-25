@@ -63,7 +63,7 @@ class RecordedInteractions {
             if (field == null)
                 field = arrayListOf()
 
-            if (field?.isEmpty().isTrue()) {
+            if (field?.isEmpty().isTrue) {
                 field = seqActions_data.orEmpty().map {
                     it.map { Parser_v4.parseToSteps(it) }.toArrayList()
                 }.toArrayList()
@@ -206,7 +206,7 @@ class RecordedInteractions {
             response.Required += u.size
             if (input.containsKey(t)) {
                 u.forEach {
-                    response.Required += if (input[t]?.contains(it).isTrue()) 1 else 0
+                    response.Required += if (input[t]?.contains(it).isTrue) 1 else 0
                 }
             }
         }

@@ -40,7 +40,7 @@ class StringTests {
     fun nullableTrueString_Null() {
         val input: String? = null
 
-        Assert.assertFalse(input.isTrue())
+        Assert.assertFalse(input.isStrTrue())
     }
 
     @Test
@@ -52,7 +52,7 @@ class StringTests {
         )
 
         inputs.forEach {
-            Assert.assertTrue(it.isTrue())
+            Assert.assertTrue(it.isStrTrue())
         }
     }
 
@@ -68,11 +68,11 @@ class StringTests {
         Assert.assertTrue(test.isValidJSON)
     }
 
-    class testClass(val string: String = "a", val int: Int = 0)
-
     @Test
     fun isJson_FromClass() {
-        val testClassVal = testClass()
+        @Suppress("unused")
+        class TestClass(val string: String = "a", val int: Int = 0)
+        val testClassVal = TestClass()
         val test = Gson().toJson(testClassVal)
 
         Assert.assertNotNull(test)
@@ -110,42 +110,42 @@ class StringTests {
         val failIn = "fail"
         val emptyIn = ""
 
-        val out_reg = regIn.matchResults(input)
-        val out_mixed = mixedIn.matchResults(input)
-        val out_hard = hardIn.matchResults(input)
-        val out_empty = emptyIn.matchResults(input)
-        val out_fail = failIn.matchResults(input)
+        val outReg = regIn.matchResults(input)
+        val outMixed = mixedIn.matchResults(input)
+        val outHard = hardIn.matchResults(input)
+        val outEmpty = emptyIn.matchResults(input)
+        val outFail = failIn.matchResults(input)
 
         // == Check if the regex acquired any matches ==
-        Assert.assertTrue(out_reg.hasMatches)
-        Assert.assertTrue(out_mixed.hasMatches)
-        Assert.assertTrue(out_hard.hasMatches)
-        Assert.assertFalse(out_empty.hasMatches)
-        Assert.assertFalse(out_fail.hasMatches)
+        Assert.assertTrue(outReg.hasMatches)
+        Assert.assertTrue(outMixed.hasMatches)
+        Assert.assertTrue(outHard.hasMatches)
+        Assert.assertFalse(outEmpty.hasMatches)
+        Assert.assertFalse(outFail.hasMatches)
 
         // Literal matches count: filter chars matching input string
-        Assert.assertEquals(1, out_reg.first().litMatchCnt)
-        Assert.assertEquals(3, out_mixed.first().litMatchCnt)
-        Assert.assertEquals(8, out_hard.first().litMatchCnt)
-        Assert.assertEquals(-1, out_empty.first().litMatchCnt)
-        Assert.assertEquals(-1, out_fail.first().litMatchCnt)
+        Assert.assertEquals(1, outReg.first().litMatchCnt)
+        Assert.assertEquals(3, outMixed.first().litMatchCnt)
+        Assert.assertEquals(8, outHard.first().litMatchCnt)
+        Assert.assertEquals(-1, outEmpty.first().litMatchCnt)
+        Assert.assertEquals(-1, outFail.first().litMatchCnt)
 
         // literal str > mixed str > reg str > (fail | empty)
-        Assert.assertTrue(out_hard.first().litMatchCnt > out_mixed.first().litMatchCnt)
-        Assert.assertTrue(out_mixed.first().litMatchCnt > out_reg.first().litMatchCnt)
-        Assert.assertTrue(out_reg.first().litMatchCnt > out_fail.first().litMatchCnt)
-        Assert.assertEquals(out_empty.first().litMatchCnt, out_fail.first().litMatchCnt)
+        Assert.assertTrue(outHard.first().litMatchCnt > outMixed.first().litMatchCnt)
+        Assert.assertTrue(outMixed.first().litMatchCnt > outReg.first().litMatchCnt)
+        Assert.assertTrue(outReg.first().litMatchCnt > outFail.first().litMatchCnt)
+        Assert.assertEquals(outEmpty.first().litMatchCnt, outFail.first().litMatchCnt)
 
         // string which the filter matched
-        Assert.assertEquals("test 123", out_reg.first().value)
-        Assert.assertEquals("test 123", out_mixed.first().value)
-        Assert.assertEquals("test 123", out_hard.first().value)
-        Assert.assertEquals(null, out_empty.first().value)
-        Assert.assertEquals(null, out_fail.first().value)
+        Assert.assertEquals("test 123", outReg.first().value)
+        Assert.assertEquals("test 123", outMixed.first().value)
+        Assert.assertEquals("test 123", outHard.first().value)
+        Assert.assertEquals(null, outEmpty.first().value)
+        Assert.assertEquals(null, outFail.first().value)
 
-        Assert.assertFalse(out_reg.first().isLiteral)
-        Assert.assertFalse(out_mixed.first().isLiteral)
-        Assert.assertTrue(out_hard.first().isLiteral)
+        Assert.assertFalse(outReg.first().isLiteral)
+        Assert.assertFalse(outMixed.first().isLiteral)
+        Assert.assertTrue(outHard.first().isLiteral)
     }
 
     @Test
@@ -205,25 +205,25 @@ class StringTests {
         Assert.assertEquals("123", nameTest.first().value)
 
         //  == By index ==
-        val index_0 = regOut[0] // "all" match
-        Assert.assertTrue(index_0.isNotEmpty())
-        Assert.assertEquals("123 end", index_0.first().value)
+        val index0 = regOut[0] // "all" match
+        Assert.assertTrue(index0.isNotEmpty())
+        Assert.assertEquals("123 end", index0.first().value)
 
-        val index_1 = regOut[1] // 1st group, "(none)"
-        Assert.assertTrue(index_1.isEmpty())
-        Assert.assertEquals(null, index_1.firstOrNull()?.value)
+        val index1 = regOut[1] // 1st group, "(none)"
+        Assert.assertTrue(index1.isEmpty())
+        Assert.assertEquals(null, index1.firstOrNull()?.value)
 
-        val index_2 = regOut[2] // 2nd group, "(?<group0>\d+)"
-        Assert.assertTrue(index_2.isNotEmpty())
-        Assert.assertEquals("123", index_2.first().value)
-        Assert.assertEquals("group0", index_2.first().groupName)
+        val index2 = regOut[2] // 2nd group, "(?<group0>\d+)"
+        Assert.assertTrue(index2.isNotEmpty())
+        Assert.assertEquals("123", index2.first().value)
+        Assert.assertEquals("group0", index2.first().groupName)
 
-        val index_3 = regOut[3] // 3rd group, "(.+)"
-        Assert.assertTrue(index_3.isNotEmpty())
-        Assert.assertEquals(" end", index_3.first().value)
+        val index3 = regOut[3] // 3rd group, "(.+)"
+        Assert.assertTrue(index3.isNotEmpty())
+        Assert.assertEquals(" end", index3.first().value)
 
-        val index_4 = regOut[4] // non-existent group
-        Assert.assertTrue(index_4.isEmpty())
+        val index4 = regOut[4] // non-existent group
+        Assert.assertTrue(index4.isEmpty())
     }
 
     @Test

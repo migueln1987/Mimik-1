@@ -1,5 +1,7 @@
 package helpers
 
+import kotlin.collections.ArrayList
+
 /**
  * Loops through the [Iterable] doing [action] on each item.
  *
@@ -113,3 +115,23 @@ fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> {
 }
 
 fun <T> List<T>.toArrayList() = ArrayList(this)
+
+/**
+ * Returns true if this collection contains an item at [index]
+ */
+fun <T> Collection<T>.hasIndex(index: Int) = index < size
+
+/**
+ * For each Key/Value pair in [from], if it's not already contained in this map, then it is added
+ */
+fun <K, V> MutableMap<K, V>.putIfAbsent(from: Map<K, V>) {
+    from.forEach { (key, value) ->
+        putIfAbsent(key, value)
+    }
+}
+
+fun <K, V> MutableMap<K, V>.firstOrNull() =
+    keys.firstOrNull()?.let { get(it) }
+
+fun <K, V> MutableMap<K, V>.lastOrDefault(default: V) =
+    keys.lastOrNull()?.let { get(it) } ?: default

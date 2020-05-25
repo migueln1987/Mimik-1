@@ -34,7 +34,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
     class Builder(val reBuild: BaseTape? = null, config: (Builder) -> Unit = {}) {
         var tapeName: String? = null
             set(value) {
-                field = if (value?.isBlank().isTrue())
+                field = if (value?.isBlank().isTrue)
                     null else value
                 if (reBuild != null)
                     reBuild.tapeName = field
@@ -101,7 +101,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 }
             } else {
                 var isHardTape = false
-                if (reBuild.file?.exists().isTrue()) {
+                if (reBuild.file?.exists().isTrue) {
                     isHardTape = true
                     reBuild.file?.delete()
                 }
@@ -262,13 +262,11 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             if (localField.isNullOrEmpty()) {
                 // create a "constant" default
                 localField = ArrayDeque()
-                localField.push(
-                    { chap, value ->
-                        if (value != null)
-                            chap.mockUses = value
-                        chap.mockUses
-                    }
-                )
+                localField.push { chap, value ->
+                    if (value != null)
+                        chap.mockUses = value
+                    chap.mockUses
+                }
             }
             field = localField
             return field
@@ -536,7 +534,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                         true
 
                     SearchPreferences.AlwaysLive ->
-                        it.alwaysLive.isTrue()
+                        it.alwaysLive.isTrue
 
                     SearchPreferences.AwaitOnly ->
                         it.awaitResponse
@@ -606,7 +604,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
      * If there is an existing hard tape, then this call will update that file
      */
     fun saveIfExists() {
-        if (file?.exists().isTrue())
+        if (file?.exists().isTrue)
             saveFile()
     }
 
@@ -641,7 +639,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
 
                         val outFile = file ?: return@synchronized
 
-                        if (outFile.exists().isTrue() && (file?.nameWithoutExtension != tapeName))
+                        if (outFile.exists().isTrue && (file?.nameWithoutExtension != tapeName))
                             outFile.delete()
 
                         val canSaveFile = if (outFile.exists())
@@ -723,17 +721,17 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         chap.attractors?.also { attrs ->
             if (queryMatchers.isNotEmpty()) {
                 attrs.queryMatchers = attrs.queryMatchers.orEmpty().toMutableList()
-                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .apply { removeIf { it.allowAllInputs.isTrue } }
                     .append(queryMatchers)
             }
             if (headerMatchers.isNotEmpty()) {
                 attrs.headerMatchers = attrs.headerMatchers.orEmpty().toMutableList()
-                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .apply { removeIf { it.allowAllInputs.isTrue } }
                     .append(headerMatchers)
             }
             if (bodyMatchers.isNotEmpty()) {
                 attrs.bodyMatchers = attrs.bodyMatchers.orEmpty().toMutableList()
-                    .apply { removeIf { it.allowAllInputs.isTrue() } }
+                    .apply { removeIf { it.allowAllInputs.isTrue } }
                     .append(bodyMatchers)
             }
         }

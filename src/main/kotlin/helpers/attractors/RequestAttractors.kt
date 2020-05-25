@@ -21,7 +21,7 @@ class RequestAttractors {
     constructor(request: Requestdata?) {
         request?.httpUrl?.also { url ->
             routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
-            if (routingPath?.value?.isBlank().isTrue())
+            if (routingPath?.value?.isBlank().isTrue)
                 routingPath = null
 
             queryMatchers = url.queryParameterNames().flatMap { key ->
@@ -29,7 +29,7 @@ class RequestAttractors {
                     RequestAttractorBit("$key=$value")
                 }
             }
-            if (queryMatchers?.isEmpty().isTrue())
+            if (queryMatchers?.isEmpty().isTrue)
                 queryMatchers = null
         }
 
@@ -191,10 +191,10 @@ class RequestAttractors {
     val hasData: Boolean
         get() {
             return anyTrue(
-                routingPath?.hardValue?.isNotBlank().isTrue(),
-                queryMatchers?.isNotEmpty().isTrue(),
-                headerMatchers?.isNotEmpty().isTrue(),
-                bodyMatchers?.isNotEmpty().isTrue()
+                routingPath?.hardValue?.isNotBlank().isTrue,
+                queryMatchers?.isNotEmpty().isTrue,
+                headerMatchers?.isNotEmpty().isTrue,
+                bodyMatchers?.isNotEmpty().isTrue
             )
         }
 
@@ -204,7 +204,7 @@ class RequestAttractors {
     val isInitial: Boolean
         get() {
             val maybeDefaultHeader = headerMatchers
-                ?.let { it.isEmpty() || (it.size == 1 && it[0].allowAllInputs.isTrue()) }
+                ?.let { it.isEmpty() || (it.size == 1 && it[0].allowAllInputs.isTrue) }
                 ?: false
 
             return allTrue(
@@ -316,10 +316,10 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
             if (!inputs.isNullOrEmpty()) it.Required = 1 // mark as a failed match
         }
 
-        any { it.allowAllInputs.isTrue() }.isTrue() ->
+        any { it.allowAllInputs.isTrue }.isTrue ->
             AttractorMatches(1, 1, 0)
 
-        all { it.hardValue.isBlank() }.isTrue() ->
+        all { it.hardValue.isBlank() }.isTrue ->
             AttractorMatches()
 
         inputs.isNullOrEmpty() ->
@@ -353,8 +353,8 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
                 val pass = when {
                     !bit.required && scanReq -> 0
                     bit.required && !scanReq -> 0
-                    bData.isEmpty() && bit.except.isTrue() -> 1
-                    bData.isNotEmpty() && !bit.except.isTrue() -> 1
+                    bData.isEmpty() && bit.except.isTrue -> 1
+                    bData.isNotEmpty() && !bit.except.isTrue -> 1
                     else -> 0
                 }
                 Triple(

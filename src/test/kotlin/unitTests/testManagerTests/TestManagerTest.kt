@@ -141,9 +141,9 @@ class TestManagerTest {
 
             when (type) {
                 "var" -> {
-                    Assert.assertTrue(bounds.boundVars.containsKey(xKey))
+                    Assert.assertTrue(bounds.scopeVars.containsKey(xKey))
                     Assert.assertEquals(
-                        bounds.boundVars[xKey],
+                        bounds.scopeVars[xKey],
                         xVal
                     )
                 }
