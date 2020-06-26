@@ -2,6 +2,7 @@ package networkRouting.editorPages
 
 import helpers.parser.P4Command
 import kotlinx.html.*
+import kotlinx.html.dom.document
 import kotlin.math.absoluteValue
 
 class seqContentIDs(val data: P4Command) {

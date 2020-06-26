@@ -370,19 +370,19 @@ class P4Command {
                 isHead: $isHead,
                 isBody: $isBody,
                 varLevel: $varLevel,
-                varSearchUp: $varSearchUp
+                varSearchUp: $varSearchUp,
             
                 source_hasItems: $source_HasSubItem,
                 source_name: ${source_name.jStr},
                 source_match: ${source_match.jStr},
             
-                act_hasItem: $hasAction,
+                hasAction: $hasAction,
                 act_name: ${act_name.jStr},
-                act_nExists: $act_nExists
-                act_nCount: $act_nCount
-                act_nResult: $act_nResult
-                act_nSpread: $act_nSpread
-                act_nSpreadType: $act_nSpreadType
+                act_nExists: $act_nExists,
+                act_nCount: $act_nCount,
+                act_nResult: $act_nResult,
+                act_nSpread: $act_nSpread,
+                act_nSpreadType: $act_nSpreadType,
                 act_scopeLevel: $act_scopeLevel,
                 act_match: ${act_match.jStr}
             }

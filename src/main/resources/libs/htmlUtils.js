@@ -12,7 +12,7 @@ function tooltipText(displayText, infoText, position = 'top') {
         case "bottom":
         case "left":
         case "right":
-            tooltipInfoElm.classList.add('tooltip_' + positionName);
+            tooltipInfoElm.classList.add('tooltip-' + positionName);
             break;
     }
 

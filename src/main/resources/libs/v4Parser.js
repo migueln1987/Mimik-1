@@ -34,16 +34,16 @@ function seqContentIDs(sID) {
   return {
     titleView: getElem('viewTx_' + sID),
     titleEdit: getElem('editTx_' + sID),
-    editCancelBtn: getElem('editCancelBtn_' + sID),
-    saveBtn: getElem('saveBtn_' + sID),
-    deleteBtn: getElem('deleteBtn_' + sID),
-    editingView: getElem('editContent_' + sID)
+    editCancelBtn: getElem('rootEditCancel_' + sID),
+    saveBtn: getElem('rootSave_' + sID),
+    deleteBtn: getElem('rootDelete_' + sID),
+    contentView: getElem('rootContent_' + sID)
   }
 }
 
 function toggleEditButton(sID) {
   let seqIDs = seqContentIDs(sID);
-  if (seqIDs.editingView.style.display == 'none') {
+  if (seqIDs.contentView.style.display == 'none') {
     seqIDs.titleView.style.display = 'none';
     seqIDs.titleEdit.style.display = 'block';
 
@@ -51,7 +51,7 @@ function toggleEditButton(sID) {
     seqIDs.saveBtn.style.display = 'inline';
     seqIDs.deleteBtn.style.display = 'inline';
 
-    seqIDs.editingView.style.display = 'block';
+    seqIDs.contentView.style.display = 'block';
   } else {
     seqIDs.titleView.style.display = 'block';
     seqIDs.titleEdit.style.display = 'none';
@@ -60,7 +60,7 @@ function toggleEditButton(sID) {
     seqIDs.saveBtn.style.display = 'none';
     seqIDs.deleteBtn.style.display = 'none';
 
-    seqIDs.editingView.style.display = 'none';
+    seqIDs.contentView.style.display = 'none';
   }
 }
 
@@ -182,22 +182,35 @@ class p4Parser {
     this.isHead = inData.isHead || false;
     this.isBody = inData.isBody || false;
     this.varLevel = inData.varLevel || 0;
+    this.varSearchUp = inData.varSearchUp || false;
 
-    this.source_hasItems = inData.source_hasItems || false;
     this.source_name = inData.source_name || null;
     this.source_match = inData.source_match || null;
 
-    this.act_hasItem = inData.act_hasItem || false;
+    this.hasAction = inData.hasAction || false;
     this.act_name = inData.act_name || null;
+    this.act_nExists = inData.act_nExists || false;
+    this.act_nCount = inData.act_nCount || false;
+    this.act_nResult = inData.act_nResult || false;
+    this.act_nSpread = inData.act_nSpread || false;
+    this.act_nSpreadType = inData.act_nSpreadType || -8;
     this.act_scopeLevel = inData.act_scopeLevel || false;
     this.act_match = inData.act_match || null;
   }
 
   Clone() {
-    return JSON.parse(JSON.stringify(this));
+    return Object.assign(new p4Parser(), JSON.parse(JSON.stringify(this)));
   }
 
-  get Result() {
+  get source_hasItems() {
+    return (this.source_name||'').length > 0 || (this.source_match||'').length > 0;
+  }
+
+  get act_hasItems() {
+    return (this.act_name||'').length > 0 || (this.act_match||'').length > 0;
+  }
+
+  Result() {
       var output = '';
       var valid = true;
 
@@ -247,6 +260,8 @@ class p4Parser {
               output += '%';
               break;
           }
+          if (this.varSearchUp)
+            output += '^';
           output += 'var';
           break;
 
@@ -259,13 +274,13 @@ class p4Parser {
         return "Invalid";
 
       if (this.source_hasItems) {
-        if (this.source_name != null) output += '[\'' + this.source_name + '\']';
-        if (this.source_match != null) output += ':{' + this.source_match + '}';
+        if ((this.source_name||'').length > 0) output += '[' + this.source_name + ']';
+        if ((this.source_match||'').length > 0) output += ':{' + this.source_match + '}';
       }
 
-      if (this.act_hasItem) {
+      if (this.act_hasItems) {
         output += '->';
-        if (this.act_name != null) {
+        if ((this.act_name||'').length > 0) {
           switch (this.act_scopeLevel) {
             case 1:
               output += '&';
@@ -275,7 +290,21 @@ class p4Parser {
               break;
           }
           output += this.act_name;
-        } else if (this.act_match != null) {
+          if (this.act_nExists) output += '?';
+          if (this.act_nCount) output += '#';
+          if (this.act_nResult) output += '@';
+          if (this.act_nSpread) {
+            switch(this.act_nSpreadType) {
+              case -1:
+                output += '_#';
+                break;
+              case -2:
+                output += '_?';
+                break;
+            }
+            if (this.act_nSpreadType >= 0) output += ('_#' + this.act_nSpreadType);
+          }
+        } else if ((this.act_match|'').length > 0) {
           output += '{' + this.act_match + '}'
         }
       }
@@ -288,41 +317,29 @@ class p4Parser {
       this.isOpt = randomBool();
       this.condSrc = randomInt(-1, 2);
 
-      this.srcType = randomInt(0, 2);
-      this.isRequest = randomBool();
-      this.isResponse = randomBool();
+      this.srcType = randomInt(0, 4);
       this.isHead = randomBool();
       this.isBody = randomBool();
-      this.varLevel = randomInt(0, 2);
+      this.varLevel = randomInt(-1, 2);
+      this.varSearchUp = randomBool();
 
-//      this.source_hasItems = randomBool();
       this.source_name = randomBool() ? randomChars() : null;
       this.source_match = randomBool() ? randomChars() : null;
-      this.source_hasItems = (this.source_name != null || this.source_match != null);
+//      this.source_hasItems = (this.source_name != null || this.source_match != null);
 
-//      this.act_hasItem = randomBool();
       this.act_name = randomBool() ? randomChars() : null;
+      this.act_nExists = randomBool();
+      this.act_nCount = randomBool();
+      this.act_nResult = randomBool();
+      this.act_nSpread = randomBool();
+      this.act_nSpreadType = randomBool() ? randomInt(-1, 30) : -8;
       this.act_scopeLevel = randomInt(-1, 2);
       this.act_match = randomBool() ? randomChars() : null;
-      this.act_hasItem = (this.act_name != null ||
+      this.hasAction = (this.act_name != null ||
             this.act_scopeLevel > -1 || this.act_match != null);
 
       return this.Result;
   }
-}
-
-class parserEditorIDS {
-  constructor(dataID) {
-    this.dataID = dataID;
-  }
-
-  get parser_condOff() { return 'parser_condOff_' + this.dataID; }
-  get parser_condOn() { return 'parser_condOn_' + this.dataID; }
-
-  get source_Type() { return 'srcType_' + this.dataID; }
-  get source_sType() { return 'srcRType_' + this.dataID; }
-
-  get parser_condOff() { return 'parser_confOff_' + this.dataID; }
 }
 
 // HostID (+ [{data}, {data}, ...]
@@ -334,13 +351,6 @@ class parserEditor {
   AddNewSeqList(inData) {
     var listRoot = document.getElementById('level_root');
     if (listRoot == null) return;
-
-    //    data[this.dataID] = {
-    //      parent: 'Level1_' + this.dataID,
-    //      newParent: -1,
-    //      newIndex: -1,
-    //      data: new p4Parser(inData)
-    //    };
 
     let mainTable = this.createMainTable();
     let mainBody = mainTable.querySelector('tbody')
@@ -474,6 +484,7 @@ class parserEditor {
       let commandContent = new parserCommand(this.hostID);
       this.hostDiv.appendChild(commandContent.CreateView());
       commandContent.UpdateEditView();
+      commandContent.enableEditing();
       flipperReadyDiv(this.hostDiv);
     });
     newSeqDiv.appendChild(newSeqBtn);
@@ -486,13 +497,22 @@ class parserCommand {
   constructor(hostID, itemID) {
     this.hostID = hostID;
     this.itemID = itemID || uniqueRandom(rr => (data[rr] === undefined) ? rr : -1);
-    this.itemData = {
-      parent: this.hostID,
-      newParent: -1,
-      newIndex: -1,
-      data: new p4Parser(),
-      Clone: function() { return JSON.parse(JSON.stringify(this)) },
+
+    let makeData = () => {
+      return {
+        parent: this.hostID,
+        newParent: -1,
+        newIndex: -1,
+        data: new p4Parser(),
+        Clone: function() {
+          let cloneObj = makeData();
+          cloneObj.data = Object.assign(new p4Parser(),
+            JSON.parse(JSON.stringify(this.data)));
+          return cloneObj;
+        },
+      }
     };
+    this.itemData = makeData();
 
     this.cmdData = this.itemData.data;
     data[this.itemID] = this.itemData;
@@ -514,80 +534,95 @@ class parserCommand {
   }
 
   SetupAsData(dataObj) {
-    this.itemData.data = new p4Parser();
-    this.cmdData = this.itemData.data;
-
-    this.cellIDs.elems.cmdCondChkBox.checked = this.cmdData.isCond;
-    this.cellIDs.elems.cmdCondChkBox.onclick();
-    this.cellIDs.elems.condOptionalChkBox.checked = this.cmdData.isOpt;
-    this.cellIDs.elems.condOptionalChkBox.onclick();
-
-    this.cellIDs.elems.condReqOptions.selectedIndex = Math.max(0, this.cmdData.condSrc);
-
-    this.cellIDs.elems.rootType.selectedIndex = this.cmdData.srcType;
-    this.cellIDs.elems.rootType.onchange();
-
-    if(this.cmdData.isHead)
-      this.cellIDs.elems.source_RSub.selectedIndex = 1;
-    else if(this.cmdData.isBody)
-      this.cellIDs.elems.source_RSub.selectedIndex = 2;
-    else
-      this.cellIDs.elems.source_RSub.selectedIndex = 0;
-    this.cellIDs.elems.source_RSub.onchange();
-
-    this.cellIDs.elems.source_VSub.selectedIndex = this.cmdData.varLevel;
-
-    if(this.cmdData.source_hasItems) {
-      this.cellIDs.elems.source_iNameState.checked = true;
-      this.cellIDs.elems.source_iNameState.onclick();
-
-      if(this.cmdData.source_name.length > 0) {
-        this.cellIDs.elems.source_iNameState = this.cmdData.source_name;
-      }
-
-      if(this.cmdData.source_match.length > 0) {
-          this.cellIDs.elems.source_iNameState = this.cmdData.source_match;
-      }
-    }
-    this.UpdateEditView();
+    //    this.itemData.data = new p4Parser();
+    //    this.cmdData = this.itemData.data;
+    //
+    //    this.cellIDs.elems.cmdCondChkBox.checked = this.cmdData.isCond;
+    //    this.cellIDs.elems.cmdCondChkBox.onclick();
+    //    this.cellIDs.elems.condOptionalChkBox.checked = this.cmdData.isOpt;
+    //    this.cellIDs.elems.condOptionalChkBox.onclick();
+    //
+    //    this.cellIDs.elems.condReqOptions.selectedIndex = Math.max(0, this.cmdData.condSrc);
+    //
+    //    this.cellIDs.elems.rootType.selectedIndex = this.cmdData.srcType;
+    //    this.cellIDs.elems.rootType.onchange();
+    //
+    //    if(this.cmdData.isHead)
+    //      this.cellIDs.elems.source_RSub.selectedIndex = 1;
+    //    else if(this.cmdData.isBody)
+    //      this.cellIDs.elems.source_RSub.selectedIndex = 2;
+    //    else
+    //      this.cellIDs.elems.source_RSub.selectedIndex = 0;
+    //    this.cellIDs.elems.source_RSub.onchange();
+    //
+    //    this.cellIDs.elems.source_VSub.selectedIndex = this.cmdData.varLevel;
+    //
+    //    if(this.cmdData.source_hasItems) {
+    //      this.cellIDs.elems.source_iNameState.checked = true;
+    //      this.cellIDs.elems.source_iNameState.onclick();
+    //
+    //      if(this.cmdData.source_name.length > 0) {
+    //        this.cellIDs.elems.source_iNameState = this.cmdData.source_name;
+    //      }
+    //
+    //      if(this.cmdData.source_match.length > 0) {
+    //          this.cellIDs.elems.source_iNameState = this.cmdData.source_match;
+    //      }
+    //    }
+    //    this.UpdateEditView();
   }
 
   UpdateEditView() {
-    this.titleEdit.innerText = (this.editData || this.cmdData).Result;
+    this.titleEdit.innerHTML = (this.editData || this.cmdData).Result();
   }
 
   // IDs for all the child cells/ data in the Source cell
   sourceCellIDs() {
+    let ElemIDConfigs = [
+      ['viewTx', []],
+      ['editTx', []],
+      ['root', ['Delete', 'Save', 'EditCancel', 'Content']],
+      ['cond', ['Enabled', 'Off', 'On', 'Opt', 'ReqT']],
+      ['src', ['Type']],
+
+      ['srcRType', ['Row', 'Data']],
+      ['srcVar', ['Type', 'Scope']],
+      ['srcVarScp', ['Row', 'Data']],
+      ['srcVarSrc', ['Row', 'Data']],
+
+      ['srcIName', ['Row', 'State', 'Off', 'On', 'Data']],
+      ['srcIMatch', ['Row', 'State', 'Off', 'On', 'Data']],
+
+      ['act', ['Enabled', 'Off', 'On', 'typeOption']],
+      ['actVar', ['Row', 'Scope', 'Data']],
+      ['actVarPost', ['Row', 'Exists', 'Count', 'Result', 'Spread', 'Index']],
+      ['actMatch', ['Row', 'Data']]
+    ];
+
+    let makeDataObjs = (rootName, subName = '') => {
       return {
-        titleView: 'viewTx_' + this.itemID,
-        titleEdit: 'editTx_' + this.itemID,
+        ID: `${rootName}${subName}_${this.itemID}`,
+        Cell: null,
+        setCell: function(elm) {
+          this.Cell = elm;
+          elm.id = this.ID;
+        }
+      };
+    };
 
-        cmdCondChkBox: 'condEnabled_' + this.itemID,
-        condOptionalChkBox: 'condOpt_' + this.itemID,
-        condReqOptions: 'condReqT_' + this.itemID,
+    let outData = {};
+    ElemIDConfigs.forEach(elmConfig => {
+      let name = elmConfig[0];
+      let childs = elmConfig[1];
+      let outObj = makeDataObjs(name);
+      childs.forEach(cfg => {
+        outObj[cfg] = makeDataObjs(name, cfg);
+      });
+      outData[name] = outObj;
+    });
 
-        rootType: 'srcType_' + this.itemID,
-        source_RSubCell: 'srcRTypeCell_' + this.itemID,
-        source_RSub: 'srcRType_' + this.itemID,
-        source_VSubCell: 'srcVTypeCell_' + this.itemID,
-        source_VSub: 'srcVType_' + this.itemID,
-
-        source_iNameCell: 'srcINameCell_' + this.itemID,
-        source_iNameState: 'srcINameState_' + this.itemID,
-        source_iNameOff: 'srcINameOff_' + this.itemID,
-        source_iNameOn: 'srcINameOn_' + this.itemID,
-        source_iName: 'srcIName_' + this.itemID,
-        source_iMatchCell: 'srcIMatchCell_' + this.itemID,
-        source_iMatchState: 'srcIMatchState_' + this.itemID,
-        source_iMatchOff: 'srcIMatchOff_' + this.itemID,
-        source_iMatchOn: 'srcIMatchOn_' + this.itemID,
-        source_iMatch: 'srcIMatch_' + this.itemID,
-
-        cmdActionChkBox: 'actEnabled_' + this.itemID,
-
-        elems: {}
-      }
-    }
+    return outData;
+  }
 
   createTitleTable() {
     let itemTable = document.createElement('table');
@@ -624,6 +659,7 @@ class parserCommand {
     let titleRow = document.createElement('tr');
 
     let titleHandleCell = document.createElement('td');
+    this.TitleHandle = titleHandleCell;
     titleHandleCell.style.backgroundColor = 'unset';
     let titleHandle = document.createElement('div');
     titleHandle.className = 'sjs_handle';
@@ -639,12 +675,12 @@ class parserCommand {
     titleRow.appendChild(titleTextCell);
 
     let titleView = document.createElement('div');
-    titleView.id = this.cellIDs.titleView;
+    this.cellIDs.viewTx.setCell(titleView);
     this.titleView = titleView;
     titleTextCell.appendChild(titleView);
 
     let titleEdit = document.createElement('div');
-    titleEdit.id = this.cellIDs.titleEdit;
+    this.cellIDs.editTx.setCell(titleEdit);
     this.titleEdit = titleEdit;
     titleEdit.style.display = 'none';
     titleEdit.style.color = 'white';
@@ -666,7 +702,7 @@ class parserCommand {
 
     let btn = document.createElement('button');
     btn.type = 'button';
-    btn.id = 'deleteBtn_' + this.itemID;
+    this.cellIDs.root.Delete.setCell(btn);
     btn.style.display = 'none';
     btn.style.marginRight = '1.5em';
     btn.onclick = function() {
@@ -682,7 +718,7 @@ class parserCommand {
 
     btn = document.createElement('button');
     btn.type = 'button';
-    btn.id = 'saveBtn_' + this.itemID;
+    this.cellIDs.root.Save.setCell(btn);
     btn.style.display = 'none';
     btn.onclick = function() {
       self.titleView.innerText = self.titleEdit.innerText;
@@ -692,13 +728,19 @@ class parserCommand {
     buttonsTD.appendChild(btn);
 
     btn = document.createElement('button');
+    this.EditingBtn = btn;
     btn.type = 'button';
-    btn.id = 'editCancelBtn_' + this.itemID;
+    this.cellIDs.root.EditCancel.setCell(btn);
     btn.onclick = function() {
-      if(btn.innerText == 'Edit')
-        self.editData = self.itemData.Clone()
+      if (btn.innerText == 'Edit') {
+        self.TitleHandle.style.visibility = 'hidden';
+        self.editData = self.itemData.Clone().data;
+      } else {
+        self.TitleHandle.style.visibility = 'unset';
+      }
+
       toggleEditButton(self.itemID);
-      self.titleEdit.innerText = self.titleView.innerText;
+      //      self.titleEdit.innerText = self.titleView.innerText;
     };
     btn.innerText = 'Edit';
     buttonsTD.appendChild(btn);
@@ -706,18 +748,22 @@ class parserCommand {
     return buttonsTD;
   }
 
+  enableEditing() {
+    if (this.EditingBtn.innerText == 'Edit')
+      this.EditingBtn.click();
+  }
+
   // body element for sequence editing controls
   createCmdEditor() {
     let cmdEditorDiv = document.createElement('div');
-    cmdEditorDiv.id = 'editContent_' + this.itemID;
+    this.cellIDs.root.Content.setCell(cmdEditorDiv);
     cmdEditorDiv.style.display = 'none';
 
-    let cmdTable = document.createElement('table');
-    cmdTable.style.width = '100%';
+    let cmdTable = cmdEditorDiv.appendChild(document.createElement('table'));
+    //    cmdTable.style.width = '100%';
     cmdTable.appendChild(this.cmdHeader());
     cmdTable.appendChild(this.cmdBody());
 
-    cmdEditorDiv.appendChild(cmdTable);
     return cmdEditorDiv;
   }
 
@@ -729,7 +775,7 @@ class parserCommand {
 
     // Conditional header
     let cmdCondHead = cmdHeadRow.appendChild(document.createElement('th'));
-    cmdCondHead.style.width = '18%';
+    //    cmdCondHead.style.width = '18%';
     cmdCondHead.appendChild(tooltipText(
       'Conditional',
       'Determines pre/ post actions of a source\'s results'
@@ -737,12 +783,11 @@ class parserCommand {
 
     let cmdCondChkBox = cmdCondHead.appendChild(document.createElement('input'));
     cmdCondChkBox.type = 'checkbox';
-    cmdCondChkBox.id = this.cellIDs.cmdCondChkBox;
-    this.cellIDs.elems.cmdCondChkBox = cmdCondChkBox;
+    this.cellIDs.cond.Enabled.setCell(cmdCondChkBox);
     cmdCondChkBox.onclick = function() {
-        self.toggleCondField(this);
-        self.editData.isCond = this.checked;
-        self.UpdateEditView();
+      self.toggleCondField(this);
+      self.editData.isCond = this.checked;
+      self.UpdateEditView();
     };
 
     // Source header
@@ -754,7 +799,7 @@ class parserCommand {
 
     // Action header
     let cmdActionHead = cmdHeadRow.appendChild(document.createElement('th'));
-    cmdActionHead.style.width = '18%';
+    //    cmdActionHead.style.width = '18%';
     cmdActionHead.appendChild(tooltipText(
       'Action',
       'Processing with the source content'
@@ -762,11 +807,9 @@ class parserCommand {
 
     let cmdActionChkBox = cmdActionHead.appendChild(document.createElement('input'));
     cmdActionChkBox.type = 'checkbox';
-    cmdActionChkBox.id = this.cellIDs.cmdActionChkBox;
-    this.cellIDs.elems.cmdActionChkBox = cmdActionChkBox;
+    this.cellIDs.act.Enabled.setCell(cmdActionChkBox);
     cmdActionChkBox.onclick = function() {
       self.toggleActionField(this);
-      self.editData.act_hasItem = this.checked;
       self.UpdateEditView();
     };
 
@@ -786,12 +829,16 @@ class parserCommand {
 
   // toggle show/ hide of the Action cell states
   toggleActionField(chkBox) {
+    let actCell = this.cellIDs.act;
+    let onCell = actCell.On.Cell.style;
+    let offCell = actCell.Off.Cell.style;
+
     if (chkBox.checked) {
-      this.actFieldID_On.style.display = 'inline';
-      this.actFieldID_Off.style.display = 'none';
+      onCell.display = 'inline';
+      offCell.display = 'none';
     } else {
-      this.actFieldID_On.style.display = 'none';
-      this.actFieldID_Off.style.display = 'inline';
+      onCell.display = 'none';
+      offCell.display = 'inline';
     }
   }
 
@@ -802,7 +849,7 @@ class parserCommand {
 
     cmdRow.appendChild(this.condCell());
     cmdRow.appendChild(this.sourceCell());
-//    cmdRow.appendChild(this.actCell());
+    cmdRow.appendChild(this.actionCell());
 
     return cmdTBody;
   }
@@ -814,7 +861,7 @@ class parserCommand {
 
     let itemOffCell = cell.appendChild(document.createElement('div'));
     this.condFieldID_Off = itemOffCell;
-    itemOffCell.id = 'parser_condOff_' + this.itemID;
+    this.cellIDs.cond.Off.setCell(itemOffCell);
     itemOffCell.appendChild(tooltipText(
       'Disabled',
       'This step\'s end state will not affect other steps'
@@ -822,24 +869,23 @@ class parserCommand {
 
     let itemOnCell = cell.appendChild(document.createElement('div'));
     this.condFieldID_On = itemOnCell;
-    itemOnCell.id = 'parser_condOn_' + this.itemID;
+    this.cellIDs.cond.On.setCell(itemOffCell);
     itemOnCell.style.display = 'none';
 
     // Optional section
     itemOnCell.appendChild(tooltipText(
       'Optional',
       `True; further steps will still run even if this one doesn't pass.
-           False: The conditional must pass for this and future lines to run.
-          `
+       False: The conditional must pass for this and future lines to run.
+      `
     ));
     let condOptionalChkBox = itemOnCell.appendChild(document.createElement('input'));
     condOptionalChkBox.style.marginLeft = '0.2em';
     condOptionalChkBox.type = 'checkbox';
-    condOptionalChkBox.id = this.cellIDs.condOptionalChkBox;
-    this.cellIDs.elems.condOptionalChkBox = condOptionalChkBox;
+    this.cellIDs.cond.Opt.setCell(condOptionalChkBox);
     condOptionalChkBox.onclick = function() {
-        self.editData.isOpt = this.checked;
-        self.UpdateEditView();
+      self.editData.isOpt = this.checked;
+      self.UpdateEditView();
     };
 
     itemOnCell.appendChild(document.createElement('br'))
@@ -853,15 +899,14 @@ class parserCommand {
 
     // Requirement Options
     let condReqOptions = itemOnCell.appendChild(document.createElement('select'));
-    condReqOptions.id = this.cellIDs.condReqOptions;
-    this.cellIDs.elems.condReqOptions = condReqOptions;
+    this.cellIDs.cond.ReqT.setCell(condReqOptions);
     condReqOptions.style.marginLeft = '0.2em';
     appendOption(condReqOptions, 'None', true);
     appendOption(condReqOptions, 'True');
     appendOption(condReqOptions, 'False');
     condReqOptions.onchange = function() {
-        self.editData.condSrc = this.selectedIndex;
-        self.UpdateEditView();
+      self.editData.condSrc = this.selectedIndex;
+      self.UpdateEditView();
     };
 
     return cell;
@@ -878,7 +923,7 @@ class parserCommand {
     let cellTableHead = cellTable.appendChild(document.createElement('thead'));
     let cTableHeadRow = cellTableHead.appendChild(document.createElement('tr'));
     let ctHead1 = cTableHeadRow.appendChild(document.createElement('td'));
-    ctHead1.style.width = '30%';
+    //    ctHead1.style.width = '30%';
     ctHead1.style.padding = '0';
     let ctHead2 = cTableHeadRow.appendChild(document.createElement('td'));
     ctHead2.style.padding = '0';
@@ -889,17 +934,41 @@ class parserCommand {
     return cell;
   }
 
+  // Cell containing the controls for "Action"
+  actionCell() {
+    var self = this;
+    let cell = document.createElement('td');
+
+    let itemOffCell = cell.appendChild(document.createElement('div'));
+    this.cellIDs.act.Off.setCell(itemOffCell);
+    itemOffCell.appendChild(tooltipText(
+      'Disabled',
+      'This command will have no post actions'
+    ));
+
+    let itemOnCell = cell.appendChild(document.createElement('div'));
+    this.cellIDs.act.On.setCell(itemOnCell);
+    itemOnCell.style.display = 'none';
+    this.actionCellData(itemOnCell);
+
+    return cell;
+  }
+
   // Setup of the Source Cell rows (appending to cellTable)
   sourceCellData(cellTable) {
     let tableBody = cellTable.appendChild(document.createElement('tbody'));
     tableBody.appendChild(this.data_SourceTypeRow());
     tableBody.appendChild(this.data_htmlSubTypeRow());
     tableBody.appendChild(this.data_VarScopeCell());
+    tableBody.appendChild(this.data_VarSearchCell());
     tableBody.appendChild(this.data_sourceIndex());
+    tableBody.appendChild(this.data_sourceMatch());
   }
 
-  // Row for: Source's item type
-  // - None, Request, Response, Variable, Uses
+  /*
+   Row for: Source's item type
+   - None, Request, Response, Variable, Uses
+  */
   data_SourceTypeRow() {
     var self = this;
     let row = document.createElement('tr');
@@ -912,28 +981,49 @@ class parserCommand {
 
     let cellData = row.appendChild(document.createElement('td'));
     let dataSelect = cellData.appendChild(document.createElement('select'));
-    dataSelect.id = this.cellIDs.rootType;
-    this.cellIDs.elems.rootType = dataSelect;
+    this.cellIDs.src.Type.setCell(dataSelect);
     dataSelect.onchange = function() {
-      let elms = self.cellIDs.elems;
-      elms.source_RSubCell.style.display = 'none';
-      elms.source_VSubCell.style.display = 'none';
-      elms.source_iNameCell.style.display = 'none';
-//      elms.source_iMatchCell.style.display = 'none';
+      let elms = self.cellIDs;
+      let RTypeCell = self.cellIDs.srcRType.Row.Cell.style;
+      let VScpCell = self.cellIDs.srcVarScp.Row.Cell.style;
+      let VSrcCell = self.cellIDs.srcVarSrc.Row.Cell.style;
+      let srcIName = self.cellIDs.srcIName.Row.Cell.style;
+      let srcIMatch = self.cellIDs.srcIMatch.Row.Cell.style;
+
+      let srcINameData = self.cellIDs.srcIName.Data.Cell;
+      let srcIMatchData = self.cellIDs.srcIMatch.Data.Cell;
 
       switch (this.selectedIndex) {
-        case 1:
-        case 2:
-          elms.source_RSubCell.style.display = '';
+        case 0:
+          RTypeCell.display = 'none';
+          VScpCell.display = 'none';
+          VSrcCell.display = 'none';
+          srcIName.display = 'none';
+          srcIMatch.display = 'none';
           break;
-        case 3:
-          elms.source_VSubCell.style.display = '';
-          elms.source_iNameCell.style.display = '';
-//          elms.source_iMatchCell.style.display = '';
+        case 1: // request
+        case 2: // response
+          VScpCell.display = 'none';
+          VSrcCell.display = 'none';
+          RTypeCell.display = '';
           break;
-        case 4:
-          elms.source_iNameCell.style.display = '';
-//          elms.source_iMatchCell.style.display = '';
+        case 3: // variable
+          srcINameData.placeholder = 'Variable key';
+          srcIMatchData.placeholder = 'Variable matching';
+          RTypeCell.display = 'none';
+          VScpCell.display = '';
+          VSrcCell.display = '';
+          srcIName.display = '';
+          srcIMatch.display = '';
+          break;
+        case 4: // use
+          srcINameData.placeholder = "Other chapter's name";
+          srcIMatchData.placeholder = 'Use value equation';
+          RTypeCell.display = 'none';
+          VScpCell.display = 'none';
+          VSrcCell.display = 'none';
+          srcIName.display = '';
+          srcIMatch.display = '';
           break;
       }
 
@@ -955,8 +1045,7 @@ class parserCommand {
   data_htmlSubTypeRow() {
     var self = this;
     let row = document.createElement('tr');
-    row.id = this.cellIDs.source_RSubCell;
-    this.cellIDs.elems.source_RSubCell = row;
+    this.cellIDs.srcRType.Row.setCell(row);
     row.style.display = 'none'
 
     let cellHead = row.appendChild(document.createElement('td'));
@@ -967,26 +1056,43 @@ class parserCommand {
 
     let cellData = row.appendChild(document.createElement('td'));
     let dataSelect = cellData.appendChild(document.createElement('select'));
-    dataSelect.id = this.cellIDs.source_RSub;
+    this.cellIDs.srcRType.Data.setCell(dataSelect);
     dataSelect.onchange = function() {
-      let elms = self.cellIDs.elems;
-      elms.source_iNameCell.style.display = 'none';
-//      elms.source_iMatchCell.style.display = 'none';
+      let iName = self.cellIDs.srcIName.Row.Cell;
+      let iMatch = self.cellIDs.srcIMatch.Row.Cell;
+      let iNameData = self.cellIDs.srcIName.Data.Cell;
+      let iMatchData = self.cellIDs.srcIMatch.Data.Cell;
 
       switch (this.selectedIndex) {
         case 1:
-          elms.source_iNameCell.style.display = '';
-//          elms.source_iMatchCell.style.display = '';
+          iNameData.placeholder = 'Header key';
+          iMatchData.placeholder = 'Header matching';
+          iName.style.display = '';
+          iMatch.style.display = '';
           break;
         case 2:
-//          elms.source_iMatchCell.style.display = '';
+          iNameData
+          iMatchData.placeholder = 'Body matching';
+          iName.style.display = 'none';
+          iMatch.style.display = '';
           break;
       }
 
       self.editData.isHead = this.selectedIndex == 1;
       self.editData.isBody = this.selectedIndex == 2;
-      self.UpdateEditView();
+      if (row.style.display == '')
+        self.UpdateEditView();
     };
+
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.cellIDs.srcRType.Data.Cell.selectedIndex = 0;
+        self.cellIDs.srcRType.Data.Cell.onchange();
+      }
+    }).observe(row, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
 
     appendOption(dataSelect, 'None', true);
     appendOption(dataSelect, 'Head');
@@ -994,58 +1100,116 @@ class parserCommand {
     return row;
   }
 
+  /*
+   Scope of the variable source
+   - Self, Chapter, Test Bounds
+  */
   data_VarScopeCell() {
-      let row = document.createElement('tr');
-      row.id = this.cellIDs.source_VSubCell;
-      this.cellIDs.elems.source_VSubCell = row;
-      row.style.display = 'none'
+    var self = this;
+    let row = document.createElement('tr');
+    this.cellIDs.srcVarScp.Row.setCell(row);
+    row.style.display = 'none'
 
-      let cellHead = row.appendChild(document.createElement('td'));
-      cellHead.appendChild(tooltipText(
-        'Variable scope level',
-        'Scope area of the search'
-      ));
+    let cellHead = row.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Variable scope level',
+      'Scope area of the search'
+    ));
 
-      let cellData = row.appendChild(document.createElement('td'));
-      let dataSelect = cellData.appendChild(document.createElement('select'));
-      dataSelect.id = this.cellIDs.source_VSub;
-      this.cellIDs.elems.source_VSub = dataSelect;
-      appendOption(dataSelect, '0: Self', true);
-      appendOption(dataSelect, '1: Chapter');
-      appendOption(dataSelect, '2: Test Bounds');
+    let cellData = row.appendChild(document.createElement('td'));
+    let dataSelect = cellData.appendChild(document.createElement('select'));
+    this.cellIDs.srcVarScp.Data.setCell(dataSelect);
+    appendOption(dataSelect, '0: Self', true);
+    appendOption(dataSelect, '1: Chapter');
+    appendOption(dataSelect, '2: Test Bounds');
 
-      dataSelect.onchange = function() {
-        self.editData.varLevel = this.selectedIndex;
-        self.UpdateEditView();
-      };
+    dataSelect.onchange = function() {
+      self.editData.varLevel = this.selectedIndex;
+      self.UpdateEditView();
+    };
 
-      return row;
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.cellIDs.srcVarScp.Data.Cell.selectedIndex = 0;
+        self.cellIDs.srcVarScp.Data.Cell.onchange();
+      }
+    }).observe(row, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    return row;
   }
 
+  /*
+   Determines if the scope is allowed to use it's parents
+   - True/ False
+  */
+  data_VarSearchCell() {
+    var self = this;
+    let row = document.createElement('tr');
+    this.cellIDs.srcVarSrc.Row.setCell(row);
+    row.style.display = 'none'
+
+    let cellHead = row.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Variable hierarchy search',
+      'When set, parent variables will also be searched'
+    ));
+
+    let cellData = row.appendChild(document.createElement('td'));
+    let dataBox = cellData.appendChild(document.createElement('input'));
+    dataBox.type = 'checkbox';
+    this.cellIDs.srcVarSrc.Data.setCell(dataBox);
+    dataBox.onclick = function() {
+      self.editData.varSearchUp = this.checked;
+      self.UpdateEditView();
+    };
+
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.cellIDs.srcVarSrc.Data.Cell.checked = false;
+        self.cellIDs.srcVarSrc.Data.Cell.onclick();
+      }
+    }).observe(row, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    return row;
+  }
+
+  /*
+   Index for the source item
+   Valid types: rType's head, vType, uType
+   - enable/ disabled
+   - Index text
+  */
   data_sourceIndex() {
     var self = this;
     let row = document.createElement('tr');
-    row.id = this.cellIDs.source_iNameCell;
-    this.cellIDs.elems.source_iNameCell = row;
+    this.cellIDs.srcIName.Row.setCell(row);
     row.style.display = 'none'
 
     let cellHead = row.appendChild(document.createElement('td'));
     let cellHeadChkBox = cellHead.appendChild(document.createElement('input'));
-    cellHeadChkBox.id = this.cellIDs.source_iNameState;
-    this.cellIDs.elems.source_iNameState = cellHeadChkBox;
+    this.cellIDs.srcIName.State.setCell(cellHeadChkBox);
     cellHeadChkBox.type = 'checkbox';
     cellHeadChkBox.style.marginRight = '1em';
     cellHeadChkBox.onclick = function() {
-      if(this.checked) {
-        self.cellIDs.elems.source_iNameOff.style.display = 'none';
-        self.cellIDs.elems.source_iNameOn.style.display = '';
+      let srINameObj = self.cellIDs.srcIName;
+      if (this.checked) {
+        srINameObj.Off.Cell.style.display = 'none';
+        srINameObj.On.Cell.style.display = '';
       } else {
-        self.cellIDs.elems.source_iNameOff.style.display = '';
-        self.cellIDs.elems.source_iNameOn.style.display = 'none';
+        srINameObj.Data.Cell.value = '';
+        self.editData.source_name = '';
+        srINameObj.Off.Cell.style.display = '';
+        srINameObj.On.Cell.style.display = 'none';
       }
 
-      self.editData.varLevel = this.selectedIndex;
-      self.UpdateEditView();
+      if (row.style.display == '')
+        self.UpdateEditView();
     };
 
     cellHead.appendChild(tooltipText(
@@ -1054,25 +1218,525 @@ class parserCommand {
     ));
 
     let cellDataOff = row.appendChild(document.createElement('td'));
-    cellDataOff.id = this.cellIDs.source_iNameOff;
-    this.cellIDs.elems.source_iNameOff = cellDataOff;
+    this.cellIDs.srcIName.Off.setCell(cellDataOff);
     cellDataOff.appendChild(tooltipText(
-          'Disabled',
-          'No items within the source will be referenced.'
-        ));
+      'Disabled',
+      'No items within the source will be referenced.'
+    ));
 
     let cellDataOn = row.appendChild(document.createElement('td'));
-    cellDataOn.id = this.cellIDs.source_iNameOn;
-    this.cellIDs.elems.source_iNameOn = cellDataOn;
+    this.cellIDs.srcIName.On.setCell(cellDataOn);
     cellDataOn.style.display = 'none';
 
     let dataOnInput = cellDataOn.appendChild(document.createElement('input'));
-    dataOnInput.id = this.cellIDs.source_iName;
-    this.cellIDs.elems.source_iName = dataOnInput;
+    this.cellIDs.srcIName.Data.setCell(dataOnInput);
     dataOnInput.style.width = '100%';
     dataOnInput.placeholder = 'Reference Item'
+    dataOnInput.oninput = function(evt) {
+      self.editData.source_name = evt.target.value;
+      self.UpdateEditView();
+    };
+
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.cellIDs.srcIName.State.Cell.checked = false;
+        self.cellIDs.srcIName.State.Cell.onclick();
+        self.UpdateEditView();
+      }
+    }).observe(row, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
 
     return row;
+  }
+
+  /*
+   Matching section for source item
+   Valid types: all
+   - enable/ disable
+   - matcher string
+  */
+  data_sourceMatch() {
+    var self = this;
+    let row = document.createElement('tr');
+    this.cellIDs.srcIMatch.Row.setCell(row);
+    row.style.display = 'none'
+
+    let cellHead = row.appendChild(document.createElement('td'));
+    let cellHeadChkBox = cellHead.appendChild(document.createElement('input'));
+    this.cellIDs.srcIMatch.State.setCell(cellHeadChkBox);
+    cellHeadChkBox.type = 'checkbox';
+    cellHeadChkBox.style.marginRight = '1em';
+    cellHeadChkBox.onclick = function() {
+      let srIMatchObj = self.cellIDs.srcIMatch;
+      if (this.checked) {
+        srIMatchObj.Off.Cell.style.display = 'none';
+        srIMatchObj.On.Cell.style.display = '';
+      } else {
+        self.editData.source_match = '';
+        srIMatchObj.Data.Cell.value = '';
+        srIMatchObj.Off.Cell.style.display = '';
+        srIMatchObj.On.Cell.style.display = 'none';
+      }
+
+      if (row.style.display == '')
+        self.UpdateEditView();
+    };
+
+    cellHead.appendChild(tooltipText(
+      'Source match',
+      'Item matching within the source item.'
+    ));
+
+    let cellDataOff = row.appendChild(document.createElement('td'));
+    this.cellIDs.srcIMatch.Off.setCell(cellDataOff);
+    cellDataOff.appendChild(tooltipText(
+      'Disabled',
+      'No item matching within the source will be made.'
+    ));
+
+    let cellDataOn = row.appendChild(document.createElement('td'));
+    this.cellIDs.srcIMatch.On.setCell(cellDataOn);
+    cellDataOn.style.display = 'none';
+
+    let dataOnInput = cellDataOn.appendChild(document.createElement('input'));
+    this.cellIDs.srcIMatch.Data.setCell(dataOnInput);
+    dataOnInput.style.width = '100%';
+    dataOnInput.placeholder = 'Reference Item'
+    dataOnInput.oninput = function(evt) {
+      self.editData.source_match = evt.target.value;
+      self.UpdateEditView();
+    };
+
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.cellIDs.srcIMatch.State.Cell.checked = false;
+        self.cellIDs.srcIMatch.State.Cell.onclick();
+      }
+    }).observe(row, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    return row;
+  }
+
+  /*
+   Body for Command's action items
+   - Type: Variable or match
+   - Variable fields
+   - Matcher Fields
+  */
+  actionCellData(cellTable) {
+    var self = this;
+    cellTable.appendChild(this.actionType());
+    cellTable.appendChild(this.actionVarCell());
+    cellTable.appendChild(this.actionMatchCell());
+
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.editData.act_match = null;
+        self.editData.act_name = null;
+        self.cellIDs.actVar.Row.Cell.style.display = 'none';
+        self.cellIDs.actMatch.Row.Cell.style.display = 'none';
+        document.querySelector(`input[name='${self.cellIDs.act.typeOption.ID}']:checked`).checked = false
+        self.UpdateEditView();
+      }
+    }).observe(cellTable, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+  }
+
+  /*
+   Cell which determines the type of action
+   - Variable
+   - Matcher
+  */
+  actionType() {
+    var self = this;
+
+    let typeTable = document.createElement('table');
+
+    let cellTableHead = typeTable.appendChild(document.createElement('thead'));
+    let cTableHeadRow = cellTableHead.appendChild(document.createElement('tr'));
+    let ctHead1 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead1.style.width = '50%';
+    ctHead1.style.padding = '0';
+    let ctHead2 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead2.style.width = '50%';
+    ctHead2.style.padding = '0';
+
+    let tableBody = typeTable.appendChild(document.createElement('tbody'));
+
+    let infoRow = tableBody.appendChild(document.createElement('tr'));
+    let infoCell = infoRow.appendChild(document.createElement('td'));
+    infoCell.colSpan = "2";
+    infoCell.style.textAlign = 'center';
+    infoCell.appendChild(tooltipText(
+      'Action type',
+      'What this command will do with data', 'left'
+    ));
+
+    let optionRow = tableBody.appendChild(document.createElement('tr'));
+
+    function onChangeFunction() {
+      let ActVarRow = self.cellIDs.actVar.Row.Cell.style;
+      let ActMatchRow = self.cellIDs.actMatch.Row.Cell.style;
+      if (option1Data.checked) {
+        self.editData.act_name = '';
+        self.editData.act_match = null;
+        ActVarRow.display = '';
+        ActMatchRow.display = 'none';
+        self.UpdateEditView();
+      } else if (option2Data.checked) {
+        self.editData.act_name = null;
+        self.editData.act_match = '';
+        ActVarRow.display = 'none';
+        ActMatchRow.display = '';
+        self.UpdateEditView();
+      }
+    };
+
+    let option1Cell = optionRow.appendChild(document.createElement('td'));
+    let op1CellStyle = option1Cell.style;
+    op1CellStyle.textAlign = 'center';
+    op1CellStyle.borderRightWidth = '1px';
+    op1CellStyle.borderRightStyle = 'solid';
+    let info1Div = option1Cell.appendChild(tooltipText(
+      'To Variable',
+      'Where the command will put the data', 'left'
+    ));
+    info1Div.style.textAlign = 'center';
+    let option1Data = option1Cell.appendChild(document.createElement('input'));
+    option1Data.type = 'radio';
+    option1Data.name = this.cellIDs.act.typeOption.ID;
+    option1Data.onchange = () => onChangeFunction();
+
+    let option2Cell = optionRow.appendChild(document.createElement('td'));
+    option2Cell.style.textAlign = 'center';
+    let info2Div = option2Cell.appendChild(tooltipText(
+      'To Source',
+      'What this command will do with data', 'left'
+    ));
+    info2Div.style.textAlign = 'center';
+    let option2Data = option2Cell.appendChild(document.createElement('input'));
+    option2Data.type = 'radio';
+    option2Data.name = this.cellIDs.act.typeOption.ID;
+    option2Data.onchange = () => onChangeFunction();
+
+    return typeTable
+  }
+
+  /*
+    Body content for matcher actions
+    - input
+   */
+  actionMatchCell() {
+    let tableCell = document.createElement('table');
+    tableCell.style.display = 'none';
+    this.cellIDs.actMatch.Row.setCell(tableCell);
+    let cellTableHead = tableCell.appendChild(document.createElement('thead'));
+    let cTableHeadRow = cellTableHead.appendChild(document.createElement('tr'));
+    let ctHead1 = cTableHeadRow.appendChild(document.createElement('td'));
+    //    ctHead1.style.width = '30%';
+    ctHead1.style.padding = '0';
+    let ctHead2 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead2.style.padding = '0';
+
+    let cellTableBody = tableCell.appendChild(document.createElement('tbody'));
+    let cellRow = cellTableBody.appendChild(document.createElement('tr'));
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Result',
+      'Resulting data will be applied to the source\'s content', 'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataOnInput = cellBody.appendChild(document.createElement('input'));
+    this.cellIDs.actMatch.Data.setCell(dataOnInput);
+    dataOnInput.style.width = '100%';
+    dataOnInput.placeholder = 'Data action'
+    dataOnInput.oninput = function(evt) {
+      self.editData.act_match = evt.target.value;
+      self.UpdateEditView();
+    };
+
+    return tableCell;
+  }
+
+  actionVarCell() {
+    // ['actVar', ['Row', 'Scope', 'Data']],
+    /*
+    row: this table
+    scope: actionVarScopeRow
+    data: actionVarNameRow
+    exists:
+    */
+    let tableCell = document.createElement('table');
+    this.cellIDs.actVar.Row.setCell(tableCell);
+    tableCell.style.display = 'none';
+    let cellTableHead = tableCell.appendChild(document.createElement('thead'));
+    let cTableHeadRow = cellTableHead.appendChild(document.createElement('tr'));
+    let ctHead1 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead1.style.padding = '0';
+    let ctHead2 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead2.style.padding = '0';
+
+    let cellTableBody = tableCell.appendChild(document.createElement('tbody'));
+    cellTableBody.appendChild(this.actVarNameRow());
+    cellTableBody.appendChild(this.actVarNameScopeRow());
+    cellTableBody.appendChild(this.actPostVarActionsRow());
+
+    return tableCell;
+  }
+
+  // Row where the user can enter the variable's name
+  actVarNameRow() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Variable name',
+      'Resulting variable name', 'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataOnInput = cellBody.appendChild(document.createElement('input'));
+    this.cellIDs.actVar.Data.setCell(dataOnInput);
+    dataOnInput.style.width = '100%';
+    dataOnInput.placeholder = 'Name'
+    dataOnInput.oninput = function(evt) {
+      self.editData.act_name = evt.target.value;
+      self.UpdateEditView();
+    };
+
+    return cellRow;
+  }
+
+  actVarNameScopeRow() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Save location',
+      'Which scope level to save the variable to', 'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataSelect = cellBody.appendChild(document.createElement('select'));
+    this.cellIDs.actVar.Scope.setCell(dataSelect);
+    appendOption(dataSelect, '0: Self', true);
+    appendOption(dataSelect, '1: Chapter');
+    appendOption(dataSelect, '2: Test Bounds');
+
+    dataSelect.onchange = function() {
+      self.editData.act_scopeLevel = this.selectedIndex;
+      self.UpdateEditView();
+    };
+
+    return cellRow;
+  }
+
+  actPostVarActionsRow() {
+    //['actVarPost', ['Row', 'Exists', 'Count', 'Result', 'Spread']],
+    let cellRow = document.createElement('tr');
+    this.cellIDs.actVarPost.Row.setCell(cellRow);
+
+    let cellContent = cellRow.appendChild(document.createElement('td'));
+    cellContent.colSpan = 2;
+    let tableCell = cellContent.appendChild(document.createElement('table'));
+    let cellTableHead = tableCell.appendChild(document.createElement('thead'));
+    let cTableHeadRow = cellTableHead.appendChild(document.createElement('tr'));
+    let ctHead1 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead1.style.padding = '0';
+    let ctHead2 = cTableHeadRow.appendChild(document.createElement('td'));
+    ctHead2.style.padding = '0';
+
+    let cellTableBody = tableCell.appendChild(document.createElement('tbody'));
+    cellTableBody.appendChild(this.actPostFlagInfo());
+    cellTableBody.appendChild(this.actPostExists());
+    cellTableBody.appendChild(this.actPostCount());
+    cellTableBody.appendChild(this.actPostResults());
+    cellTableBody.appendChild(this.actPostSpread());
+    cellTableBody.appendChild(this.actPostSpreadIndex());
+
+    return cellRow;
+  }
+
+  // highlight text about what this table is about
+  actPostFlagInfo() {
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.colSpan = 2;
+    cellHead.style.textAlign = 'center';
+    cellHead.appendChild(tooltipText(
+      'Additional variables creation',
+      'Enabling the following flags will create additional variables along with the above variable.',
+      'left'
+    ));
+
+    return cellRow;
+  }
+
+  actPostExists() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Exists',
+      'Results of the Source state will be saved to an additional variable.\n' +
+      'Example: name_? => true',
+      'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataBox = cellBody.appendChild(document.createElement('input'));
+    dataBox.type = 'checkbox';
+    this.cellIDs.actVarPost.Exists.setCell(dataBox);
+    dataBox.onclick = function() {
+      self.editData.act_nExists = this.checked;
+      self.UpdateEditView();
+    };
+
+    return cellRow;
+  }
+
+  actPostCount() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Count',
+      'How many results were found from the source match.\n' +
+      'Ex: name_# => 12',
+      'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataBox = cellBody.appendChild(document.createElement('input'));
+    dataBox.type = 'checkbox';
+    this.cellIDs.actVarPost.Count.setCell(dataBox);
+    dataBox.onclick = function() {
+      self.editData.act_nCount = this.checked;
+      self.UpdateEditView();
+    };
+
+    return cellRow;
+  }
+
+  actPostResults() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Result',
+      'Source\'s conditional result.\n' +
+      'Ex: name_@ => true', 'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataBox = cellBody.appendChild(document.createElement('input'));
+    dataBox.type = 'checkbox';
+    this.cellIDs.actVarPost.Result.setCell(dataBox);
+    dataBox.onclick = function() {
+      self.editData.act_nResult = this.checked;
+      self.UpdateEditView();
+    };
+
+    return cellRow;
+  }
+
+  actPostSpread() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Spread',
+      'Export all the matched results as their own variable.\n' +
+      'Ex: name_0, name_1, name_3, etc.',
+      'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataSelect = cellBody.appendChild(document.createElement('select'));
+    this.cellIDs.actVarPost.Spread.setCell(dataSelect);
+    appendOption(dataSelect, 'None', true);
+    appendOption(dataSelect, 'All');
+    appendOption(dataSelect, 'Last');
+    appendOption(dataSelect, 'Single index');
+    dataSelect.onchange = function() {
+      let indexSpreadCell = self.cellIDs.actVarPost.Index.Cell.style;
+      switch(this.selectedIndex) {
+        case 0:
+        case 1:
+        case 2:
+          indexSpreadCell.display = 'none';
+          self.editData.act_nSpreadType = -this.selectedIndex;
+          if(self.editData.act_nSpreadType == 0)
+            self.editData.act_nSpreadType = -8;
+          self.UpdateEditView();
+          break;
+
+        case 3:
+          indexSpreadCell.display = '';
+          break;
+      }
+    };
+
+    return cellRow;
+  }
+
+  actPostSpreadIndex() {
+    var self = this;
+    let cellRow = document.createElement('tr');
+    this.cellIDs.actVarPost.Index.setCell(cellRow);
+    cellRow.style.display = 'none';
+
+    let cellHead = cellRow.appendChild(document.createElement('td'));
+    cellHead.appendChild(tooltipText(
+      'Index',
+      'Export all the matched results as their own variable.\n' +
+      'Ex: 0 => name_0, 13 => name_13, etc.',
+      'left'
+    ));
+
+    let cellBody = cellRow.appendChild(document.createElement('td'));
+    let dataOnInput = cellBody.appendChild(document.createElement('input'));
+    dataOnInput.style.width = '100%';
+    dataOnInput.placeholder = 'Index (0 -> xxx)'
+    dataOnInput.oninput = function(evt) {
+      let inputStr = parseInt(evt.target.value);
+      if(isNaN(inputStr))
+        inputStr = null;
+      dataOnInput.value = inputStr;
+
+      if(cellRow.style.display === '') {
+        self.editData.act_nSpreadType = inputStr || -8;
+        self.UpdateEditView();
+      }
+    };
+
+    new MutationObserver(function(targetView) {
+      if (targetView[0].target.style.display == 'none') {
+        self.cellIDs.srcIMatch.State.Cell.checked = false;
+        self.cellIDs.srcIMatch.State.Cell.onclick();
+      }
+    }).observe(cellRow, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    return cellRow;
   }
 
 }

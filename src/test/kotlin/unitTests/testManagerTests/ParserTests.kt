@@ -1,16 +1,10 @@
 package unitTests.testManagerTests
 
-import helpers.*
 import helpers.matchers.MatcherResult
 import helpers.parser.P4Action
 import helpers.parser.P4Command
 import helpers.parser.Parser_v4
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
-import kolor.*
 import networkRouting.testingManager.*
-import okhttp3.Headers
 import org.junit.Assert
 import org.junit.Test
 
