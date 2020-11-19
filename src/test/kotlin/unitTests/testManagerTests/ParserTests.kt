@@ -184,12 +184,15 @@ class ParserTests {
         )?
     )|
     (?<vType>
-      (?<vbound>
-        (?:(?<vC>&)|(?<vB>%))?
-        (?<vU>\^)?
-      )?
+      (?:
+        (?=[&%\^])
+        (?<vbound>
+          (?:(?<vC>&)|(?<vB>%))?
+          (?<vU>\^)?
+        )|(?:)
+      )
       var
-      (?:\[(?<vN>[a-zA-Z]\w*([?#@]*(?:_[\d#?]*)?))\])?
+      (?:\[(?<vN>[a-zA-Z](?:\w+|(?:[?#@]*(?:_[\d#?]*)?))*)\])?
       (?::\{(?<vM>.+?)\}(?=->|\s|$))?
     )|
     (?<uType>use
@@ -205,10 +208,14 @@ class ParserTests {
         (?<aSC>&)|(?<aSB>%)
       )?
       (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
-      (?<aVT>
-        (?<aVE>\?)?(?<aVC>\#)?(?<aVR>@)?
-        (?<aVX>_(?:(?<aVS>\#(?<aVI>\d+)?)|(?<aVL>\?)))?
-      )?
+      (?:
+        (?<aVT>
+          (?<aVE>\?)?
+          (?<aVC>\#)?
+          (?<aVR>@)?
+          (?<aVS>_(?:(?<aVSA>\#(?<aVSI>\d+)?)|(?<aVSL>\?)))?
+        )
+      )
     )
   )
 )?
@@ -410,7 +417,7 @@ class ParserTests {
         ),
         // to a scoped variable, instead of test bound variable
         "response:body:{bb}->&cc" to listOf(
-            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aVS", "aVN"
+            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aSVL", "aSC", "aVN"
         )
     )
 
@@ -567,16 +574,17 @@ class ParserTests {
             Assert.fail(condErrorStr)
         }
 
-        parsed.forEach {
-            if (!expected.contains(it.groupName)) {
-                val expStr = "Parsed contains: ${it.groupName}\n" +
+        parsed.asSequence()
+            .filter { !expected.contains(it.groupName) }
+            .map { it.groupName }
+            .firstOrNull()?.also { groupName ->
+                val expStr = "Parsed contains: $groupName\n" +
                         "Expected only: ${expected.joinToString()}\n" +
                         "Full parsed: ${parsed.joinToString { it.groupName }}\n" +
-                        "Did you forget to add '${it.groupName}'?"
+                        "Did you forget to add '$groupName'?"
 
                 Assert.fail(expStr)
             }
-        }
 
         expected.forEach { eName ->
             val expStr = "Expecting to contain: $eName\n" +
@@ -621,7 +629,7 @@ class ParserTests {
     fun deTemplate_passthroughTest() {
         val cleanInput = "any(group)Text"
 
-        val result = Parser_v4.deTemplate(cleanInput) { _, _ -> "fail" }
+        val result = Parser_v4.deTemplate(cleanInput) { _, _, _ -> "fail" }
 
         Assert.assertEquals(
             "Input is expected to pass straight through",
@@ -634,7 +642,7 @@ class ParserTests {
         val input = "input_@{'item'}_test"
         val expectOut = "input_item_test"
 
-        val result = Parser_v4.deTemplate(input) { _, _ -> "fail" }
+        val result = Parser_v4.deTemplate(input) { _, _, _ -> "fail" }
 
         Assert.assertEquals(
             "Single quotes values are final values",
@@ -647,7 +655,7 @@ class ParserTests {
         val input = "input_@{user}_test"
         val expectOut = "input_pass_test"
 
-        val result = Parser_v4.deTemplate(input) { v, _ ->
+        val result = Parser_v4.deTemplate(input) { v, _, _ ->
             when (v) {
                 "user" -> "pass"
                 else -> "fail"
@@ -665,7 +673,7 @@ class ParserTests {
         val input = "input_@{2}_test"
         val expectOut = "input_pass_test"
 
-        val result = Parser_v4.deTemplate(input) { v, _ ->
+        val result = Parser_v4.deTemplate(input) { v, _, _ ->
             when (v) {
                 "2" -> "pass"
                 else -> "fail"
@@ -683,7 +691,7 @@ class ParserTests {
         val input = "input_@{none|'other'}_test"
         val expectOut = "input_other_test"
 
-        val result = Parser_v4.deTemplate(input) { v, _ ->
+        val result = Parser_v4.deTemplate(input) { v, _, _ ->
             when (v) {
                 "item" -> "pass"
                 else -> null
@@ -701,7 +709,7 @@ class ParserTests {
         val input = "input_@{aaa}-@{&aaa}_test"
         val expectOut = "input_bb-cc_test"
 
-        val result = Parser_v4.deTemplate(input) { v, s ->
+        val result = Parser_v4.deTemplate(input) { v, s, _ ->
             when (v) {
                 "aaa" -> {
                     if (s == 1) "cc"
@@ -719,30 +727,54 @@ class ParserTests {
 
     @Test
     fun parse_v4_bodyIgnoreInvalid() {
-        // Only the first action array contains all valid items
-        // Second array has an invalid action, so the whole array is bad (for safety)
         val body = """
-            {
-               "aa":[
-                  [
-                     "request:body:{code: .+}->codeA",
-                     "request:body:{other: .+}->codeB"
-                  ],
-                  [
+            { 
+              "chapter_aa":{
+                "stateUse": 4,
+                "seqSteps": [
+                  {
+                    "Name": "valid_1",
+                    "Commands": [
+                      "request:body:{code: .+}->codeA",
+                      "request:body:{other: .+}->codeB"
+                    ]
+                  },
+                  {
+                    "Name": "invalid_1",
+                    "Commands": [
                       "request:body:{code: .+}->codeC",
                       "body:{other: .+}->codeD"
-                  ]
-               ]
+                    ]
+                  }
+                ]
+              },
+              "chapter_bb": {
+                "scopeVars": {
+                  "g": "x",
+                  "h": "y"
+                }
+              }
             }
         """.trimIndent()
 
         val result = Parser_v4.parseBody(body)
 
-        Assert.assertTrue(result.containsKey("aa"))
-        Assert.assertEquals(1, result["aa"]!!.seqSteps.size)
-        val firstSeq = result["aa"]!!.seqSteps.first()
-        Assert.assertTrue(firstSeq.any { it.act_name == "codeA" })
-        Assert.assertTrue(firstSeq.any { it.act_name == "codeB" })
+        Assert.assertTrue(result.containsKey("chapter_aa"))
+        Assert.assertTrue(result.containsKey("chapter_bb"))
+        result["chapter_aa"]!!.apply {
+            Assert.assertEquals(4, stateUse)
+            Assert.assertEquals(2, seqSteps.size)
+            Assert.assertTrue(seqSteps[0].Commands.all { it.isValid })
+            Assert.assertEquals(1, seqSteps[1].Commands.count { !it.hasResults })
+        }
+
+        result["chapter_bb"]!!.apply {
+            Assert.assertTrue(scopeVars.containsKey("g"))
+            Assert.assertEquals("x", scopeVars["g"])
+
+            Assert.assertTrue(scopeVars.containsKey("h"))
+            Assert.assertEquals("y", scopeVars["h"])
+        }
     }
 
     @Test

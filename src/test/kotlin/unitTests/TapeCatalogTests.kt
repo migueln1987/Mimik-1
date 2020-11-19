@@ -91,8 +91,8 @@ class TapeCatalogTests {
             testObject.apply {
                 val response = request.createResponse(testCode) { testMessage }
 
-                Assert.assertEquals(response.code(), testCode.value)
-                Assert.assertEquals(response.message(), testMessage)
+                Assert.assertEquals(response.code, testCode.value)
+                Assert.assertEquals(response.message, testMessage)
             }
         }
     }

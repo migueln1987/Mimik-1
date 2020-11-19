@@ -35,13 +35,8 @@ fun JsonElement.fileSize() =
 /**
  * Returns this [File] in the form of "B/ KB/ MB, etc."
  */
-fun File.fileSize(): String {
-    return try {
-        length().toDouble().fileSize()
-    } catch (e: Exception) {
-        "- B"
-    }
-}
+fun File.fileSize(): String =
+    tryOrNull { length().toDouble().fileSize() } ?: "- B"
 
 /**
  * Returns this [Double] in the form of "B/ KB/ MB, etc."

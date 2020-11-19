@@ -36,11 +36,11 @@ class CallProcessor : RoutingContract("{...}") {
         val processResponse = tapeCatalog.processCall(this)
         val contentType = (processResponse.header(HttpHeaders.ContentType) ?: "text/plain")
             .asContentType
-        val code = HttpStatusCode.fromValue(processResponse.code())
+        val code = HttpStatusCode.fromValue(processResponse.code)
 
-        response.headers.append(processResponse.headers())
-        val content = processResponse.body().content()
-        if (content.isEmpty() && processResponse.body()?.contentLength() ?: 0 > 0) {
+        response.headers.append(processResponse.headers)
+        val content = processResponse.body.content()
+        if (content.isEmpty() && processResponse.body?.contentLength() ?: 0 > 0) {
             respondText(contentType, HttpStatusCode.ExpectationFailed) { "Body length is longer than content length." }
             return
         }

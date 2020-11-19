@@ -1,7 +1,7 @@
 package apiTests
 
 import VCRConfig
-import mimik.module
+import mimik.MimikModule
 import io.ktor.server.testing.TestApplicationCall
 import io.ktor.server.testing.TestApplicationEngine
 import io.ktor.server.testing.TestApplicationRequest
@@ -21,7 +21,7 @@ fun setupVCRConfig(newDir: String = "/test/Tapes") {
 }
 
 fun TestApp(callback: TestApplicationEngine.() -> Unit) =
-    withTestApplication({ module(testing = true) }, callback)
+    withTestApplication({ MimikModule(testing = true) }, callback)
 
 fun TestApplicationCall.request(config: (TestApplicationRequest) -> Unit) =
     config.invoke(request)

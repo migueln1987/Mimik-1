@@ -570,19 +570,19 @@ object TapeEditor : EditorModule() {
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isEnabled(it.mockUses) &&
-                                        it.alwaysLive.orFalse
+                                    it.alwaysLive.orFalse
                             }.toString()
                         }
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isEnabled(it.mockUses) &&
-                                        !it.awaitResponse
+                                    !it.awaitResponse
                             }.toString()
                         }
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isEnabled(it.mockUses) &&
-                                        it.awaitResponse
+                                    it.awaitResponse
                             }.toString()
                         }
                     }
@@ -593,19 +593,19 @@ object TapeEditor : EditorModule() {
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isDisabled(it.mockUses) &&
-                                        it.alwaysLive.orFalse
+                                    it.alwaysLive.orFalse
                             }.toString()
                         }
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isDisabled(it.mockUses) &&
-                                        !MockUseStates.isLimitedMock(it.mockUses)
+                                    !MockUseStates.isLimitedMock(it.mockUses)
                             }.toString()
                         }
                         td {
                             +tape.chapters.count {
                                 MockUseStates.isDisabled(it.mockUses) &&
-                                        it.awaitResponse
+                                    it.awaitResponse
                             }.toString()
                         }
                     }

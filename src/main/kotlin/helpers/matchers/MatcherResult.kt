@@ -1,7 +1,5 @@
 package helpers.matchers
 
-import helpers.size
-
 /**
  * Similar to [MatchResult], but with index/ name vars + lambda constructor
  */
@@ -15,16 +13,16 @@ open class MatcherResult {
     val value: String?
     val range: IntRange
     val isLiteral: Boolean
+
     /**
      * How many chars literally match from the filter to input
      */
     val litMatchCnt: Int
 
     /**
-     * True: the range of this match is greater (or equal) to zero
+     * True: The result range has values
      */
-    val hasMatch: Boolean
-        get() = range.size >= 0
+    val hasMatch get() = !range.isEmpty()
 
     constructor(index: Int) {
         groupName = ""

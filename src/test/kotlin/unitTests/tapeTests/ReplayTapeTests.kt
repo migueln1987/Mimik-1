@@ -7,8 +7,8 @@ import io.mockk.every
 import io.mockk.mockk
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
-import okhttp3.Headers
-import okhttp3.HttpUrl
+import okhttp3.Headers.Companion.headersOf
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Protocol
 import okreplay.Request
 import org.junit.Assert
@@ -27,9 +27,9 @@ class ReplayTapeTests {
     @Test
     fun seekTest_NotFound() {
         val request = mockk<Request> {
-            every { url() } returns HttpUrl.get("http://valid.url/path")
+            every { url() } returns "http://valid.url/path".toHttpUrl()
             every { hasBody() } returns false
-            every { headers() } returns Headers.of("Key", "Value")
+            every { headers() } returns headersOf("Key", "Value")
             every { method() } returns "GET"
         }
 
@@ -49,9 +49,9 @@ class ReplayTapeTests {
         testObject.chapters.add(chapter)
 
         val request = mockk<Request> {
-            every { url() } returns HttpUrl.get("http://valid.url/path")
+            every { url() } returns "http://valid.url/path".toHttpUrl()
             every { hasBody() } returns false
-            every { headers() } returns Headers.of("Key", "Value")
+            every { headers() } returns headersOf("Key", "Value")
             every { method() } returns "GET"
         }
 
@@ -74,7 +74,7 @@ class ReplayTapeTests {
                 every { bodyAsText() } returns mockBodyMessage
                 every { code() } returns HttpStatusCode.OK.value
                 every { protocol() } returns Protocol.HTTP_1_1
-                every { headers() } returns Headers.of("key", "value")
+                every { headers() } returns headersOf("key", "value")
                 every { contentType } returns ""
             }
         }
@@ -82,10 +82,10 @@ class ReplayTapeTests {
         testObject.chapters.add(chapterMock)
 
         val request = mockk<Request> {
-            every { url() } returns HttpUrl.get("http://valid.url/path")
+            every { url() } returns "http://valid.url/path".toHttpUrl()
             every { hasBody() } returns false
             every { method() } returns "GET"
-            every { headers() } returns Headers.of("key", "playMockChapter")
+            every { headers() } returns headersOf("key", "playMockChapter")
         }
 
         val response = testObject.play(request)
@@ -108,7 +108,7 @@ class ReplayTapeTests {
                 every { bodyAsText() } returns mockBodyMessage
                 every { code() } returns HttpStatusCode.OK.value
                 every { protocol() } returns Protocol.HTTP_1_1
-                every { headers() } returns Headers.of("key", "value")
+                every { headers() } returns headersOf("key", "value")
                 every { contentType } returns ""
             }
         }
@@ -126,7 +126,7 @@ class ReplayTapeTests {
                 every { bodyAsText() } returns liveBodyMessage
                 every { code() } returns HttpStatusCode.OK.value
                 every { protocol() } returns Protocol.HTTP_1_1
-                every { headers() } returns Headers.of("key", "value")
+                every { headers() } returns headersOf("key", "value")
                 every { contentType } returns ""
             }
         }
@@ -135,9 +135,9 @@ class ReplayTapeTests {
         testObject.chapters.add(chapterLive)
 
         val request = mockk<Request> {
-            every { url() } returns HttpUrl.get("http://valid.url/path")
+            every { url() } returns "http://valid.url/path".toHttpUrl()
             every { hasBody() } returns false
-            every { headers() } returns Headers.of("key", "value")
+            every { headers() } returns headersOf("key", "value")
             every { method() } returns "GET"
         }
 

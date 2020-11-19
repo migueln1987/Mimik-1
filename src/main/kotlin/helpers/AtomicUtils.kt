@@ -1,7 +1,6 @@
 package helpers
 
-import kotlinx.atomicfu.AtomicRef
-import kotlinx.atomicfu.atomic
+import java.util.concurrent.atomic.AtomicReference
 
-val <T : Any> T.asAtomic: AtomicRef<T>
-    get() = atomic(this)
+val <T : Any> T.asAtomic: AtomicReference<T>
+    get() = AtomicReference(this)

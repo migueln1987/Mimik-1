@@ -21,7 +21,8 @@
  "routingUrl": "https://dit1-cardvalet-ca.fiservapps.com",
  "chapters": [
   {
-   "chapterName": "Login_NoPass-66220004",
+   "UID": "4c67e8d3-9965-4b56-bfdb-b3cdc31e6701",
+   "chapterName": "Login_NoPass",
    "attractors": {
     "routingPath": {
      "value": "fiserver/cbes/perform.do"
@@ -42,10 +43,20 @@
       "except": true
      },
      {
-      "value": "66220004"
+      "value": "fiToken\".+\"\\d+"
      }
     ]
    },
+   "seqActions": [
+    {
+     "ID": 348830999,
+     "Name": "Sequence 197907069",
+     "Commands": [
+      "request:body:{fiToken.+?\"(\\d+)\"}-\u003e%fiToken",
+      "response:body:{(fiToken.+?\")(\\d+)}-\u003e{@{1}@{%fiToken}}"
+     ]
+    }
+   ],
    "mockUses": -1,
    "requestData": {
     "method": "POST",
@@ -69,62 +80,11 @@
       "application/json"
      ]
     },
-    "body": "{\"apiVersion\": \"v2.0\",\"opId\": \"LOGIN_MULTISTEP\",\"responseDataList\": [{\"fiToken\": \"66220004\",\"operationCompleted\": false,\"subscriberReferenceId\": null,\"authToken\": null,\"authTokenExpiresIn\": null,\"authTokenIdleTime\": null,\"nextStateId\": 65,\"nextStateParams\": {\"526\": null,\"504\": null,\"503\": null,\"502\": null,\"501\": null,\"512\": null,\"527\": null}}],\"responseStatus\": {\"messageCode\": \"MFA_LOGIN_1001\",\"responseCode\": 0,\"operationTraceId\": \"c1914969ondotccd094optrc4d94ccapi8f612c62d92cf98e-7-5-5\",\"additionalInfo\": {\"FI_NAME\": \"CO11\",\"FI_CONTACT\": \"\"}}}"
+    "body": "{\"apiVersion\": \"v2.0\",\"opId\": \"LOGIN_MULTISTEP\",\"responseDataList\": [{\"fiToken\": \"000000000\",\"operationCompleted\": false,\"subscriberReferenceId\": null,\"authToken\": null,\"authTokenExpiresIn\": null,\"authTokenIdleTime\": null,\"nextStateId\": 65,\"nextStateParams\": {\"501\": null,\"502\": null,\"503\": null,\"504\": null,\"512\": null,\"526\": null,\"527\": null}}],\"responseStatus\": {\"messageCode\": \"MFA_LOGIN_1001\",\"responseCode\": 0,\"operationTraceId\": \"c1914969ondotccd094optrc4d94ccapi8f612c62d92cf98e-7-5-5\",\"additionalInfo\": {\"FI_NAME\": \"CO11\",\"FI_CONTACT\": \"\"}}\r\n}"
    }
   },
   {
-   "chapterName": "Login_NoPass-32327630",
-   "attractors": {
-    "routingPath": {
-     "value": "fiserver/cbes/perform.do"
-    },
-    "queryMatchers": [
-     {
-      "value": "opId\u003dLOGIN_MULTISTEP"
-     }
-    ],
-    "headerMatchers": [
-     {
-      "allowAllInputs": true
-     }
-    ],
-    "bodyMatchers": [
-     {
-      "value": "requestParams[^\\d]+501",
-      "except": true
-     },
-     {
-      "value": "32327630"
-     }
-    ]
-   },
-   "mockUses": -1,
-   "requestData": {
-    "method": "POST",
-    "url": "https://dit1-cardvalet-ca.fiservapps.com/fiserver/cbes/perform.do?opId\u003dLOGIN_MULTISTEP\u0026apiVersion\u003dv2.0",
-    "headers": {
-     "namesAndValues": [
-      "Authorization",
-      "Basic {Auth Code}",
-      "Content-Type",
-      "application/json"
-     ]
-    },
-    "body": "{\"rememberUser\": \"false\",\"appToken\": \"ATOKEN30\",\"appVersion\": \"0.0.20-21.15.00\",\"countryCode\": \"US\",\"deviceUniqueId\": \"21e4624a-b417-3be0-8209-c749cfca8731\",\"fiToken\": \"32327630\",\"language\": \"en-IN\"\r\n}"
-   },
-   "responseData": {
-    "code": 200,
-    "protocol": "HTTP_1_1",
-    "headers": {
-     "namesAndValues": [
-      "Content-Type",
-      "application/json"
-     ]
-    },
-    "body": "{\"apiVersion\": \"v2.0\",\"opId\": \"LOGIN_MULTISTEP\",\"responseDataList\": [{\"fiToken\": \"32327630\",\"operationCompleted\": false,\"subscriberReferenceId\": null,\"authToken\": null,\"authTokenExpiresIn\": null,\"authTokenIdleTime\": null,\"nextStateId\": 65,\"nextStateParams\": {\"501\": null,\"502\": null,\"503\": null,\"504\": null,\"512\": null,\"526\": null,\"527\": null}}],\"responseStatus\": {\"messageCode\": \"MFA_LOGIN_1001\",\"responseCode\": 0,\"operationTraceId\": \"c1914969ondotccd094optrc4d94ccapi8f612c62d92cf98e-7-5-5\",\"additionalInfo\": {\"FI_NAME\": \"CO11\",\"FI_CONTACT\": \"\"}}\r\n}"
-   }
-  },
-  {
+   "UID": "f6acfdf2-e3b7-46c1-b6f1-0f80c2e8eb83",
    "chapterName": "REGISTER_DEVICE",
    "attractors": {
     "routingPath": {
@@ -173,6 +133,7 @@
    }
   },
   {
+   "UID": "3bce2838-5f52-4c8d-80a1-12ec5f05b77c",
    "chapterName": "GET_APP_INFO",
    "attractors": {
     "routingPath": {
@@ -221,6 +182,7 @@
    }
   },
   {
+   "UID": "e91d583a-dc73-4471-8a25-f86a5c90b049",
    "chapterName": "GET_ASSETS",
    "attractors": {
     "routingPath": {
@@ -269,6 +231,7 @@
    }
   },
   {
+   "UID": "6698db17-8e0b-4bed-8949-9d6ad4807709",
    "chapterName": "GET_CARD_LIST",
    "attractors": {
     "routingPath": {
@@ -319,6 +282,7 @@
    }
   },
   {
+   "UID": "255ff48a-4b0b-4600-9067-7340a2466b9c",
    "chapterName": "GET_USER_INFO",
    "attractors": {
     "routingPath": {
@@ -369,6 +333,7 @@
    }
   },
   {
+   "UID": "35f7f633-a66d-42f9-b52f-d26e0524c7ed",
    "chapterName": "CHECK_SESSION",
    "attractors": {
     "routingPath": {
@@ -419,6 +384,7 @@
    }
   },
   {
+   "UID": "ebc32e21-2d3e-4c5a-90fd-adad6e9c57a6",
    "chapterName": "GET_MESSAGES",
    "attractors": {
     "routingPath": {
@@ -469,6 +435,7 @@
    }
   },
   {
+   "UID": "cbc3b3e9-11ef-4c90-b453-00597fc295b8",
    "chapterName": "GET_FRAUD_MESSAGES",
    "attractors": {
     "routingPath": {
@@ -519,6 +486,7 @@
    }
   },
   {
+   "UID": "0930a445-53d8-40aa-8067-2a89711e3c09",
    "chapterName": "CHECK_LOCATION_MONITORING",
    "attractors": {
     "routingPath": {
@@ -569,6 +537,7 @@
    }
   },
   {
+   "UID": "3be630d7-6493-4187-8171-cfe40eb3336a",
    "chapterName": "DELETE_SESSION",
    "attractors": {
     "routingPath": {
@@ -619,6 +588,7 @@
    }
   },
   {
+   "UID": "6a7cee3c-3fe1-4703-bb65-a33fa7032a12",
    "chapterName": "MESSAGE_READ",
    "attractors": {
     "routingPath": {
@@ -669,6 +639,7 @@
    }
   },
   {
+   "UID": "d4b5c8f8-c973-4a28-b09e-a81e5cc3e911",
    "chapterName": "SET_CARD_POLICY",
    "attractors": {
     "routingPath": {
@@ -719,6 +690,7 @@
    }
   },
   {
+   "UID": "d387b0d5-9ae4-4d89-b00d-ace0830a433b",
    "chapterName": "DISABLE_TOUCHID",
    "attractors": {
     "routingPath": {
@@ -769,6 +741,7 @@
    }
   },
   {
+   "UID": "eea33b61-e837-4a1f-82f9-36d14b062dce",
    "chapterName": "ENABLE_TOUCHID",
    "attractors": {
     "routingPath": {
@@ -819,6 +792,7 @@
    }
   },
   {
+   "UID": "94fac60a-f9f6-4bb8-abf6-2f4825a2f78b",
    "chapterName": "FRAUD_CASE_INFO",
    "attractors": {
     "routingPath": {
@@ -865,6 +839,7 @@
    }
   },
   {
+   "UID": "c7d728bd-1979-411a-bf15-b7957047405b",
    "chapterName": "FRAUD_CONFIRMATION",
    "attractors": {
     "routingPath": {
@@ -911,6 +886,7 @@
    }
   },
   {
+   "UID": "42fd8095-55ab-4ea4-9bff-ab19e1f7229f",
    "chapterName": "CTC_GET_TFNs",
    "attractors": {
     "routingPath": {
@@ -961,6 +937,7 @@
    }
   },
   {
+   "UID": "49faaf45-e010-48cf-9441-a365ffd07cec",
    "chapterName": "CFC_ELIGIBILITY_AND_GET_TOKEN",
    "attractors": {
     "routingPath": {
@@ -1011,6 +988,7 @@
    }
   },
   {
+   "UID": "e7cd0fb7-8394-4369-9f95-aa6cf02bbdcf",
    "chapterName": "CFC_GEN_NEW_TOKEN",
    "attractors": {
     "routingPath": {
@@ -1061,6 +1039,7 @@
    }
   },
   {
+   "UID": "7bd810d5-1ebb-4973-8789-e623231057a3",
    "chapterName": "TRAVELPLAN_GET_DELIVERY_CHANNELS",
    "attractors": {
     "routingPath": {
@@ -1111,6 +1090,7 @@
    }
   },
   {
+   "UID": "86cf7617-24e3-4d56-832e-a01389f5b136",
    "chapterName": "TRAVELPLAN_REQUEST_OTP",
    "attractors": {
     "routingPath": {
@@ -1161,6 +1141,7 @@
    }
   },
   {
+   "UID": "e1b7b3eb-7f4c-4899-b09b-4b27f11167b3",
    "chapterName": "ADD_PASSTHROUGH_TRAVELPLAN",
    "attractors": {
     "routingPath": {
@@ -1211,6 +1192,7 @@
    }
   },
   {
+   "UID": "f3e1518c-1d17-46a7-a6fd-20d5cac22304",
    "chapterName": "ADD_CARD_v2",
    "attractors": {
     "routingPath": {
@@ -1261,6 +1243,7 @@
    }
   },
   {
+   "UID": "a3fa4fae-59a6-42eb-995d-9d29c8ed61ff",
    "chapterName": "TRAVELPLAN_VALIDATE_OTP-Invalid",
    "attractors": {
     "routingPath": {
@@ -1311,6 +1294,7 @@
    }
   },
   {
+   "UID": "0e482315-4377-4f66-88e7-ce24873c828a",
    "chapterName": "TRAVELPLAN_VALIDATE_OTP-Valid",
    "attractors": {
     "routingPath": {
@@ -1360,8 +1344,7 @@
    }
   },
   {
-   "recordedDate": "Jan 31, 2020 11:00:41 AM",
-   "modifiedDate": "Jan 31, 2020 11:01:29 AM",
+   "UID": "1285a409-2796-4b48-87f2-9bf66f7521a2",
    "chapterName": "DELETE_PASSTHROUGH_TRAVELPLAN",
    "attractors": {
     "routingPath": {
@@ -1412,8 +1395,7 @@
    }
   },
   {
-   "recordedDate": "Feb 4, 2020 11:12:01 AM",
-   "modifiedDate": "Feb 4, 2020 11:12:31 AM",
+   "UID": "aea5920c-1b49-4387-8347-c1bf7ed23324",
    "chapterName": "UPDATE_PASSTHROUGH_TRAVELPLAN",
    "attractors": {
     "routingPath": {
@@ -1460,70 +1442,6 @@
      ]
     },
     "body": "{\"apiVersion\": \"v2.0\",\"opId\": \"ADD_PASSTHROUGH_TRAVELPLAN\",\"responseDataList\": [{\"travelPlans\": [{\"travelPlanReferenceId\": 1,\"startDate\": \"2020-02-10\",\"endDate\": \"2020-02-14\",\"timeZoneId\": \"CST\",\"destinations\": [{\"countryId\": 840,\"stateId\": 48}]},{\"travelPlanReferenceId\": 2,\"startDate\": \"2020-01-31\",\"endDate\": \"2020-01-31\",\"timeZoneId\": \"CST\",\"destinations\": [{\"countryId\": 840,\"stateId\": 12}]}]}],\"responseStatus\": {\"messageCode\": \"TP_100\",\"responseCode\": 0,\"operationTraceId\": \"2ef3befeondotcc2926optrc43a3ccapi8c0c5c87077f661e-7-5-5\",\"additionalInfo\": {\"FI_NAME\": \"CO11\",\"FI_CONTACT\": \"\"}}\r\n}"
-   }
-  },
-  {
-   "recordedDate": "Feb 4, 2020 11:37:53 AM",
-   "modifiedDate": "Feb 4, 2020 11:40:09 AM",
-   "chapterName": "Login_NoPass-66220002",
-   "attractors": {
-    "routingPath": {
-     "value": "fiserver/cbes/perform.do"
-    },
-    "queryMatchers": [
-     {
-      "value": "opId\u003dLOGIN_MULTISTEP"
-     }
-    ],
-    "headerMatchers": [
-     {
-      "allowAllInputs": true
-     }
-    ],
-    "bodyMatchers": [
-     {
-      "value": "requestParams[^\\d]+501",
-      "except": true
-     },
-     {
-      "value": "66220002"
-     }
-    ]
-   },
-   "mockUses": -1,
-   "requestData": {
-    "method": "POST",
-    "url": "https://dit1-cardvalet-ca.fiservapps.com/fiserver/cbes/perform.do?opId\u003dLOGIN_MULTISTEP\u0026apiVersion\u003dv2.0",
-    "headers": {
-     "namesAndValues": [
-      "Authorization",
-      "Basic TW9iQXNwX0NBOnBhc3N3MHJk",
-      "Content-Type",
-      "application/json; charset\u003dUTF-8",
-      "Content-Length",
-      "218",
-      "Connection",
-      "Keep-Alive",
-      "Accept-Encoding",
-      "gzip",
-      "User-Agent",
-      "okhttp/3.12.1",
-      "HOST",
-      "dit1-cardvalet-ca.fiservapps.com"
-     ]
-    },
-    "body": "{\"rememberUser\":\"false\",\"appToken\":\"COR9\",\"appVersion\":\"0.0.22-04.11.35\",\"clientIdentifier\":\"66220002\",\"countryCode\":\"US\",\"deviceUniqueId\":\"7bb8f6c1-0d2d-3620-8f3b-71c0fe580e80\",\"fiToken\":\"66220002\",\"language\":\"en-IN\"}"
-   },
-   "responseData": {
-    "code": 200,
-    "protocol": "HTTP_1_1",
-    "headers": {
-     "namesAndValues": [
-      "Content-Type",
-      "application/json"
-     ]
-    },
-    "body": "{\"apiVersion\": \"v2.0\",\"opId\": \"LOGIN_MULTISTEP\",\"responseDataList\": [{\"fiToken\": \"66220002\",\"operationCompleted\": false,\"subscriberReferenceId\": null,\"authToken\": null,\"authTokenExpiresIn\": null,\"authTokenIdleTime\": null,\"nextStateId\": 65,\"nextStateParams\": {\"501\": null,\"502\": null,\"503\": null,\"504\": null,\"512\": null,\"526\": null,\"527\": null}}],\"responseStatus\": {\"messageCode\": \"MFA_LOGIN_1001\",\"responseCode\": 0,\"operationTraceId\": \"28af23c5ondotcc737doptrc493dccapi859fcd1f67e332d9-7-5-5\",\"additionalInfo\": {\"FI_NAME\": \"COR9\",\"FI_CONTACT\": \"\"}}\r\n}"
    }
   }
  ],

@@ -1,7 +1,10 @@
+@file:Suppress("unused")
+
 package helpers.matchers
 
 import helpers.accessField
 import helpers.size
+import helpers.tryCast
 import java.util.regex.Matcher
 
 /**
@@ -32,7 +35,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
     /**
      * Get the highest matching index number.
      *
-     * When no matches aree found/ avaliable, then `-1` is returned
+     * When no matches are found/ available, then `-1` is returned
      */
     val lastIndex: Int
         get() {
@@ -67,13 +70,15 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
 
     /**
      * Get all the results which match [findBy]
+     *
+     * @param hasMatchesOnly Include a filter where the items need to have matches
      */
-    fun get(matchesOnly: Boolean = false, findBy: (MatcherResult) -> Boolean): List<MatcherResult> {
+    fun get(hasMatchesOnly: Boolean = false, findBy: (MatcherResult) -> Boolean): List<MatcherResult> {
         return matchBundles.asSequence()
             .flatMap { it.asSequence() } // all are equal
             .filterNotNull() // except the nulls
             .filter {
-                if (matchesOnly)
+                if (hasMatchesOnly)
                     it.hasMatch
                 else true
             }
@@ -202,9 +207,8 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
         matcher?.also { mm ->
             inputStr = (mm.accessField("text") as? String).orEmpty()
 
-            @Suppress("UNCHECKED_CAST")
-            val namedGroups = (mm.pattern().accessField("namedGroups") as? Map<String, Int>)
-                .orEmpty()
+            val namedGroups = mm.pattern().accessField("namedGroups")
+                .tryCast<Map<String, Int>>().orEmpty()
 
             val toAddList = (0..mm.groupCount()).mapNotNull {
                 mm.group(it)
@@ -252,9 +256,8 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
             }
 
             matcher?.also { mm ->
-                @Suppress("UNCHECKED_CAST")
-                val namedGroups = (mm.pattern().accessField("namedGroups") as? Map<String, Int>)
-                    .orEmpty()
+                val namedGroups = mm.pattern().accessField("namedGroups")
+                    .tryCast<Map<String, Int>>().orEmpty()
 
                 val toAddList = (0..mm.groupCount()).mapNotNull {
                     mm.group(it)
@@ -303,9 +306,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
             items: MutableList<List<MatcherResult?>>,
             group: String
         ): MatcherResult? {
-            return MatcherCollection
-                .get(bundles = items) { it.groupName == group }
-                .firstOrNull()
+            return get(bundles = items) { it.groupName == group }.firstOrNull()
         }
     }
 
@@ -338,5 +339,6 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
 
         return maxValue ?: MatcherResult.EMPTY
     }
+
     // todo; override toString
 }

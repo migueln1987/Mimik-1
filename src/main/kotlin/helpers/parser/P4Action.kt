@@ -22,7 +22,6 @@ class P4Action(config: (P4Action) -> Unit = {}) {
     lateinit var out_body: String
     private val varSuffixes = """(\w+?)([?#]*(?:_(?:#\d+|[?#]))?)""".toRegex()
 
-    @Suppress("EnumEntryName")
     private enum class DataType {
         /** No data set */
         None,
@@ -744,7 +743,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
                 scopeData.putIfAbsent(scopeByLevel(level) { it.key == keyName })
             }
         }
-        return scopeData.firstOrNull()
+        return scopeData.entries.firstOrNull()?.value
     }
 
     /**
@@ -759,8 +758,8 @@ class P4Action(config: (P4Action) -> Unit = {}) {
         searchUpScope: Boolean,
         useSourceItems: (String) -> String? = { null }
     ): String {
-        return Parser_v4.deTemplate(stepMatch.orEmpty()) { name, scope ->
-            useSourceItems(name) ?: varKeyVal(name, scope, searchUpScope)
+        return Parser_v4.deTemplate(stepMatch.orEmpty()) { name, scope, searchUp ->
+            useSourceItems(name) ?: varKeyVal(name, scope, searchUpScope || searchUp)
         }
     }
 

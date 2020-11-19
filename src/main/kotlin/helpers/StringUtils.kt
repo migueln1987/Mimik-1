@@ -1,8 +1,14 @@
+@file:Suppress("unused", "KDocUnresolvedReference")
+
 package helpers
 
+import com.beust.klaxon.Klaxon
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.io.StringReader
+import java.util.*
 
 /**
  * If this string starts with the given [prefix], returns a copy of this string
@@ -41,6 +47,12 @@ fun String.ensurePrefix(prefix: String, value: String? = null) =
  */
 val String.ensureHttpPrefix: String
     get() = ensurePrefix("http", "http://")
+
+/**
+ * Appends the prefix "https://" if none is found
+ */
+val String.ensureHttpsPrefix: String
+    get() = ensurePrefix("https", "https://")
 
 /**
  * If this string does not end with the given [suffix],
@@ -82,7 +94,7 @@ fun String.appendLines(vararg strings: String) =
 val String?.longestLine: String?
     get() {
         return if (this == null) this
-        else lines().maxBy { it.length }
+        else lines().maxByOrNull { it.length }
     }
 
 /**
@@ -138,16 +150,23 @@ val Any.toJson: String
     get() = Gson().toJsonTree(this).toString()
 
 /**
+ * Converts a JSON string to object
+ */
+inline fun <reified T> String.fromJson(): T? = Klaxon().let { kx ->
+    kx.parseFromJsonObject<T>(kx.parseJsonObject(StringReader(this)))
+}
+
+/**
  * Returns true if this [String] is a valid Url
  */
 val String?.isValidURL: Boolean
-    get() = HttpUrl.parse(this.orEmpty()) != null
+    get() = this.orEmpty().toHttpUrlOrNull() != null
 
 /**
  * Attempts to convert the [String] into a [HttpUrl]
  */
 val String?.asHttpUrl: HttpUrl?
-    get() = HttpUrl.parse(this.orEmpty().ensureHttpPrefix)
+    get() = this.orEmpty().ensureHttpPrefix.toHttpUrlOrNull()
 
 private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
@@ -158,15 +177,13 @@ val String?.beautifyJson: String
     get() {
         if (this.isNullOrBlank()) return ""
 
-        return try {
+        return tryOrNull {
             gson.let {
                 it.fromJson(this, Any::class.java)
                     ?.let { toObj -> it.toJson(toObj) }
                     ?: this
             }
-        } catch (e: java.lang.Exception) {
-            ""
-        }
+        }.orEmpty()
     }
 
 /**
@@ -204,7 +221,7 @@ inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = 
 
     return split('\n').asSequence()
         .mapNotNull {
-            val items = it.split(delimiters = *arrayOf(":"), limit = 2)
+            val items = it.split(delimiters = arrayOf(":"), limit = 2)
             if (!allowFilter.invoke(items)) return@mapNotNull null
             when (items.size) {
                 1 -> (items[0].trim() to null)
@@ -220,20 +237,39 @@ inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = 
 /**
  * Appends multiple [lines] to this [StringBuilder]
  */
-fun StringBuilder.appendlns(vararg lines: String) =
-    lines.forEach { appendln(it) }
+fun StringBuilder.appendLines(vararg lines: String): StringBuilder {
+    lines.forEach { appendLine(it) }
+    return this
+}
+
+/**
+ * The action in [valueAction] is applied to [value],
+ * the result is appended to this [StringBuilder],
+ * then followed by a line separator
+ */
+fun StringBuilder.appendLine(value: String = "", valueAction: (String) -> String): StringBuilder {
+    return appendLine(valueAction.invoke(value))
+}
+
+/**
+ * The action in [valueAction] is applied to [value],
+ * then the result is appended to this [StringBuilder]
+ */
+fun StringBuilder.append(value: String = "", valueAction: (String) -> String): StringBuilder {
+    return append(valueAction.invoke(value))
+}
 
 /**
  * Appends [message] to this [StringBuffer] with the optional formatting [args]
  */
-fun StringBuilder.appendlnFmt(message: String, vararg args: Any? = arrayOf()) =
-    appendln(message.format(*args))
+fun StringBuilder.appendLineFmt(message: String, vararg args: Any? = arrayOf()) =
+    appendLine(message.format(*args))
 
 /**
  * Appends [message] to this [StringBuffer] with the optional formatting [args]
  */
-inline fun StringBuilder.appendlnFmt(message: () -> String, vararg args: Any? = arrayOf()) =
-    appendln(message.invoke().format(*args))
+inline fun StringBuilder.appendLineFmt(message: () -> String, vararg args: Any? = arrayOf()) =
+    appendLine(message.invoke().format(*args))
 
 /**
  * Returns if this [String] is a type of Base64
@@ -248,6 +284,20 @@ val String?.isBase64: Boolean
             .matches(this)
     }
 
+/** Converts a string to base64 */
+val String?.toBase64: String
+    get() = Base64.getEncoder().encodeToString(this.orEmpty().toByteArray())
+
+/** Converts a base64 string back to the original string */
+val String?.fromBase64: String
+    get() = String(Base64.getDecoder().decode(this.orEmpty()))
+
+/**
+ * Returns a string capped at the requested line count [limit].
+ *
+ * Note: If the input is being capped, the last line (at [limit] index)
+ * will say "...[###] lines" with "###" being the remaining lines
+ */
 fun String.limitLines(limit: Int): String {
     val lines = lines()
     return if (lines.size > limit)
@@ -255,4 +305,29 @@ fun String.limitLines(limit: Int): String {
             separator = "",
             transform = { "$it\n" }) + "...[${lines.size - limit} lines]"
     else this
+}
+
+/**
+ * Converts a [ByteArray] to a int-aligned hex string
+ */
+fun ByteArray.toHexString(separator: String = ""): String {
+    return this.asSequence()
+        .map { it.toInt() }
+        .map { if (it < 0) it + 256 else it }
+        .map { Integer.toHexString(it) }
+        .map { if (it.length < 2) "0$it" else it }
+        .joinToString(separator = separator)
+}
+
+/**
+ * Returned a hex string, 32 bytes per line with spacing between each byte
+ */
+fun ByteArray.toChunkedHexString(separator: String = " "): String {
+    return toHexString("").chunked(32)
+        .map { it.chunked(2) }
+        .joinToString(separator = "") {
+            it.toString()
+                .replace(", ", separator)
+                .removeSurrounding("[", "]") + "\n"
+        }
 }

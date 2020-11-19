@@ -1,12 +1,12 @@
-val ktor_version = "1.3.0"
-val fuel_version = "2.2.1"
+val ktor_version = "1.4.1"
+val fuel_version = "2.3.0"
 
 version = "0.8.0"
 
 plugins {
     idea
     application
-    kotlin("jvm") version embeddedKotlinVersion
+    kotlin("jvm") version "1.4.0"
     id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
 }
 
@@ -29,7 +29,7 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8", embeddedKotlinVersion))
+    implementation(kotlin("stdlib-jdk8", "1.4.0"))
 
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("io.github.microutils:kotlin-logging:1.7.6")
@@ -48,7 +48,9 @@ dependencies {
 
     implementation("com.github.kittinunf.fuel:fuel:$fuel_version")
     implementation("com.airbnb.okreplay:okreplay:1.6.0")
-    implementation("com.beust:klaxon:5.2")
+    implementation("com.beust:klaxon:5.4")
+    implementation("org.tukaani:xz:1.8")
+
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
     testImplementation("io.mockk:mockk:1.10.0")
 }

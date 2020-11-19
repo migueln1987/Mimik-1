@@ -5,10 +5,11 @@ import helpers.attractors.RequestAttractors
 import helpers.content
 import io.ktor.http.HttpHeaders
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.internal.http.HttpMethod
 import java.nio.charset.Charset
 
-class Requestdata : Networkdata {
+class RequestData : NetworkData {
 
     constructor(request: okreplay.Request) {
         method = request.method()
@@ -17,14 +18,15 @@ class Requestdata : Networkdata {
         body = request.content()
     }
 
-    constructor(builder: (Requestdata) -> Unit = {}) {
+    constructor(builder: (RequestData) -> Unit = {}) {
         builder.invoke(this)
-
-        if (method != null && HttpMethod.requiresRequestBody(method) && body == null)
-            body = ""
+        method?.also { method ->
+            if (HttpMethod.requiresRequestBody(method) && body == null)
+                body = ""
+        }
     }
 
-    fun clone(postClone: (Requestdata) -> Unit = {}) = Requestdata {
+    fun clone(postClone: (RequestData) -> Unit = {}) = RequestData {
         it.method = method
         it.url = url.toString()
         it.headers = tapeHeaders.newBuilder().build()
@@ -48,7 +50,7 @@ class Requestdata : Networkdata {
 
     val replayRequest: okreplay.Request
         get() = object : okreplay.Request {
-            override fun url() = httpUrl ?: HttpUrl.get("http://invalid.com")
+            override fun url() = httpUrl ?: "http://invalid.com".toHttpUrl()
             override fun method() = method ?: "GET"
 
             override fun getEncoding() = ""
@@ -67,7 +69,7 @@ class Requestdata : Networkdata {
         }
 
     /**
-     * Creates [RequestAttractors] from this [Requestdata]
+     * Creates [RequestAttractors] from this [RequestData]
      */
     val toAttractors: RequestAttractors
         get() = RequestAttractors(this)

@@ -24,12 +24,10 @@ data class AttractorMatches(
     // Required > 0 && MatchesReq >= Required
 
     val isBlank: Boolean
-        get() {
-            return allTrue(
-                Required == -1,
-                MatchesReq == -1
-            )
-        }
+        get() = allTrue(
+            Required == -1,
+            MatchesReq == -1
+        )
 
     override fun toString(): String {
         return if (isBlank)

@@ -1,6 +1,5 @@
 package networkRouting.editorPages
 
-import R
 import com.google.gson.Gson
 import helpers.*
 import io.ktor.http.Parameters
@@ -89,7 +88,7 @@ object ChapterEditor : EditorModule() {
                              *
                              */
                             val replaceChars = """
-                                replace(/^[a-zA-Z]+/,'').
+                                replace(/^[^a-zA-Z]+/,'').
                                 replace(/\s/g, '_').replace(',' ,'/').
                                 replace(/[^!-+\--~]/g, '')
                                 """.trimIndent()
@@ -161,6 +160,8 @@ object ChapterEditor : EditorModule() {
                             }
 
                             pData.chapter?.also {
+                                br()
+                                +"UUID: %s".format(it.UID)
                                 br()
                                 +"Size: %s".format(
                                     Gson().toJsonTree(it).fileSize()
@@ -455,11 +456,16 @@ object ChapterEditor : EditorModule() {
                         td {
                             hiddenInput(name = "name_pre") { value = pData.hardChapName("") }
                             hiddenInput(name = "afterAction") { id = name }
+                            hiddenInput(name = "seqData") { id = name }
 
                             div {
                                 postButton(name = "Action") {
                                     value = "SaveChapter"
-                                    onClick = "submitCheck(nameChap);"
+                                    onClick = """
+                                        submitCheck(nameChap);
+                                        document.p4ExportData.saveToStorage();
+                                        seqData.value = document.p4ExportData.toString();
+                                    """.trimIndent()
                                     +"Save"
                                 }
                             }

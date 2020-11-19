@@ -1,13 +1,22 @@
 package helpers.parser
 
 import helpers.RandomHost
+import helpers.isNotNull
+import helpers.isNull
 import helpers.matchers.MatcherResult
+import helpers.toBase64
 import kotlin.random.Random
 
 @Suppress("PropertyName", "MemberVisibilityCanBePrivate")
 class P4Command {
 
     var isValid = false
+
+    /**
+     * Returns [true] if this [P4Command] does an action or affects another [P4Command]
+     */
+    val hasResults: Boolean
+        get() = isCond || hasAction
 
     /**
      * True: wanting to set `use` on another chapter
@@ -110,7 +119,7 @@ class P4Command {
      * True: looking for a item or match in the source
      */
     val source_HasSubItem
-        get() = (source_name != null) or (source_match != null)
+        get() = source_name.isNotNull() or source_match.isNotNull()
     var source_name: String? = null
     var source_match: String? = null
 
@@ -118,7 +127,7 @@ class P4Command {
      * This seqStep has an action
      */
     val hasAction
-        get() = (act_name != null) or (act_match != null)
+        get() = act_name.isNotNull() or act_match.isNotNull()
 
     /**
      * Variable scope type
@@ -145,8 +154,12 @@ class P4Command {
     var act_nSpreadType = -8
     var act_match: String? = null
 
+    private fun List<MatcherResult>.contains(token: PTokens): Boolean = contains(token.flag)
+
     private fun List<MatcherResult>.contains(field: String): Boolean =
-        firstOrNull { it.groupName == field } != null
+        firstOrNull { it.groupName == field }.isNotNull()
+
+    private fun List<MatcherResult>.find(token: PTokens): MatcherResult? = find(token.flag)
 
     private fun List<MatcherResult>.find(field: String): MatcherResult? =
         firstOrNull { it.groupName == field }
@@ -167,41 +180,41 @@ class P4Command {
      * - no `source` = all options turned off
      */
     constructor(items: List<MatcherResult>) {
-        if (items.isEmpty() || items.find("source") == null)
+        if (items.isEmpty() || items.find(PTokens.source).isNull())
             return
         isValid = true
 
-        if (items.contains("cond")) {
-            if (items.contains("cP"))
+        if (items.contains(PTokens.cond)) {
+            if (items.contains(PTokens.cond_opt))
                 cStOpt = true
 
             cStSrc = when {
-                items.contains("cT") -> 1
-                items.contains("cF") -> 2
+                items.contains(PTokens.cond_true) -> 1
+                items.contains(PTokens.cond_false) -> 2
                 cStOpt -> 0
                 else -> -1
             }
         }
 
         when {
-            items.contains("rType") -> {
+            items.contains(PTokens.type_RX) -> {
                 when {
-                    items.contains("rIn") -> {
+                    items.contains(PTokens.rx_In) -> {
                         isRequest = true
-                        isHead = items.contains("rInH")
+                        isHead = items.contains(PTokens.req_Header)
                         if (isHead)
-                            source_name = items.find("rInHN")?.value
+                            source_name = items.find(PTokens.req_HeadName)?.value
                         else
-                            isBody = items.contains("rInB")
+                            isBody = items.contains(PTokens.req_Body)
                     }
 
-                    items.contains("rOut") -> {
+                    items.contains(PTokens.rx_Out) -> {
                         isResponse = true
-                        isHead = items.contains("rOutH")
+                        isHead = items.contains(PTokens.res_Header)
                         if (isHead)
-                            source_name = items.find("rOutHN")?.value
+                            source_name = items.find(PTokens.res_HeadName)?.value
                         else
-                            isBody = items.contains("rOutB")
+                            isBody = items.contains(PTokens.res_Body)
                     }
 
                     else -> {
@@ -210,25 +223,25 @@ class P4Command {
                     }
                 }
 
-                source_match = items.find("rM")?.value
+                source_match = items.find(PTokens.rx_Match)?.value
             }
 
-            items.contains("vType") -> {
+            items.contains(PTokens.type_Var) -> {
                 varLevel = when {
-                    items.contains("vC") -> 1 // Chapter
-                    items.contains("vB") -> 2 // test Bounds
+                    items.contains(PTokens.var_Chap) -> 1 // Chapter
+                    items.contains(PTokens.var_Bounds) -> 2 // test Bounds
                     else -> 0 // sequence
                 }
-                varSearchUp = items.contains("vU")
-                source_name = items.find("vN")?.value
-                source_match = items.find("vM")?.value
+                varSearchUp = items.contains(PTokens.var_UpSrc)
+                source_name = items.find(PTokens.var_Name)?.value
+                source_match = items.find(PTokens.var_Match)?.value
             }
 
-            items.contains("uType") -> {
+            items.contains(PTokens.type_Use) -> {
                 isType_U = true
                 if (isType_U) {
-                    source_name = items.find("uN")?.value
-                    source_match = items.find("uM")?.value
+                    source_name = items.find(PTokens.use_Name)?.value
+                    source_match = items.find(PTokens.use_Match)?.value
                 }
             }
 
@@ -238,36 +251,36 @@ class P4Command {
             }
         }
 
-        if (items.contains("act")) {
-            if (items.contains("aV")) {
+        if (items.contains(PTokens.action)) {
+            if (items.contains(PTokens.act_var)) {
                 act_scopeLevel = when {
-                    items.contains("aSC") -> 1
-                    items.contains("aSB") -> 2
+                    items.contains(PTokens.act_lvChap) -> 1
+                    items.contains(PTokens.act_lvBound) -> 2
                     else -> 0
                 }
-                act_name = items.find("aVN")?.value
-                if (items.contains("aVT")) {
-                    act_nExists = items.contains("aVE")
-                    act_nCount = items.contains("aVC")
-                    act_nResult = items.contains("aVR")
-                    if (items.contains("aVX")) {
+                act_name = items.find(PTokens.act_Name)?.value
+                if (items.contains(PTokens.act_VarTypes)) {
+                    act_nExists = items.contains(PTokens.act_Exist)
+                    act_nCount = items.contains(PTokens.act_Count)
+                    act_nResult = items.contains(PTokens.act_CondRst)
+                    if (items.contains(PTokens.act_IdxSprd)) {
                         act_nSpread = true
                         act_nSpreadType = when {
                             // keep specific index (or last)
-                            items.contains("aVI") ->
-                                items.find("aVI")?.value?.toIntOrNull()
+                            items.contains(PTokens.act_IdxSI) ->
+                                items.find(PTokens.act_IdxSI)?.value?.toIntOrNull()
                                     ?: -2
                             // spread all
-                            items.contains("aVS") -> -1
+                            items.contains(PTokens.act_IdxSAll) -> -1
                             // keep last index only
-                            items.contains("aVL") -> -2
+                            items.contains(PTokens.act_IdxSL) -> -2
                             // do nothing
                             else -> -8
                         }
                     }
                 }
             } else {
-                act_match = items.find("aM")?.value
+                act_match = items.find(PTokens.act_Match)?.value
             }
         }
     }
@@ -316,15 +329,15 @@ class P4Command {
         }
 
         if (source_HasSubItem) {
-            if (source_name != null)
+            if (source_name.isNotNull())
                 sb.append("[").append(source_name).append("]")
-            if (source_match != null)
+            if (source_match.isNotNull())
                 sb.append(":{").append(source_match).append("}")
         }
 
         if (hasAction) {
             sb.append("->")
-            if (act_name != null) {
+            if (act_name.isNotNull()) {
                 when (act_scopeLevel) {
                     0 -> Unit
                     1 -> sb.append("&")
@@ -334,7 +347,7 @@ class P4Command {
                 if (act_nExists) sb.append("?")
                 if (act_nCount) sb.append("#")
                 if (act_nResult) sb.append("@")
-                if (act_nSpread) {
+                if (act_nSpreadType != -8) {
                     when (act_nSpreadType) {
                         -1 -> sb.append("_#")
                         -2 -> sb.append("_?")
@@ -342,7 +355,7 @@ class P4Command {
                     if (act_nSpreadType >= 0)
                         sb.append("_#$act_nSpreadType")
                 }
-            } else if (act_match != null) {
+            } else if (act_match.isNotNull()) {
                 sb.append("{").append(act_match).append("}")
             }
         }
@@ -351,40 +364,45 @@ class P4Command {
     }
 
     /**
-     * Wraps this string in a single-quotes, or returns `'null'` if [this] is null
+     * Wraps this string in a quotes, or returns an empty if [this] is null
      */
     private val String?.jStr: String
-        get() = this?.let { "\'$it\'" } ?: "null"
+        get() = if (this.isNullOrEmpty()) "\"\"" else "\"$this\""
 
     val asJSObject: String
         get() {
+            val srcRTypeInt = when {
+                isHead -> 1
+                isBody -> 2
+                else -> 0
+            }
             return """
             {
-                isValid: $isValid,
+                "isValid": $isValid,
                 
-                isCond: $isCond,
-                isOpt: $cStOpt,
-                condSrc: $cStSrc,
+                "isCond": $isCond,
+                "isOpt": $cStOpt,
+                "condSrc": $cStSrc,
                 
-                srcType: $srcType,
-                isHead: $isHead,
-                isBody: $isBody,
-                varLevel: $varLevel,
-                varSearchUp: $varSearchUp,
+                "srcType": $srcType,
+                "srcRType": $srcRTypeInt,
+                "isHead": $isHead,
+                "isBody": $isBody,
+                "varLevel": $varLevel,
+                "varSearchUp": $varSearchUp,
             
-                source_hasItems: $source_HasSubItem,
-                source_name: ${source_name.jStr},
-                source_match: ${source_match.jStr},
+                "source_name": ${source_name.toBase64.jStr},
+                "source_match": ${source_match.toBase64.jStr},
             
-                hasAction: $hasAction,
-                act_name: ${act_name.jStr},
-                act_nExists: $act_nExists,
-                act_nCount: $act_nCount,
-                act_nResult: $act_nResult,
-                act_nSpread: $act_nSpread,
-                act_nSpreadType: $act_nSpreadType,
-                act_scopeLevel: $act_scopeLevel,
-                act_match: ${act_match.jStr}
+                "hasAction": $hasAction,
+                "act_scopeLevel": $act_scopeLevel,
+                "act_name": ${act_name.toBase64.jStr},
+                "act_nExists": $act_nExists,
+                "act_nCount": $act_nCount,
+                "act_nResult": $act_nResult,
+                "act_nSpread": $act_nSpread,
+                "act_nSpreadType": $act_nSpreadType,
+                "act_match": ${act_match.toBase64.jStr}
             }
             """.trimIndent()
         }
@@ -393,35 +411,67 @@ class P4Command {
         isValid = true
         cStOpt = Random.nextBoolean()
         cStSrc = Random.nextInt(-1, 3)
-        isRequest = Random.nextBoolean()
-        isResponse = Random.nextBoolean()
-        varLevel = Random.nextInt(0, 3)
-        varSearchUp = Random.nextBoolean()
-        isType_U = Random.nextBoolean()
-        isHead = Random.nextBoolean()
-        isBody = Random.nextBoolean()
 
-        source_name = if (Random.nextBoolean())
-            RandomHost().valueAsChars()
-        else null
+        isRequest = false
+        isResponse = false
+        when (Random.nextInt(1, 5)) {
+            0 -> Unit // Unset or none
+            1 -> isRequest = true
+            2 -> isResponse = true
+            3 -> varLevel = Random.nextInt(0, 3)
+            4 -> isType_U = true
+        }
 
-        source_match = if (Random.nextBoolean())
-            RandomHost().valueAsChars()
-        else null
+        if (isRequest || isResponse) {
+            when (Random.nextInt(1, 3)) {
+                0 -> Unit // unset
+                1 -> isHead = true
+                2 -> isBody = true
+            }
+        }
 
-        act_scopeLevel = Random.nextInt(-1, 3)
-        act_name = if (Random.nextBoolean())
-            RandomHost().valueAsChars()
-        else null
-        act_nExists = Random.nextBoolean()
-        act_nCount = Random.nextBoolean()
-        act_nResult = Random.nextBoolean()
-        act_nSpread = Random.nextBoolean()
-        act_nSpreadType = if (Random.nextBoolean())
-            Random.nextInt(-2, 20) else -8
-        act_match = if (Random.nextBoolean())
-            RandomHost().valueAsChars()
-        else null
+        if (varLevel > -1)
+            varSearchUp = Random.nextBoolean()
+
+        fun randomVarName(UseSymbols: Boolean = false): String {
+            return RandomHost().valueToValid {
+                if (UseSymbols)
+                    it.add(RandomHost.useSymbols to Random.nextInt(1, 5))
+                else {
+                    it.add(RandomHost.chars to 1)
+                    it.add(RandomHost.word to Random.nextInt(0, 5))
+                    it.add(RandomHost.word to Random.nextInt(1, 5))
+                }
+            }
+        }
+
+        if (isRequest || isResponse || varLevel > -1 || isType_U) {
+            var subSource_IsName = Random.nextBoolean()
+            if (isBody) subSource_IsName = false
+
+            if (subSource_IsName)
+                source_name = randomVarName()
+            else
+                source_match = if (isType_U)
+                    randomVarName(true) else RandomHost().valueAsChars()
+        }
+
+        when (Random.nextInt(0, 3)) {
+            0 -> Unit
+            1 -> {
+                act_scopeLevel = Random.nextInt(-1, 3)
+                act_name = randomVarName()
+                act_nExists = Random.nextBoolean()
+                act_nCount = Random.nextBoolean()
+                act_nResult = Random.nextBoolean()
+                act_nSpread = Random.nextBoolean()
+                act_nSpreadType = if (Random.nextBoolean())
+                    Random.nextInt(-2, 21) else -8
+            }
+            2 -> act_match = if (isType_U)
+                randomVarName(true) else RandomHost().valueAsChars()
+        }
+
         return this
     }
 }

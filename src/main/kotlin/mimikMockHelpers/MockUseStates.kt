@@ -60,7 +60,6 @@ class MockUseStates(val state: Int) {
     val isLimited: Boolean
         get() = state in (0..Int.MAX_VALUE)
 
-    @Suppress("RemoveRedundantQualifierName")
     val isEnabled: Boolean
         get() = anyTrue(
             state == ALWAYS.state,
@@ -83,7 +82,6 @@ class MockUseStates(val state: Int) {
     /**
      * Returns this State as type of Disabled ([DISABLEDLIMITED] or [DISABLE])
      */
-    @Suppress("RemoveRedundantQualifierName")
     val asDisabled: MockUseStates
         get() = if (isLimited) DISABLEDLIMITED else DISABLE
 

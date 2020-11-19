@@ -1,3 +1,5 @@
+@file:Suppress("SpellCheckingInspection", "KDocUnresolvedReference", "unused")
+
 package helpers
 
 import TapeCatalog
@@ -17,9 +19,14 @@ import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
 import io.ktor.util.filter
 import io.ktor.util.toMap
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody.Companion.asResponseBody
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.internal.http.HttpMethod
 import okio.Buffer
 import org.w3c.dom.NodeList
@@ -29,17 +36,19 @@ import java.util.TreeMap
 import javax.xml.bind.DatatypeConverter
 
 // == okHttp3
+/**
+ * [text/plain] Media Type
+ */
+val MediaType.Companion.Text_Plain: MediaType?
+    get() = "text/plain".toMediaTypeOrNull()
+
 val okhttp3.Response.toJson: String
-    get() {
-        return try {
-            body()?.byteStream()?.let { stream ->
-                (Parser.default().parse(stream) as JsonObject)
-                    .toJsonString(true, true)
-            }
-        } catch (_: Exception) {
-            null
-        }.orEmpty()
-    }
+    get() = tryOrNull {
+        body?.byteStream()?.let { stream ->
+            (Parser.default().parse(stream) as JsonObject)
+                .toJsonString(prettyPrint = true, canonical = true)
+        }
+    }.orEmpty()
 
 /**
  * Returns the string contents of a RequestBody, or [default] in the case the body is empty
@@ -61,19 +70,16 @@ fun RequestBody?.content(default: String = ""): String {
  */
 fun ResponseBody?.content(default: String = ""): String {
     return if (this == null) default
-    else try {
-        val data = tryOrNull { use { bytes() } }
-        if (data == null) return ""
+    else tryOrNull {
+        val data = tryOrNull { use { bytes() } } ?: return ""
         val dataStr = String(data)
         val isBase64 = dataStr.isBase64
 
-        if (!isBase64 && contentType()?.type() == "image")
+        if (!isBase64 && contentType()?.type == "image")
             DatatypeConverter.printBase64Binary(data)
         else
             dataStr
-    } catch (e: Exception) {
-        default
-    }
+    } ?: default
 }
 
 /**
@@ -82,12 +88,12 @@ fun ResponseBody?.content(default: String = ""): String {
 fun Headers.toMultimap(caseSensitive: Boolean): Map<String, List<String>> {
     if (!caseSensitive) return this.toMultimap()
 
-    var result = TreeMap<String, ArrayList<String>>()
-    (0..size() - 1).forEach { i ->
+    val result = TreeMap<String, ArrayList<String>>()
+    (0 until size).forEach { i ->
         val name = name(i)
         if (!result.containsKey(name))
             result[name] = ArrayList()
-        var data = result.getValue(name)
+        val data = result.getValue(name)
         data.add(value(i))
     }
 
@@ -139,7 +145,7 @@ val Iterable<Pair<String, String>>.toHeaders: Headers
  * Returns the value of [Headers] if it contains any values, or [null]
  */
 val Headers.valueOrNull: Headers?
-    get() = if (size() > 0) this else null
+    get() = if (size > 0) this else null
 
 /**
  * Appends the data from [headers] to this [ResponseHeaders]
@@ -170,7 +176,7 @@ fun Headers.contains(key: String, value: String) = values(key).contains(value)
 /** Returns an immutable (optional) case-sensitive set of header names. */
 fun Headers.names(caseSensitive: Boolean): Set<String> {
     return if (caseSensitive) {
-        (0 until size()).map { name(it) }.toSet()
+        (0 until size).map { name(it) }.toSet()
     } else names()
 }
 
@@ -179,9 +185,9 @@ fun Headers.names(caseSensitive: Boolean): Set<String> {
  */
 val Headers.toPairs: List<Pair<String, String>>
     get() = toMultimap().asSequence()
-        .filter { it.key != null }
+//        .filter { it.key != null }
         .flatMap { kv ->
-            kv.value.asSequence().map { kv.key!! to it.orEmpty() }
+            kv.value.asSequence().map { kv.key to it }
         }
         .toList()
 
@@ -226,7 +232,7 @@ fun StringValues.limit(items: List<String>, allowDuplicates: Boolean = false): P
 }
 
 fun HttpUrl.containsPath(vararg path: String) =
-    pathSegments().containsAll(path.toList())
+    pathSegments.containsAll(path.toList())
 
 /**
  * Returns a brief okHttp response to respond with a defined response [status] and [message]
@@ -246,18 +252,14 @@ inline fun okhttp3.Request.createResponse(
 fun okhttp3.Request.reHost(outboundHost: HttpUrl?): okhttp3.Request {
     return newBuilder().also { build ->
         if (outboundHost != null) {
-            val newUrl = HttpUrl.parse(
-                "%s://%s%s%s".format(
-                    outboundHost.scheme(),
-                    outboundHost.host(),
-                    url().encodedPath(),
-                    if (url().querySize() > 0) "?" + url().query() else ""
-                )
-            )
-
-            if (newUrl != null) {
+            "%s://%s%s%s".format(
+                outboundHost.scheme,
+                outboundHost.host,
+                url.encodedPath,
+                if (url.querySize > 0) "?" + url.query else ""
+            ).toHttpUrlOrNull()?.also { newUrl ->
                 build.url(newUrl)
-                build.header("HOST", newUrl.host())
+                build.header("HOST", newUrl.host)
             }
         }
     }.build()
@@ -269,17 +271,17 @@ fun okhttp3.Request.reHost(outboundHost: HttpUrl?): okhttp3.Request {
 val okhttp3.Request.toReplayRequest: okreplay.Request
     get() {
         val newRequest = newBuilder().build()
-        val contentCharset = newRequest.body()?.contentType()?.charset()
+        val contentCharset = newRequest.body?.contentType()?.charset()
             ?: Charset.forName("UTF-8")
-        val bodyData = newRequest.body()?.content()
+        val bodyData = newRequest.body?.content()
 
         return object : okreplay.Request {
-            override fun method() = newRequest.method()
-            override fun url() = newRequest.url()
+            override fun method() = newRequest.method
+            override fun url() = newRequest.url
 
-            override fun headers() = newRequest.headers()
-            override fun header(name: String) = headers().get(name)
-            override fun getContentType() = headers().get(HttpHeaders.ContentType)
+            override fun headers() = newRequest.headers
+            override fun header(name: String) = newRequest.headers[name]
+            override fun getContentType() = newRequest.headers[HttpHeaders.ContentType]
 
             override fun getCharset() = contentCharset
             override fun getEncoding() = charset.name()
@@ -294,25 +296,25 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
     }
 
 /**
- * Converts a [okhttp3.Request] to [Requestdata]
+ * Converts a [okhttp3.Request] to [RequestData]
  */
-val okhttp3.Request.toTapeData: Requestdata
+val okhttp3.Request.toTapeData: RequestData
     get() = this.toReplayRequest.toTapeData
 
 val okhttp3.Response.toReplayResponse: okreplay.Response
     get() {
         val newResponse = newBuilder().build()
-        val contentCharset = newResponse.body()?.contentType()?.charset()
+        val contentCharset = newResponse.body?.contentType()?.charset()
             ?: Charset.forName("UTF-8")
-        val bodyData = newResponse.body()?.content()
+        val bodyData = newResponse.body?.content()
 
         return object : okreplay.Response {
-            override fun code() = newResponse.code()
-            override fun protocol() = newResponse.protocol()
+            override fun code() = newResponse.code
+            override fun protocol() = newResponse.protocol
 
-            override fun headers() = newResponse.headers()
-            override fun header(name: String) = headers().get(name)
-            override fun getContentType() = headers().get(HttpHeaders.ContentType)
+            override fun headers() = newResponse.headers
+            override fun header(name: String) = newResponse.headers[name]
+            override fun getContentType() = newResponse.headers[HttpHeaders.ContentType]
 
             override fun getCharset() = contentCharset
             override fun getEncoding() = charset.name()
@@ -330,10 +332,7 @@ fun ResponseBody?.clone(): ResponseBody? {
     return tryOrNull {
         this?.source()?.use { source ->
             source.request(java.lang.Long.MAX_VALUE)
-            ResponseBody.create(
-                contentType(), contentLength(),
-                source.buffer.clone()
-            )
+            source.buffer.clone().asResponseBody(contentType(), contentLength())
         }
     }
 }
@@ -342,10 +341,8 @@ fun cloneResponseBody(responseBody: ResponseBody): ResponseBody {
     try {
         val source = responseBody.source()
         source.request(java.lang.Long.MAX_VALUE)
-        return ResponseBody.create(
-            responseBody.contentType(), responseBody.contentLength(),
-            source.buffer.clone()
-        )
+        return source.buffer.clone()
+            .asResponseBody(responseBody.contentType(), responseBody.contentLength())
     } catch (e: IOException) {
         throw RuntimeException("Failed to read response body", e)
     }
@@ -358,9 +355,9 @@ fun cloneResponseBody(responseBody: ResponseBody): ResponseBody {
  */
 val HttpUrl.hostPath: String
     get() = "%s://%s%s".format(
-        scheme(),
-        host(),
-        encodedPath()
+        scheme,
+        host,
+        encodedPath
     )
 
 /**
@@ -369,12 +366,12 @@ val HttpUrl.hostPath: String
  * newHost can be in the format of "url.ext" or "http://url.ext"
  */
 fun HttpUrl?.reHost(newHost: String): HttpUrl? {
-    val newHttpHost = HttpUrl.parse(newHost.ensureHttpPrefix)
+    val newHttpHost = newHost.ensureHttpPrefix.toHttpUrlOrNull()
 
     if (this == null || newHttpHost == null) return newHttpHost
     return newBuilder().also {
-        it.scheme(newHttpHost.scheme())
-        it.host(newHttpHost.host())
+        it.scheme(newHttpHost.scheme)
+        it.host(newHttpHost.host)
     }.build()
 }
 
@@ -398,7 +395,7 @@ fun HttpUrl?.reQuery(newQuerys: Sequence<Pair<String, Any?>>?, append: Boolean =
     if (this == null) return null
     return newBuilder().also { builder ->
         if (!append)
-            queryParameterNames().forEach {
+            queryParameterNames.forEach {
                 builder.removeAllQueryParameters(it)
             }
         newQuerys?.forEach {
@@ -421,27 +418,18 @@ fun miniResponse(
         it.protocol(Protocol.HTTP_1_1)
         it.code(status.value)
         it.header(HttpHeaders.ContentType, "text/plain")
-        if (HttpMethod.requiresRequestBody(request.method()))
+        if (HttpMethod.requiresRequestBody(request.method))
             it.body(
-                ResponseBody.create(
-                    MediaType.parse("text/plain"),
-                    if (TapeCatalog.isTestRunning) request.body().content() else ""
-                )
+                (if (TapeCatalog.isTestRunning) request.body.content() else "")
+                    .toResponseBody(MediaType.Text_Plain)
             )
         it.message(status.description)
     }.build()
 }
 
 inline fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okhttp3.Response? {
-    val requestBuilder = Request.Builder()
-        .also { builder.invoke(it) }
-
-    val request = try {
-        requestBuilder.build()
-    } catch (_: Exception) {
-        null
-    } ?: return null
-
+    val requestBuilder = Request.Builder().also(builder)
+    val request = tryOrNull { requestBuilder.build() } ?: return null
     return newCall(request).execute()
 }
 
@@ -452,21 +440,20 @@ inline fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okht
  */
 val okhttp3.Request.contentHash: Int
     get() {
-        val filterHeaders = headers().asIterable()
+        val filterHeaders = headers.asIterable()
             .filterNot { h -> RequestAttractors.skipHeaders.any { h.first == it } }
-            .map { it.first + ": " + it.second }
-            .joinToString(separator = "\n")
+            .joinToString(separator = "\n") { it.first + ": " + it.second }
 
         return "%s%s%s%s".format(
-            method(),
-            url().toString(),
+            method,
+            url.toString(),
             filterHeaders,
-            body().content()
+            body.content()
         ).hashCode()
     }
 
 val String.asMediaType: MediaType?
-    get() = MediaType.parse(this)
+    get() = this.toMediaTypeOrNull()
 
 val okhttp3.Response.toTapeData: Responsedata
     get() = toReplayResponse.toTapeData
@@ -476,9 +463,14 @@ val okhttp3.Response.toTapeData: Responsedata
  */
 fun okhttp3.HttpUrl?.queryItems(): List<String> {
     return if (this == null) listOf()
-    else queryParameterNames().flatMap { name ->
+    else queryParameterNames.flatMap { name ->
         queryParameterValues(name).map { value -> "$name=$value" }
     }
+}
+
+operator fun okhttp3.Headers.Builder.invoke(action: (okhttp3.Headers.Builder) -> Unit): okhttp3.Headers.Builder {
+    action(this)
+    return this
 }
 // == end okHttp3
 
@@ -511,10 +503,7 @@ fun okreplay.Request.content(default: String = ""): String? {
  */
 fun okreplay.Request.asRequestBody(default: String = ""): RequestBody? {
     return if (HttpMethod.requiresRequestBody(method())) {
-        RequestBody.create(
-            MediaType.parse(contentType),
-            content() ?: default
-        )
+        (content() ?: default).toRequestBody(contentType.toMediaTypeOrNull())
     } else null
 }
 
@@ -547,16 +536,50 @@ val okreplay.Request.toOkRequest: okhttp3.Request
     }
 
 /**
- * Converts the [okreplay.Request] to [Requestdata]
+ * Converts the [okreplay.Request] to [RequestData]
  */
-val okreplay.Request.toTapeData: Requestdata
-    get() = Requestdata(this)
+val okreplay.Request.toTapeData: RequestData
+    get() = RequestData(this)
 
 /**
  * Converts the [okreplay.Response] to [Responsedata]
  */
 val okreplay.Response.toTapeData: Responsedata
     get() = Responsedata(this)
+
+class ResponseEditor(input: okreplay.Response) {
+    var code: Int = input.code()
+    var protocol: Protocol = input.protocol()
+    var encoding: String = input.encoding
+    var charset: Charset = input.charset
+    var headers: Headers = input.headers()
+    var contentType: String = input.contentType
+    var body: ByteArray = input.body()
+
+    fun toResponse(): okreplay.Response {
+        return object : okreplay.Response {
+            override fun code() = code
+            override fun protocol() = protocol
+
+            override fun getEncoding() = this@ResponseEditor.encoding
+            override fun getCharset() = this@ResponseEditor.charset
+
+            override fun headers() = this@ResponseEditor.headers
+            override fun header(name: String) = this@ResponseEditor.headers[name]
+            override fun getContentType() = this@ResponseEditor.contentType
+
+            override fun hasBody() = this@ResponseEditor.body.isNotEmpty()
+            override fun body() = this@ResponseEditor.body
+            override fun bodyAsText() = this@ResponseEditor.body.toString()
+
+            override fun newBuilder() = TODO()
+            override fun toYaml() = TODO()
+        }
+    }
+}
+
+fun okreplay.Response.edit(action: (ResponseEditor) -> Unit): ResponseEditor =
+    ResponseEditor(this).also(action)
 // == end okreplay
 
 // == ktor
@@ -589,23 +612,21 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
 
         val headerCache = Headers.Builder()
         request.headers.forEach { s, list ->
-            list.forEach { headerCache.set(s, it) }
+            list.forEach { headerCache[s] = it }
         }
 
         // resolve what host would be taking to
         val localHosts = listOf("0.0.0.0", "10.0.2.2")
-        if (localHosts.any { headerCache.get("host").orEmpty().startsWith(it) })
-            headerCache.set("host", outboundHost)
+        if (localHosts.any { headerCache["host"].orEmpty().startsWith(it) })
+            headerCache["host"] = outboundHost
 
         build.headers(headerCache.build())
 
         build.method(
             request.httpMethod.value,
             if (HttpMethod.requiresRequestBody(request.httpMethod.value))
-                RequestBody.create(
-                    MediaType.parse(request.contentType().toString()),
-                    requestBody.orEmpty()
-                )
+                requestBody.orEmpty()
+                    .toRequestBody(request.contentType().toString().toMediaTypeOrNull())
             else null
         )
     }.build()
@@ -617,12 +638,11 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
 val HttpUrl?.toParameters: Parameters?
     get() {
         if (this == null) return null
-        val pairs = this.queryParameterNames().asSequence()
+        val pairs = this.queryParameterNames.asSequence()
             .filterNotNull().flatMap { name ->
                 if (name.isBlank()) return@flatMap emptySequence<Pair<String, String>>()
-                this.queryParameterValues(name).asSequence().map {
-                    name to (it ?: "")
-                }
+                this.queryParameterValues(name).asSequence()
+                    .map { name to it.orEmpty() }
             }
 
         return Parameters.build {
@@ -661,7 +681,7 @@ val String.asContentType: ContentType
 fun StringBuilder.toJson(): String {
     return if (toString().isValidJSON) {
         (Parser.default().parse(this) as JsonObject)
-            .toJsonString(true, true)
+            .toJsonString(prettyPrint = true, canonical = true)
     } else ""
 }
 
@@ -681,14 +701,14 @@ val com.github.kittinunf.fuel.core.Headers.toOkHeaders: okhttp3.Headers
     get() = Headers.Builder().also { builder ->
         entries.forEach { hKV ->
             hKV.value.forEach {
-                if (builder.get(hKV.key) != it)
+                if (builder[hKV.key] != it)
                     builder.add(hKV.key, it)
             }
         }
     }.build()
 
-val com.github.kittinunf.fuel.core.Request.toRequestData: Requestdata
-    get() = Requestdata {
+val com.github.kittinunf.fuel.core.Request.toRequestData: RequestData
+    get() = RequestData {
         it.method = method.value
         it.url = url.toString()
         it.headers = headers.toOkHeaders
@@ -700,13 +720,13 @@ val com.github.kittinunf.fuel.core.Request.toRequestData: Requestdata
  * Converts a (fuel) [Response] to [Responsedata]
  */
 val com.github.kittinunf.fuel.core.Response.toResponseData: Responsedata
-    get() = Responsedata {
-        it.code = statusCode
-        it.headers = headers.toOkHeaders
+    get() = Responsedata { newResponse ->
+        newResponse.code = statusCode
+        newResponse.headers = headers.toOkHeaders
 
         val data = body().toByteArray()
         val isImage = headers[HttpHeaders.ContentType].any { it.startsWith("image") }
-        it.body = if (isImage)
+        newResponse.body = if (isImage)
             DatatypeConverter.printBase64Binary(data)
         else
             data.toString(Charset.defaultCharset())

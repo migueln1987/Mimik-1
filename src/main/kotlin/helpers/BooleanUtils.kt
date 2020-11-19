@@ -63,7 +63,14 @@ inline fun <T> tryOrNull(
 }
 
 /** Returns if this object is null */
-val Any?.isNull get() = this == null
+fun Any?.isNull() = this == null
 
 /** Returns if this object is not null */
-val Any?.isNotNull get() = this != null
+fun Any?.isNotNull() = this != null
+
+/**
+ * Tries to cast [this] as type [T], or returns a null of type [T]
+ */
+inline fun <reified T> Any?.tryCast(): T? {
+    return if (this is T) this else null
+}

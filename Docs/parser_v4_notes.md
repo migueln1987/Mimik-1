@@ -21,7 +21,7 @@ Note: only applies to retrieving variables, not storing
 | name?      | Exists       | name?                                |
 | name#      | Count        | name#                                |
 | name@      | Cond. Result | name@                                |
-| name\_#    | Spread       | name_0, name_1, etc.                 |
+| name\_#    | Index All    | name_0, name_1, etc.                 |
 | name\_#0   | Index        | name_0                               |
 | name\_#1   | Index        | name_1                               |
 | name\_#xxx | Index        | name_xxx (or last index)<sup>1</sup> |
@@ -340,14 +340,15 @@ Returns: String
 | ~!request | (act) if false, cont   | Continue, but only process action if Cond was `false`                                  |
 | ~request  | (act) if prior was `~` | Process this command only if prefixed with one starting with `~` and it was successful |
 
-| command   | require state | true -> cont | false -> cont | true -> act | false -> act |
-| --------- | :-----------: | :----------: | :-----------: | :---------: | :----------: |
-| request   |       N       |       Y      |       Y       |      Y      |       Y      |
-| ?request  |       Y       |       Y      |       N       |      Y      |       N      |
-| !request  |       Y       |       N      |       Y       |      N      |       Y      |
-| ~?request |       N       |       Y      |       Y       |      Y      |       N      |
-| ~!request |       N       |       Y      |       Y       |      N      |       Y      |
-| ~request  |       Y       |       Y      |       Y       |      ~      |       ~      |
+| command   | require state | true -> act | false -> act | true -> cont | false -> cont |
+| --------- | :-----------: | :---------: | :----------: | :----------: | :-----------: |
+| request   |       N       |      Y      |       Y      |       Y      |       Y       |
+| ?request  |       Y       |      Y      |       N      |       Y      |       N       |
+| !request  |       Y       |      N      |       Y      |       N      |       Y       |
+| ~?request |       N       |      Y      |       N      |       Y      |       Y       |
+| ~!request |       N       |      N      |       Y      |       Y      |       Y       |
+| ~request  |       Y       |      ~      |       ~      |       Y      |       Y       |
+
 
 # Final Part
 

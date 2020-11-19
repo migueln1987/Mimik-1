@@ -17,6 +17,25 @@ class RandomHost(init: Int? = null) {
     var value = nextRandom()
         private set
 
+    companion object {
+        /** 'a'..'z' */
+        val char_Lower = ('a'..'z').toList()
+
+        /** 'A'..'Z' */
+        val char_Upper = ('A'..'Z').toList()
+
+        /** lower + upprecase letters' */
+        val chars = char_Lower + char_Upper
+
+        /** numbers */
+        val nums = ('0'..'9').toList()
+
+        /** letters and numbers */
+        val word = chars + nums
+
+        val useSymbols = nums + listOf('=', ',', '.', '<', '>')
+    }
+
     init {
         value = init?.absoluteValue ?: nextRandom()
     }
@@ -31,9 +50,9 @@ class RandomHost(init: Int? = null) {
 
         var useMin = min
         var useMax = max
-        if (min > max) {
-            useMax = min
-            useMin = max
+        if (useMin > useMax) {
+            useMax = useMin
+            useMin = useMax
         }
 
         // positive value between 5-10 chars
@@ -41,13 +60,33 @@ class RandomHost(init: Int? = null) {
 
         val byteData = ByteArray(length)
         useRandom.nextBytes(byteData)
-
         return byteData.asSequence()
-            .map { it and Byte.MAX_VALUE } // abs value
+            .map { it and Byte.MAX_VALUE } // (-127 - 127) -> 0-127
             .map { it / Byte.MAX_VALUE.toFloat() } // 0-127 -> 0-100%
             .map { (it * (charPool.size - 1)).toInt() } // % -> 0-charPool
             .map { charPool[it] } // get char value
             .joinToString("")
+    }
+
+    /**
+     * Generates a string from a list of
+     * - Char ranges
+     * - how many items to generate
+     */
+    fun valueToValid(vCheck: (MutableList<Pair<List<Char>, Int>>) -> Unit): String {
+        val useRandom = Random(value.toLong())
+        val sb = StringBuilder()
+
+        val vCheckList = mutableListOf<Pair<List<Char>, Int>>()
+        vCheck.invoke(vCheckList)
+
+        return vCheckList.fold(StringBuilder()) { acc, (range, count) ->
+            sb.clear()
+            repeat(count) {
+                sb.append(range[useRandom.nextInt(0, range.size)])
+            }
+            acc.append(sb.toString())
+        }.toString()
     }
 
     val valueToUUID: UUID

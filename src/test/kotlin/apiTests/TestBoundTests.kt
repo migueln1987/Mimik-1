@@ -5,6 +5,8 @@ import io.ktor.http.HttpMethod
 import io.ktor.server.testing.TestApplicationRequest
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
+import kolor.blue
+import kolor.yellow
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -74,11 +76,11 @@ class TestBoundTests : ApiTests {
                 setBody(
                     """
                     {
-                      "chap_use": [
-                        [
-                          "response:body:{test}->{@{useCode}}"
-                        ]
-                      ]
+                      "chap_use": {
+                        "seqSteps": [{
+                          "Commands": ["response:body:{test}->{@{useCode}}"]
+                        }]
+                      }
                     }
                 """.trimIndent()
                 )
@@ -89,6 +91,8 @@ class TestBoundTests : ApiTests {
                 setBody("")
             }.apply {
                 response {
+                    println("'Test' call:: Expected response = ".blue() + "Activation code: []".yellow())
+                    println("'Test' call:: Received response = ".blue() + it.content.orEmpty().yellow())
                     Assert.assertEquals(
                         "Activation code: []",
                         it.content
@@ -114,11 +118,11 @@ class TestBoundTests : ApiTests {
                 setBody(
                     """
                     {
-                      "chap_use": [
-                        [
-                          "response:body:{test}->{@{useCode|'none'}}"
-                        ]
-                      ]
+                      "chap_use": {
+                        "seqSteps": [{
+                          "Commands": ["response:body:{test}->{@{useCode|'none'}}"]
+                        }]
+                      }
                     }
                 """.trimIndent()
                 )
@@ -129,6 +133,8 @@ class TestBoundTests : ApiTests {
                 setBody("")
             }.apply {
                 response {
+                    println("'Test' call:: Expected response = ".blue() + "Activation code: [none]".yellow())
+                    println("'Test' call:: Received response = ".blue() + it.content.orEmpty().yellow())
                     Assert.assertEquals(
                         "Activation code: [none]",
                         it.content
@@ -161,16 +167,16 @@ class TestBoundTests : ApiTests {
                 setBody(
                     """
                     {
-                      "chap_activate": [
-                        [
-                          "response:body:{code: (\\d+)}->SaveVar"
-                        ]
-                      ],
-                      "chap_use": [
-                        [
-                          "response:body:{test}->{@{SaveVar|'none'}}"
-                        ]
-                      ]
+                      "chap_activate": {
+                        "seqSteps": [{
+                          "Commands": ["response:body:{code: (\\d+)}->%SaveVar"]
+                        }]
+                      },
+                      "chap_use": {
+                        "seqSteps": [{
+                          "Commands": ["response:body:{test}->{@{%SaveVar|'none'}}"]
+                        }]
+                      }
                     }
                 """.trimIndent()
                 )
@@ -182,6 +188,8 @@ class TestBoundTests : ApiTests {
                 setBody("")
             }.apply {
                 response {
+                    println("'Test' call:: Expected response = ".blue() + "Activation code: [none]".yellow())
+                    println("'Test' call:: Received response = ".blue() + it.content.orEmpty().yellow())
                     Assert.assertEquals(
                         "We made the 'test' call, no set variable, so the default is used",
                         "Activation code: [none]",
@@ -195,6 +203,8 @@ class TestBoundTests : ApiTests {
                 setBody("")
             }.apply {
                 response {
+                    println("'Activate' call:: Expected response = ".blue() + "code: 12345".yellow())
+                    println("'Activate' call:: Received response = ".blue() + it.content.orEmpty().yellow())
                     Assert.assertEquals(
                         "We expect the 'activate' call to return the data we need",
                         "code: 12345",
@@ -208,6 +218,8 @@ class TestBoundTests : ApiTests {
                 setBody("")
             }.apply {
                 response {
+                    println("'Test' call:: Expected response = ".blue() + "Activation code: [12345]".yellow())
+                    println("'Test' call:: Received response = ".blue() + it.content.orEmpty().yellow())
                     Assert.assertEquals(
                         "Activate call was made, we expect the bound variable to be set",
                         "Activation code: [12345]",

@@ -14,13 +14,13 @@ import io.ktor.http.Parameters
 import io.ktor.response.respondRedirect
 import io.ktor.routing.*
 import kotlinx.html.*
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
 import networkRouting.RoutingContract
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.Date
 
-@Suppress("RemoveRedundantQualifierName")
 class DataGen : RoutingContract(RoutePaths.rootPath) {
 
     enum class RoutePaths(val path: String) {
@@ -146,7 +146,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                     }
 
                     ResponseActions.NewChapter -> {
-                        val requestData: Requestdata?
+                        val requestData: RequestData?
                         val responseData: Responsedata?
                         if (chap == null) {
                             val (request, response, _) = params.asResponseCall()
@@ -229,7 +229,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
             val item = when (itemName?.trim()) {
                 null -> null
                 "" -> genResponses
-                    .minBy { it.recordedDate ?: Date() }
+                    .minByOrNull { it.recordedDate ?: Date() }
 
                 else -> genResponses
                     .firstOrNull { it.hashCode().toString() == itemName }
@@ -454,7 +454,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                                     div(classes = "radioDiv") {
                                         val data = actChap.requestData?.headers
-                                        val isValid = (data?.size() ?: 0) > 0
+                                        val isValid = (data?.size ?: 0) > 0
                                         useCustom = !isValid
                                         radioInput(name = "reqHeaders") {
                                             checked = isValid
@@ -480,7 +480,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         radioInput(name = "reqHeaders") {
                                             id = "customHeaders"
                                             value = (data ?: "").toString()
-                                            checked = (data?.size() ?: 0) > 0 || useCustom
+                                            checked = (data?.size ?: 0) > 0 || useCustom
                                         }
                                         infoText("Custom Headers") { inlineDiv }
                                         br()
@@ -760,7 +760,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val isLocalhostCall = get("useLocalhost") != null
         val url = get("reqUrl").orEmpty().ensureHttpPrefix.let {
             if (isLocalhostCall) {
-                HttpUrl.parse(it).reHost("0.0.0.0").rePort(Ports.live).toString()
+                it.toHttpUrlOrNull().reHost("0.0.0.0").rePort(Ports.live).toString()
             } else it
         }
         val params = this["reqQuery"]

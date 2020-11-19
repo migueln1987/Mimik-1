@@ -1,21 +1,19 @@
+@file:Suppress("KDocUnresolvedReference", "unused")
+
 package tapeItems
 
-import com.google.gson.Gson
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
-import com.google.gson.JsonPrimitive
+import com.google.gson.*
 import com.google.gson.stream.JsonWriter
 import helpers.*
 import helpers.attractors.*
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.*
-import mimikMockHelpers.MockUseStates
-import mimikMockHelpers.QueryResponse
-import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.Responsedata
+import mimikMockHelpers.*
 import networkRouting.editorPages.EditorModule.Companion.isBlank
 import networkRouting.editorPages.EditorModule.Companion.noData
+import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -119,8 +117,9 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
     }
 
     companion object {
-        private val gson = Gson()
-
+        /**
+         * Empty response which returns [HttpStatusCode.Gone]
+         */
         @Transient
         private val defaultResponse = object : Response {
             override fun code() = HttpStatusCode.Gone.value
@@ -129,7 +128,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             override fun getEncoding() = ""
             override fun getCharset() = Charset.defaultCharset()
 
-            override fun headers() = okhttp3.Headers.of("", "")
+            override fun headers() = headersOf("Empty", "")
             override fun header(name: String?) = ""
             override fun getContentType() = ""
 
@@ -186,22 +185,22 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         get() = if (field == null) TapeMode.READ_WRITE else field
 
     val httpRoutingUrl: HttpUrl?
-        get() = HttpUrl.parse(routingUrl.orEmpty())
+        get() = routingUrl.orEmpty().toHttpUrlOrNull()
 
     /**
-     * routingUrl has data, but HttpUrl is unable to parse it
+     * Returns true if this [String] is a valid Url
      */
     val isValidURL: Boolean
         get() = routingUrl.isValidURL
 
-    fun clone(postClone: (BaseTape) -> Unit = {}) = BaseTape {
-        it.tapeName = "${tapeName}_clone"
-        it.recordedDate = Date()
-        it.attractors = attractors?.clone()
-        it.routingUrl = routingUrl
-        it.alwaysLive = alwaysLive
-        it.chapters = chapters.map { it.clone() }.toMutableList()
-        it.tapeMode = tapeMode
+    fun clone(postClone: (BaseTape) -> Unit = {}) = BaseTape { newTape ->
+        newTape.tapeName = "${tapeName}_clone"
+        newTape.recordedDate = Date()
+        newTape.attractors = attractors?.clone()
+        newTape.routingUrl = routingUrl
+        newTape.alwaysLive = alwaysLive
+        newTape.chapters = chapters.map { it.clone() }.toMutableList()
+        newTape.tapeMode = tapeMode
     }.also { postClone.invoke(it) }
 
     override fun getName() = tapeName ?: RandomHost(hashCode()).valueAsChars()
@@ -211,14 +210,17 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
          * Interactions which will ALWAYS use a live response
          */
         AlwaysLive,
+
         /**
          * Mocks waiting for a response body
          */
         AwaitOnly,
+
         /**
          * Mocks which have a limited number of uses before expiration
          */
         LimitedOnly,
+
         /**
          * Normal mock interactions
          */
@@ -305,39 +307,52 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         return if (TapeCatalog.isTestRunning)
             miniResponse(request)
         else
-            try {
-                OkHttpClient().newCall(request).execute()
-            } catch (e: Exception) {
-                miniResponse(request, HttpStatusCode.ServiceUnavailable)
-            }
+            tryOrNull { OkHttpClient().newCall(request).execute() }
+                ?: miniResponse(request, HttpStatusCode.ServiceUnavailable)
     }
 
     override fun seek(request: okreplay.Request) =
         findBestMatches(request.toOkRequest).status == HttpStatusCode.Found
 
     /**
-     * Appends: [Name], Url, Headers, Body, and [Extras]
+     * Appends to an output [String]:
+     * - [ChapName]
+     * - Url
+     * - Headers
+     * - Body
+     * - [Extras]
      */
-    private val okhttp3.Request.logRequestData: (Name: String, Extras: String) -> String
-        get() { // todo; move into logger module
-            return { name, extras ->
-                var bodyStr = body().content(noData).tryAsPrettyJson ?: noData
+    private fun okhttp3.Request.logRequestData(
+        ChapName: String,
+        Extras: () -> String = { "" }
+    ): String { // todo; move into logger module
+        val requestStr = StringBuilder()
+            .appendLine("-Name: $ChapName")
+            .appendLine("-Url: $url")
+            .appendLine("-Headers:\n%s") {
+                it.format(
+                    headers.toStringPairs()
+                        .joinToString(separator = "", limit = 20, transform = { " $it\n" })
+                        .trimEnd('\n')
+                )
+            }
+            .append("-Body:\n%s") {
+                var bodyStr = body.content(noData).tryAsPrettyJson ?: noData
                 if (bodyStr.isBlank())
                     bodyStr = isBlank
-
-                val requestStr =
-                    ("-Name: $name\n" +
-                            "-Url: ${url()}\n" +
-                            "-Headers:\n%s\n" +
-                            "-Body:\n%s%s\n").format(
-                        headers().toStringPairs()
-                            .joinToString(separator = "", limit = 20, transform = { " $it\n" }).trimEnd('\n'),
-                        bodyStr.limitLines(20).ensurePrefix(" "),
-                        if (extras.isNotBlank()) "\n$extras" else ""
-                    )
-                "== Request ==\n$requestStr"
+                it.format(
+                    bodyStr.limitLines(20).ensurePrefix(" ")
+                )
             }
-        }
+            .appendLine {
+                Extras().let { extras ->
+                    if (extras.isNotBlank())
+                        "\n$extras" else ""
+                }
+            }
+
+        return "== Request ==\n$requestStr"
+    }
 
     /**
      * Appends: Status [Code] from [Url], {Headers and Body} from [Data], and [Extras].
@@ -345,60 +360,241 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
      * - If the Body is an image, then ```"[image]"``` is displayed
      * - Json bodies are formatted if possible
      */
-    private val okhttp3.Request.logResponseData: (Data: Responsedata?, Extras: String) -> String
-        get() { // todo; move into logger module
-            return { data, extras ->
-                val responseStr = if (data == null) extras
-                else {
-                    var bodyStr = if (data.isImage) " { image data }" else
-                        data.body.tryAsPrettyJson ?: noData
+    private fun okhttp3.Request.logResponseData(
+        Data: Responsedata?,
+        Extras: () -> String = { "" }
+    ): String { // todo; move into logger module
+        val extras = Extras().let { extras ->
+            if (extras.isNotBlank())
+                "\n$extras" else ""
+        }
 
-                    ("-Code (%d) from ${url()}\n" +
-                            "-Headers:\n%s\n" +
-                            "-Body:\n%s%s\n").format(
-                        data.code ?: 0,
-                        data.headers?.toStringPairs()
-                            ?.joinToString(separator = "", transform = { " $it\n" })?.trimEnd('\n') ?: noData,
-                        bodyStr.limitLines(20).ensurePrefix(" "),
-                        if (extras.isNotBlank()) "\n$extras" else ""
+        val responseStr = if (Data == null) extras
+        else {
+            StringBuilder()
+                .appendLine("-Code (%d) from $url") {
+                    it.format(Data.code ?: 0)
+                }
+                .appendLine("-Headers:\n%s") {
+                    it.format(
+                        Data.headers?.toStringPairs()
+                            ?.joinToString(separator = "", transform = { " $it\n" })
+                            ?.trimEnd('\n')
+                            ?: noData
                     )
                 }
-
-                "== Response ==\n$responseStr"
-            }
+                .append("-Body:\n%s") {
+                    val bodyStr = if (Data.isImage)
+                        " { image data }" else
+                        Data.body.tryAsPrettyJson ?: noData
+                    it.format(bodyStr.limitLines(20).ensurePrefix(" "))
+                }
+                .appendLine(extras)
+                .toString()
         }
+
+        return "== Response ==\n$responseStr"
+    }
 
     override fun play(request: okreplay.Request): Response {
         val okRequest: okhttp3.Request = request.toOkRequest
         val logBuilder = StringBuilder()
 
+        val searchTypes = listOf(
+            SearchPreferences.AlwaysLive,
+            SearchPreferences.AwaitOnly,
+            SearchPreferences.LimitedOnly,
+            SearchPreferences.MockOnly
+        )
+
+        val channelOutput = searchTypes.asSequence()
+            .map { it to findBestMatch(okRequest, it) }
+            .filter { it.second.status == HttpStatusCode.Found }
+            .filter {
+                // AwaitOnly must have the writable state as true
+                // all other preferences: return true
+                !(it.first == SearchPreferences.AwaitOnly && !isWritable)
+            }
+            .filter {
+                // AlwaysLive always returns true (as the call is made during it's usage)
+                // all other preferences: must have a non-null item data
+                if (it.first == SearchPreferences.AlwaysLive)
+                    true else it.second.item != null
+            }.firstOrNull()
+
+        if (channelOutput == null) {
+            println("Using default [Gone] response for: ${okRequest.url}")
+            return defaultResponse
+        }
+
+        val chapter = channelOutput.second.item
+        var returnResponse: Response? = null
+
+        when (channelOutput.first) {
+            SearchPreferences.AlwaysLive -> {
+                println("Starting Live call for: ${okRequest.url}")
+                if (chapter == null) {
+                    logBuilder.appendLines(
+                        "=== Live ===",
+                        okRequest.logRequestData("[Missing]") {
+                            ("-Valid URL: $isValidURL\n" +
+                                "-Network: $hasNetworkAccess")
+                        }
+                    )
+                    returnResponse = miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
+                } else {
+                    logBuilder.appendLines(
+                        "=== Live ===",
+                        okRequest.logRequestData(chapter.name) {
+                            ("-Valid URL: $isValidURL\n" +
+                                "-Network: $hasNetworkAccess%s").format(
+                                if (chapter.uses >= 0)
+                                    "\n-Uses: ${chapter.uses}" else ""
+                            )
+                        }
+                    )
+
+                    if (isValidURL) {
+                        val response = getData(okRequest)
+                        val responseData = response.toTapeData
+
+                        logBuilder.appendLine(okRequest.logResponseData(responseData))
+
+                        if (response.isSuccessful) {
+                            if (chapter.uses > 0) chapter.uses--
+                            logBuilder.appendLine(
+                                if (chapter.uses >= 0)
+                                    "-Remaining Uses: ${chapter.uses}" else ""
+                            )
+
+                            println(logBuilder.toString())
+                            returnResponse = responseData.replayResponse
+                        }
+                    } else
+                        returnResponse = miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
+                }
+            }
+
+            SearchPreferences.AwaitOnly -> {
+                requireNotNull(chapter)
+                println("Queued Await request for: ${okRequest.url}")
+                logBuilder.appendLines(
+                    "=== Await ===",
+                    okRequest.logRequestData(chapter.name) {
+                        ("-Valid URL: $isValidURL\n" +
+                            "-Network: $hasNetworkAccess\n" +
+                            "%s").format(
+                            if (chapter.uses >= 0)
+                                "-Uses: ${chapter.uses}" else ""
+                        )
+                    }
+                )
+
+                val response = getData(okRequest)
+                val responseData = response.toTapeData
+                logBuilder.appendLine(okRequest.logResponseData(responseData))
+
+                if (response.isSuccessful) {
+                    chapter.requestData = okRequest.toTapeData
+                    chapter.responseData = responseData
+                    if (chapter.uses > 0) chapter.uses--
+                    saveFile()
+
+                    logBuilder.appendLine {
+                        if (chapter.uses >= 0)
+                            "-Remaining Uses: ${chapter.uses}" else ""
+                    }
+
+                    println(logBuilder.toString())
+                    returnResponse = chapter.response
+                        ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
+                } else {
+                    println(logBuilder.toString())
+                    returnResponse = miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
+                }
+            }
+
+            SearchPreferences.LimitedOnly -> {
+                requireNotNull(chapter)
+                chapter.uses--
+                logBuilder.appendLines(
+                    "=== Limited ===",
+                    okRequest.logRequestData(chapter.name),
+                    okRequest.logResponseData(chapter.responseData) {
+                        if (chapter.uses >= 0)
+                            "-Uses: ${chapter.uses}" else ""
+                    }
+                )
+
+                returnResponse = chapter.response
+                    ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
+            }
+
+            SearchPreferences.MockOnly -> {
+                requireNotNull(chapter)
+                logBuilder.appendLines(
+                    "=== Mock ===",
+                    okRequest.logRequestData(chapter.name),
+                    okRequest.logResponseData(chapter.responseData)
+                )
+
+                println(logBuilder.toString())
+                returnResponse = chapter.response
+                    ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
+            }
+
+            else -> Unit
+        }
+
+        if (chapter != null && returnResponse != null) {
+//            val qq = TapeCatalog.Instance.responseLinker.newLink {
+//                println("aa")
+//                returnResponse.edit {
+//                    it.headers = it.headers.newBuilder().also { builder ->
+//                        builder.add("Mimik_UUID", "")
+//                    }.build()
+//                }.toResponse()
+//            }
+//            val pp = returnResponse.edit {
+//                it.code = 245
+//            }
+//            val ee = pp.hashCode()
+            return returnResponse
+        }
+
+        return defaultResponse
+    }
+
+    fun play_old(request: okreplay.Request): Response {
+        val okRequest: okhttp3.Request = request.toOkRequest
+        val logBuilder = StringBuilder()
+
         val alwaysLive = findBestMatch(okRequest, SearchPreferences.AlwaysLive)
         if (alwaysLive.status == HttpStatusCode.Found) {
-            println("Starting Live call for: ${okRequest.url()}")
+            println("Starting Live call for: ${okRequest.url}")
             alwaysLive.item?.also {
-                logBuilder.appendlns(
+                logBuilder.appendLines(
                     "=== Live ===",
-                    okRequest.logRequestData.invoke(
-                        it.name,
+                    okRequest.logRequestData(it.name) {
                         ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess%s").format(
+                            "-Network: $hasNetworkAccess%s").format(
                             if (it.uses >= 0)
                                 "\n-Uses: ${it.uses}" else ""
                         )
-                    )
+                    }
                 )
 
                 if (isValidURL) {
                     val response = getData(okRequest)
                     val responseData = response.toTapeData
 
-                    logBuilder.appendln(
-                        okRequest.logResponseData.invoke(responseData, "")
+                    logBuilder.appendLine(
+                        okRequest.logResponseData(responseData)
                     )
 
                     if (response.isSuccessful) {
                         if (it.uses > 0) it.uses--
-                        logBuilder.appendln(
+                        logBuilder.appendLine(
                             if (it.uses >= 0)
                                 "-Remaining Uses: ${it.uses}" else ""
                         )
@@ -416,43 +612,40 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         val awaitMock = findBestMatch(okRequest, SearchPreferences.AwaitOnly)
         if (awaitMock.status == HttpStatusCode.Found && isWritable) {
             awaitMock.item?.also {
-                println("Queued Await request for: ${okRequest.url()}")
-                logBuilder.appendlns(
+                println("Queued Await request for: ${okRequest.url}")
+                logBuilder.appendLines(
                     "=== Await ===",
-                    okRequest.logRequestData.invoke(
-                        it.name,
+                    okRequest.logRequestData(it.name) {
                         ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess\n" +
-                                "%s").format(
+                            "-Network: $hasNetworkAccess\n" +
+                            "%s").format(
                             if (it.uses >= 0)
                                 "-Uses: ${it.uses}" else ""
                         )
-                    )
+                    }
                 )
 
                 val response = getData(okRequest)
                 val responseData = response.toTapeData
-                logBuilder.appendln(
-                    okRequest.logResponseData.invoke(responseData, "")
-                )
+                logBuilder.appendLine(okRequest.logResponseData(responseData))
 
-                return if (response.isSuccessful) {
+                if (response.isSuccessful) {
                     it.requestData = okRequest.toTapeData
                     it.responseData = responseData
                     if (it.uses > 0) it.uses--
                     saveFile()
 
-                    logBuilder.appendln(
+                    logBuilder.appendLine(
                         if (it.uses >= 0)
                             "-Remaining Uses: ${it.uses}" else ""
                     )
 
                     println(logBuilder.toString())
-                    it.response
+                    return it.response
                         ?: miniResponse(okRequest, HttpStatusCode.NoContent).toReplayResponse
                 } else {
                     println(logBuilder.toString())
-                    miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
+                    return miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
                 }
             }
         }
@@ -461,14 +654,13 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         if (limitedMock.status == HttpStatusCode.Found) {
             limitedMock.item?.also {
                 it.uses--
-                logBuilder.appendlns(
+                logBuilder.appendLines(
                     "=== Limited ===",
-                    okRequest.logRequestData.invoke(it.name, ""),
-                    okRequest.logResponseData.invoke(
-                        it.responseData,
+                    okRequest.logRequestData(it.name),
+                    okRequest.logResponseData(it.responseData) {
                         if (it.uses >= 0)
                             "-Uses: ${it.uses}" else ""
-                    )
+                    }
                 )
 
                 return it.response
@@ -479,10 +671,10 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         val activeMock = findBestMatch(okRequest, SearchPreferences.MockOnly)
         if (activeMock.status == HttpStatusCode.Found) {
             activeMock.item?.also {
-                logBuilder.appendlns(
+                logBuilder.appendLines(
                     "=== Mock ===",
-                    okRequest.logRequestData.invoke(it.name, ""),
-                    okRequest.logResponseData.invoke(it.responseData, "")
+                    okRequest.logRequestData(it.name),
+                    okRequest.logResponseData(it.responseData)
                 )
 
                 println(logBuilder.toString())
@@ -494,6 +686,11 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         return defaultResponse
     }
 
+    /**
+     * Shell for [findBestMatches] which returns a single query response of:
+     * - Chapter (or null)
+     * - Status of the chapter: [HttpStatusCode.NotFound], [HttpStatusCode.Found], [HttpStatusCode.Found]
+     */
     private fun findBestMatch(
         request: okhttp3.Request,
         preference: SearchPreferences = SearchPreferences.ALL
@@ -512,6 +709,15 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         }
     }
 
+    /**
+     * Searches for the best match from cached calls and chapters.
+     *
+     * Filters:
+     * - must be enabled
+     * - chapter's state is within range of [preference]
+     * - chapter has attractors
+     * - chapter with the highest required matching attractors
+     */
     private fun findBestMatches(
         request: okhttp3.Request,
         preference: SearchPreferences = SearchPreferences.ALL
@@ -523,27 +729,17 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             .filter {
                 when (it.uses) {
                     MockUseStates.DISABLE.state,
-                    MockUseStates.DISABLEDLIMITED.state ->
-                        false
+                    MockUseStates.DISABLEDLIMITED.state -> false
                     else -> true
                 }
             }
             .filter {
                 when (preference) {
-                    SearchPreferences.ALL ->
-                        true
-
-                    SearchPreferences.AlwaysLive ->
-                        it.alwaysLive.isTrue
-
-                    SearchPreferences.AwaitOnly ->
-                        it.awaitResponse
-
-                    SearchPreferences.MockOnly ->
-                        it.uses == MockUseStates.ALWAYS.state
-
-                    SearchPreferences.LimitedOnly ->
-                        it.uses in (1..Int.MAX_VALUE)
+                    SearchPreferences.ALL -> true
+                    SearchPreferences.AlwaysLive -> it.alwaysLive.isTrue
+                    SearchPreferences.AwaitOnly -> it.awaitResponse
+                    SearchPreferences.MockOnly -> it.uses == MockUseStates.ALWAYS.state
+                    SearchPreferences.LimitedOnly -> it.uses in (1..Int.MAX_VALUE)
                 }
             }
             .filter {
@@ -566,11 +762,11 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 QueryResponse { status = HttpStatusCode.NotFound }
             else -> RequestAttractors.findBest_many(
                 filteredChapters,
-                request.url().encodedPath(),
-                request.url().query(),
-                request.headers().toStringPairs(),
-                if (HttpMethod.requiresRequestBody(request.method()))
-                    request.body().content() else null
+                request.url.encodedPath,
+                request.url.query,
+                request.headers.toStringPairs(),
+                if (HttpMethod.requiresRequestBody(request.method))
+                    request.body.content() else null
             ).also { qr ->
                 if (qr.item?.size == 1)
                     qr.item?.first()?.cachedCalls?.add(request.contentHash)
@@ -583,17 +779,17 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             it.requestData = request.toTapeData
             it.responseData = response.toTapeData
             it.attractors = RequestAttractors(it.requestData)
-            it.origionalMockUses = it.mockUses
+            it.originalMockUses = it.mockUses
             it.alwaysLive = alwaysLive
         }
 
         val okRequest = request.toOkRequest
 
         val logBuilder = StringBuilder()
-        logBuilder.appendlns(
+        logBuilder.appendLines(
             "=== New Chapter ===",
-            okRequest.logRequestData.invoke(newChap.name, ""),
-            okRequest.logResponseData.invoke(newChap.responseData, "")
+            okRequest.logRequestData(newChap.name),
+            okRequest.logResponseData(newChap.responseData)
         )
 
         println(logBuilder.toString())
@@ -616,9 +812,8 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             withContext(Dispatchers.IO) {
                 synchronized(this@BaseTape) {
                     savingFile.set(true)
-                    this@BaseTape.chapters.forEach { it.prepareSeqForExport() }
                     val time = measureTimeMillis {
-                        val tree = gson.toJsonTree(this@BaseTape).asJsonObject
+                        val tree = TapeCatalog.gson.toJsonTree(this@BaseTape).asJsonObject
                         val keepChapters = tree.getAsJsonArray("chapters")
                             .filter {
                                 ((it as JsonObject)["mockUses"] as? JsonPrimitive)
@@ -651,7 +846,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
 
                         if (canSaveFile)
                             outFile.bufferedWriter().jWriter
-                                .also { gson.toJson(tree, it) }
+                                .also { TapeCatalog.gson.toJson(tree, it) }
                                 .close()
                     }
                     savingFile.set(false)
@@ -741,5 +936,11 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
 
     init {
         config.invoke(this)
+    }
+
+    override fun toString(): String {
+        return "\"%s\", Attractors: %s, Chapters: %d".format(
+            name, attractors?.toString().orEmpty(), chapters.size
+        )
     }
 }

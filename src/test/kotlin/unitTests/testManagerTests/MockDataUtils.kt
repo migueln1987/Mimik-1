@@ -35,7 +35,7 @@ class P4MockData(config: (P4MockData) -> Unit = {}) {
             var headers: Headers
                 get() = headers_raw.toHeaders_dupKeys
                 set(value) {
-                    headers_raw = value.toMultimap()
+                    headers_raw = value.toMultimap() as MutableMap<String, List<String>>
                 }
             val hasHeaders = headers_raw.isNotEmpty()
             var body: String? = null

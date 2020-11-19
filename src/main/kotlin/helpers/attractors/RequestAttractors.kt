@@ -5,7 +5,7 @@ import helpers.matchers.matchResults
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import mimikMockHelpers.QueryResponse
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import okhttp3.internal.http.HttpMethod
 
 class RequestAttractors {
@@ -18,13 +18,13 @@ class RequestAttractors {
         config.invoke(this)
     }
 
-    constructor(request: Requestdata?) {
+    constructor(request: RequestData?) {
         request?.httpUrl?.also { url ->
-            routingPath = RequestAttractorBit(url.encodedPath().removePrefix("/"))
+            routingPath = RequestAttractorBit(url.encodedPath.removePrefix("/"))
             if (routingPath?.value?.isBlank().isTrue)
                 routingPath = null
 
-            queryMatchers = url.queryParameterNames().flatMap { key ->
+            queryMatchers = url.queryParameterNames.flatMap { key ->
                 url.queryParameterValues(key).map { value ->
                     RequestAttractorBit("$key=$value")
                 }
@@ -41,7 +41,7 @@ class RequestAttractors {
 
         // If the call always has a body, but a matcher wasn't set
         // then add a compliance matcher
-        if (HttpMethod.requiresRequestBody(request?.method))
+        if (HttpMethod.requiresRequestBody(request?.method.orEmpty()))
             bodyMatchers = listOf(RequestAttractorBit { it.allowAllInputs = true })
     }
 
@@ -50,8 +50,7 @@ class RequestAttractors {
             listOf(
                 HttpHeaders.ContentLength, HttpHeaders.Host, HttpHeaders.Accept, HttpHeaders.TE,
                 HttpHeaders.UserAgent, HttpHeaders.Connection, HttpHeaders.CacheControl,
-                "localhost",
-                "ondotsessionid" // todo; move into "mockIgnore_header:ondotsessionid"
+                "localhost"
             )
 
         enum class GuessType {
@@ -59,6 +58,7 @@ class RequestAttractors {
              * Must have matched at least 1 required value
              */
             Any,
+
             /**
              * Must match at least the required times
              */

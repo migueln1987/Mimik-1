@@ -3,10 +3,10 @@ package unitTests.mockHelpers
 import io.ktor.http.HttpHeaders
 import io.mockk.every
 import io.mockk.spyk
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
-import okhttp3.Headers
-import okhttp3.HttpUrl
+import okhttp3.Headers.Companion.headersOf
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.junit.Assert
 import org.junit.Test
 
@@ -17,11 +17,11 @@ class tapeDataTests {
         val urlData = "http://valid.url/"
         val methodData = "POST"
         val headerValue = "value"
-        val headerData = Headers.of(HttpHeaders.ContentType, headerValue)
+        val headerData = headersOf(HttpHeaders.ContentType, headerValue)
         val bodyData = "testBody"
 
-        val host = spyk(Requestdata()) {
-            every { httpUrl } returns HttpUrl.parse(urlData)
+        val host = spyk(RequestData()) {
+            every { httpUrl } returns urlData.toHttpUrlOrNull()
             every { method } returns methodData
             every { tapeHeaders } returns headerData
             every { body } returns bodyData
@@ -33,7 +33,7 @@ class tapeDataTests {
         Assert.assertEquals(methodData, test.method())
 
         Assert.assertEquals(headerData, test.headers())
-        Assert.assertTrue(test.headers().size() > 0)
+        Assert.assertTrue(test.headers().size > 0)
         Assert.assertEquals(headerValue, test.contentType)
 
         Assert.assertTrue(test.hasBody())
@@ -45,7 +45,7 @@ class tapeDataTests {
     fun responseReplayConversion() {
         val codeData = 200
         val headerValue = "value"
-        val headerData = Headers.of(HttpHeaders.ContentType, headerValue)
+        val headerData = headersOf(HttpHeaders.ContentType, headerValue)
         val bodyData = "testBody"
 
         val host = spyk(Responsedata()) {
@@ -59,7 +59,7 @@ class tapeDataTests {
         Assert.assertEquals(codeData, test.code())
 
         Assert.assertEquals(headerData, test.headers())
-        Assert.assertTrue(test.headers().size() > 0)
+        Assert.assertTrue(test.headers().size > 0)
         Assert.assertEquals(headerValue, test.contentType)
 
         Assert.assertTrue(test.hasBody())

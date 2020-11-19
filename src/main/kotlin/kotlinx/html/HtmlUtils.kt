@@ -111,11 +111,10 @@ fun FlowOrPhrasingContent.infoText(
 ) {
     val displayLines = (R.getProperty(property) ?: property)
         .run {
-            @Suppress("UnnecessaryVariable")
-            when (val args = formatArgs) {
-                is Array<*> -> format(*args)
-                is Collection<*> -> format(*args.toTypedArray())
-                else -> format(args)
+            when (formatArgs) {
+                is Array<*> -> format(*formatArgs)
+                is Collection<*> -> format(*formatArgs.toTypedArray())
+                else -> format(formatArgs)
             }
         }
         .split('\n')
@@ -225,7 +224,7 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
             "${it.first} : ${it.second}".also { str ->
                 if (str.length > maxWd)
                     maxWd = str.length
-                builder.appendln(str)
+                builder.appendLine(str)
             }
         }
 
@@ -307,12 +306,12 @@ fun FlowContent.refreshWatchWindow(
         unsafeScript {
             val ageID = "lastAge_$fileID"
             val appender = StringBuilder().apply {
-                extras.forEach { appendln("formData.append('%s', '%s');".format(it.first, it.second)) }
+                extras.forEach { appendLine("formData.append('%s', '%s');".format(it.first, it.second)) }
 
                 if (!this.contains("append('age'"))
-                    appendln("formData.append('age', '%s');".format(watchAge))
+                    appendLine("formData.append('age', '%s');".format(watchAge))
                 if (!this.contains("append('type'"))
-                    appendln("formData.append('type', '%s');".format(watchType))
+                    appendLine("formData.append('type', '%s');".format(watchType))
             }
 
             +"""

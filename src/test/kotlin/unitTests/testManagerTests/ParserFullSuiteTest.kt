@@ -103,16 +103,13 @@ class ParserFullSuiteTest {
                 listOf("?response:head").toMockSet("2.1.1.a", true) {
                     it.activeData.response.loadDefaultHeaders()
                 },
-                listOf("?response:head:{b\\d}").toMockSet("2.1.1.b", true)
-                {
+                listOf("?response:head:{b\\d}").toMockSet("2.1.1.b", true) {
                     it.activeData.response.loadDefaultHeaders()
                 },
-                listOf("?response:head[b1]").toMockSet("2.1.1.c", true)
-                {
+                listOf("?response:head[b1]").toMockSet("2.1.1.c", true) {
                     it.activeData.response.loadDefaultHeaders()
                 },
-                listOf("?response:head[b1]:{b+\\d}").toMockSet("2.1.1.d", true)
-                {
+                listOf("?response:head[b1]:{b+\\d}").toMockSet("2.1.1.d", true) {
                     it.activeData.response.loadDefaultHeaders()
                 },
 
@@ -326,8 +323,8 @@ class ParserFullSuiteTest {
 
                 // 4.2.1.B Fail, use default var
                 listOf(
-                    "use:{>6}->&result",
-                    "&var[result]:{false}->{}",// empty strings are seen as "no data"
+                    "use:{>6}->&result", // '2' is not GT '6', answer 'false' is saved to result
+                    "&var[result]:{false}->{}", // empty strings are seen as "no data"
                     "&var[test]->{@{&result|'none'}}"
                 ).toMockSet("4.2.1.B") {
                     it.activeData.use = 2
@@ -622,7 +619,6 @@ class ParserFullSuiteTest {
                 listOf("request:head->&result").toMockSet("7.4.2.a") {
                     it.activeData.request.loadDefaultHeaders()
                     it.expectedData.chapVars["result"] = "a2"
-
                 },
                 // 7.4.2.b Variable
                 listOf("&var->&result").toMockSet("7.4.2.B") {
@@ -705,7 +701,6 @@ class ParserFullSuiteTest {
 
             ).also { runTests.addAll(it) }
 
-
             // X. Misc
             arrayOf(
                 // including "}->" in the "save to" and "source match"
@@ -723,7 +718,7 @@ class ParserFullSuiteTest {
     @Test
     fun subTestSuite() {
         val tests = mockSuiteCommands.filter {
-            it.name.startsWith("7.5.a")
+            it.name.startsWith("Baseline")
         }
         suiteRunner(tests)
     }
@@ -749,29 +744,27 @@ class ParserFullSuiteTest {
                 testsRun,
                 if (setName.isEmpty()) "" else ": $setName"
             )
-            sb.appendln("-".repeat(testStr.length + 10))
-            sb.appendln(testStr.yellow())
-            sb.appendln("Testing commands:")
+            sb.appendLine("-".repeat(testStr.length + 10))
+            sb.appendLine(testStr.yellow())
+            sb.appendLine("Testing commands:")
             val printCmdLines = commands.joinToString("\n") {
                 (if (it.isEmpty()) "{empty string}" else it)
                     .ensurePrefix("- ")
                     .cyan()
             }
-            sb.appendln(printCmdLines)
+            sb.appendLine(printCmdLines)
             println(sb.toString())
 
-            var mockChaps = mutableMapOf<String, BoundChapterItem>()
-            testObj.setup { setup ->
-                val inputData = suiteEnv.activeData
-                setup.testBounds = mockk {
-                    mockChaps =
-                        inputData.useChapters.map { (chapter, use) ->
-                            Pair(
-                                chapter,
-                                BoundChapterItem().also { it.stateUse = use }
-                            )
-                        }.toMap().toMutableMap()
+            val inputData = suiteEnv.activeData
+            val mockChaps = inputData.useChapters.map { (chapter, use) ->
+                Pair(
+                    chapter,
+                    BoundChapterItem().also { it.stateUse = use }
+                )
+            }.toMap().toMutableMap()
 
+            testObj.setup { setup ->
+                setup.testBounds = mockk {
                     val dataSlot = slot<String>()
                     every { boundData[capture(dataSlot)] } answers {
                         mockChaps[dataSlot.captured]
@@ -799,7 +792,7 @@ class ParserFullSuiteTest {
 
             // Process inputs for results
             val steps = commands.asSequence()
-                .map { it to Parser_v4.parseToSteps(it) }
+                .map { it to Parser_v4.parseToCommand(it) }
                 .onEach { (input, parsed) ->
                     fun errorMsg() = "$testStr\nProcessed command does not match input" +
                             "\nInput: $input" +

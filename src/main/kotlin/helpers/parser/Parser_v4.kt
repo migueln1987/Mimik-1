@@ -2,11 +2,12 @@ package helpers.parser
 
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
-import helpers.firstNotNullResult
+import helpers.*
 import helpers.matchers.MatcherCollection
 import helpers.matchers.MatcherResult
 import helpers.matchers.matchResults
 import kolor.red
+import mimikMockHelpers.SeqActionObject
 import networkRouting.testingManager.BoundChapterItem
 
 /**
@@ -113,10 +114,13 @@ object Parser_v4 {
         private val vType
             get() = """
                 (?<vType>
-                  (?<vbound>
-                    (?:(?<vC>&)|(?<vB>%))?
-                    (?<vU>\^)?
-                  )?
+                  (?:
+                    (?=[&%\^])
+                    (?<vbound>
+                      (?:(?<vC>&)|(?<vB>%))?
+                      (?<vU>\^)?
+                    )|(?:)
+                  )
                   var
                   (?:\[(?<vN>$varName)\])?
                   (?::\{(?<vM>.+?)\}$toEOM)?
@@ -133,31 +137,42 @@ object Parser_v4 {
 
         /**
          * Valid variable names (+ suffix flags)
-         * 1) must start with a letter
+         * 1) content must start with a letter
          * 2) body can contain: letters, numbers, and underscores
          * 3) ending flags can be: ?, #, @, _?, _#, _\d
          */
         val varName
-            get() = "[a-zA-Z]\\w*([?#@]*(?:_[\\d#?]*)?)"
+            get() = "[a-zA-Z](?:\\w+|(?:[?#@]*(?:_[\\d#?]*)?))*"
 
         private val act
             get() = """
                 (?<act>->
-                  (?:
-                    (?:\{(?<aM>.*?)\}(?=\s|$))|
-                    (?<aV>
-                      (?<aSVL>
-                        (?<aSC>&)|(?<aSB>%)
-                      )?
-                      (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
-                      (?<aVT>
-                        (?<aVE>\?)?(?<aVC>\#)?(?<aVR>@)?
-                        (?<aVX>_(?:(?<aVS>\#(?<aVI>\d+)?)|(?<aVL>\?)))?
-                      )?
-                    )
-                  )
+                  (?:$act_match|$act_var)
                 )?
                 """
+
+        private val act_match
+            get() = """
+                (?:\{(?<aM>.*?)\}(?=\s|$))
+            """
+
+        private val act_var
+            get() = """
+                (?<aV>
+                (?<aSVL>
+                  (?<aSC>&)|(?<aSB>%)
+                )?
+                (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
+                (?:
+                  (?<aVT>
+                    (?<aVE>\?)?
+                    (?<aVC>\#)?
+                    (?<aVR>@)?
+                    (?<aVS>_(?:(?<aVSA>\#(?<aVSI>\d+)?)|(?<aVSL>\?)))?
+                  )
+                )
+              )
+        """
     }
 
     override fun toString() = Groups.makeScript()
@@ -165,7 +180,7 @@ object Parser_v4 {
     val asRegex by lazy { Groups.makeScript().toRegex() }
 
     /**
-     * Extracts templates from a matcher strin
+     * Extracts templates from a matcher string
      */
     private const val templateReg = """@\{(.+?)\}"""
 
@@ -173,7 +188,7 @@ object Parser_v4 {
      * - content = &?\w+
      * - final = '.+?' or ".+?"
      */
-    private val variableMatch = "(%s|%s|%s)".format(
+    private val variableMatch = "%s|%s|%s".format(
         "(?<index>\\d+)",
         "(?<content>${Groups.varName})",
         "(?<final>['\"].+?['\"])"
@@ -187,7 +202,7 @@ object Parser_v4 {
      */
     fun deTemplate(
         finder: String,
-        vars: (String, Int) -> String?
+        vars: (String, Int, Boolean) -> String?
     ): String {
         // todo; update the Actions to reflect the updated deTemplating actions
         /* Actions:
@@ -258,23 +273,26 @@ object Parser_v4 {
                             else -> it
                         }
                     }
-                    .firstNotNullResult {
-                        val (temValue, scope) = it.value.orEmpty()
+                    .firstNotNullResult { mResult ->
+                        val (temValue, scope, searchUp) = mResult.value.orEmpty()
                             .let { v ->
-                                Pair(
-                                    v.trimStart('&', '%'),
+                                Triple(
+                                    v.trimStart('&', '%', '^'),
                                     when (v[0]) {
                                         '&' -> 1 // Chapter
                                         '%' -> 2 // Test Bounds
                                         else -> 0 // Sequence
-                                    }
+                                    },
+                                    v.contains('^')
                                 )
                             }
                         // 'final', index, or var -> string or empty
-                        if (it.groupName == "final")
+                        if (mResult.groupName == "final")
                             temValue
-                        else
-                            vars.invoke(temValue, scope)
+                        else {
+                            vars.invoke(temValue, scope, searchUp)
+                                ?.run { if (isEmpty()) null else this }
+                        }
                     }
                     .orEmpty()
 
@@ -290,70 +308,85 @@ object Parser_v4 {
 
     private fun String.toJsonMap(): Map<String, Any> {
         if (isEmpty()) return mapOf()
-        return try {
+        return tryOrNull(true) {
             Gson()
                 .fromJson(this, LinkedTreeMap::class.java).orEmpty()
                 .map { it.key.toString() to it.value }
                 .toMap()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            mutableMapOf()
-        }
+        }.orEmpty()
     }
 
     /**
      * Example
      * ```json
      * {
-     *   "aaa":[
-     *      [
-     *          "?request:body:(some\w+)->toVar",
-     *          "response:body:((test:))->(@{1}@{toVar})"
-     *      ],
-     *      '
-     *      [
-     *          "var:regCode->(true)",
-     *          "response:body:(code: )-(code: @{regCode})"
-     *      ]
-     *   ]
+     *   "aa": {
+     *     "stateUse": 4,
+     *     "seqSteps": [
+     *       {
+     *         "Name": "something",
+     *         "Commands": [
+     *           "?request:body:(some\w+)->toVar",
+     *           "response:body:((test:))->(@{1}@{toVar})"
+     *         ]
+     *       },
+     *       {
+     *         "Name": "other",
+     *         "Commands": [
+     *           "var:regCode->(true)",
+     *           "esponse:body:(code: )-(code: @{regCode})"
+     *         ]
+     *       }
+     *     ],
+     *     "scopeVars": {
+     *       "g": "y",
+     *       "j": "e"
+     *     }
+     *   }
      * }
      * ```
      */
     fun parseBody(body: String): MutableMap<String, BoundChapterItem> {
-        return body.toJsonMap().asSequence()
-            .map { (key, value) ->
-                @Suppress("UNCHECKED_CAST")
-                key to (value as? ArrayList<ArrayList<String>>).orEmpty()
+        if (body.isEmpty()) return mutableMapOf()
+
+        val jsonData = body.toJsonMap()
+        val validData = jsonData.values.all { it.tryCast<LinkedTreeMap<String, *>>().isNotNull() }
+        if (!validData) {
+            println("Body is not properly formatted")
+            return mutableMapOf()
+        }
+
+        return jsonData.asSequence()
+            .map { (chapName, value) ->
+                chapName to value.tryCast<LinkedTreeMap<String, *>>().orEmpty()
             }
-            .map { (chap, data) ->
-                val actionItems = data.asSequence()
-                    .map { dStr ->
-                        // process the strings into lexicon bites
-                        val parsedItems = dStr.asSequence()
-                            .map(this::parseToContents)
-                            .filter(this::isValid)
-                            .toList()
+            .map { (chap, values) ->
+                chap to BoundChapterItem().also { bounds ->
+                    values.forEach { (key, data) ->
+                        when (key) {
+                            "stateUse" -> bounds.stateUse = (data as Double).toInt()
 
-                        // If any of the string lines were invalid
-                        // then reject the whole array to be safe.
-                        if (parsedItems.size == dStr.size)
-                            parsedItems
-                        else listOf()
-                    }
-                    .filter { it.isNotEmpty() }
-                    .map { lexM ->
-                        lexM.map { P4Command(it) }
-                    }
-                    .toList()
+                            "seqSteps" -> {
+                                data.tryCast<ArrayList<LinkedTreeMap<String, *>>>().orEmpty().map { lData ->
+                                    SeqActionObject(true) { newSeq ->
+                                        lData.forEach { (dKey, dData) ->
+                                            when (dKey) {
+                                                "ID" -> newSeq.ID = (dData as Double).toInt()
+                                                "Name" -> newSeq.Name = dData as String
+                                                "Commands" -> newSeq.Commands = dData.tryCast<ArrayList<String>>()
+                                                    .orEmpty().map { parseToCommand(it) }.toArrayList()
+                                            }
+                                        }
+                                    }
+                                }.also { bounds.seqSteps.addAll(it) }
+                            }
 
-                val chapItems = BoundChapterItem().also {
-                    it.seqSteps.clear()
-                    it.seqSteps.addAll(actionItems)
+                            "scopeVars" -> bounds.scopeVars =
+                                data.tryCast<LinkedTreeMap<String, String>>().orEmpty().toMutableMap()
+                        }
+                    }
                 }
-
-                chap to chapItems
-            }
-            .toMap().toMutableMap()
+            }.toMap().toMutableMap()
     }
 
     /**
@@ -372,14 +405,14 @@ object Parser_v4 {
      *
      * Invalid [input]s will return a [P4Command] with all options turned off
      */
-    fun parseToSteps(input: String): P4Command {
+    fun parseToCommand(input: String): P4Command {
         val cmd = P4Command(parseToContents(input))
         val cmdStr = cmd.toString()
         if (cmdStr != input && cmdStr != "Invalid") {
             val sb = StringBuilder()
-                .appendln("== Parsed P4Command != input".red())
-                .appendln("== Input:  $input".red())
-                .appendln("== Parsed: $cmd".red())
+                .appendLine("== Parsed P4Command != input".red())
+                .appendLine("== Input:  $input".red())
+                .appendLine("== Parsed: $cmd".red())
             println(sb.toString())
         }
         return cmd

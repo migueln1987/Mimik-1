@@ -1,5 +1,5 @@
 root = true
 
 # noinspection EditorConfigKeyCorrectness
-[*.{kt,kts}]
-disabled_rules=import-ordering,no-wildcard-imports
+[*.{kt, kts}]
+disabled_rules = import-ordering, no-wildcard-imports

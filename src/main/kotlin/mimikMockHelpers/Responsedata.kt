@@ -8,7 +8,7 @@ import okhttp3.Protocol
 import java.nio.charset.Charset
 import java.util.Date
 
-class Responsedata : Networkdata {
+class Responsedata : NetworkData {
     constructor(response: okreplay.Response) {
         code = response.code()
         protocol = response.protocol()

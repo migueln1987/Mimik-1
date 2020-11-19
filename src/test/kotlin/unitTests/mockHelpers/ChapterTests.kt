@@ -1,68 +1,64 @@
 package unitTests.mockHelpers
 
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import helpers.parser.Parser_v4
 import helpers.toArrayList
 import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.SeqActionObject
 import org.junit.Assert
 import org.junit.Test
 
 class ChapterTests {
 
-    val gson by lazy { Gson() }
-
-    @Test
-    fun loadableSeqData() {
-        val useClass = RecordedInteractions()
-        val commands = arrayListOf("var[aa]->{e}", "var[bb]->{f}")
-        useClass.seqActions_data?.add(commands)
-
-        // setup actions
-        val cmd_direct = useClass.seqActions
-        val classAsJson = gson.toJsonTree(useClass).asJsonObject
-        // result items
-        val jsonToClass = gson.fromJson(classAsJson, RecordedInteractions::class.java)
-        val cmd_Post = jsonToClass.seqActions
-
-        // do the tests
-        Assert.assertEquals(cmd_direct.orEmpty().size, cmd_Post?.size)
-        cmd_direct.orEmpty().forEachIndexed { index_root, arrayList ->
-            println("Asserting root index: $index_root")
-
-            val cmd_gp = cmd_Post?.getOrNull(index_root)
-            Assert.assertNotNull(cmd_gp)
-            requireNotNull(cmd_gp)
-
-            arrayList.forEachIndexed { index_item, p4Command ->
-                println("Asserting[$index_item]: $p4Command")
-                Assert.assertTrue(index_item < cmd_gp.size)
-                Assert.assertEquals(commands[index_item], p4Command.toString())
-                Assert.assertEquals(p4Command.toString(), cmd_gp[index_item].toString())
-            }
-        }
+    val gson by lazy {
+        GsonBuilder()
+            .apply { registerTypeAdapterFactory(SeqActionObject.typeFactory) }
+            .create()
     }
 
     @Test
-    fun dataToExport() {
+    fun importExportCommandTests() {
         val useClass = RecordedInteractions()
-        val commands = arrayListOf("var[aa]->{e}", "var[bb]->{f}")
-            .map { Parser_v4.parseToSteps(it) }.toArrayList()
-        useClass.seqActions?.add(commands)
-        useClass.prepareSeqForExport()
 
+        // simulate data loaded from a file
+        val cmdCommands = arrayListOf(
+            arrayListOf("var[aa]->{e}", "var[bb]->{f}"),
+            arrayListOf("var[cc]->{g}", "var[dd]->{h}")
+        )
+
+        useClass.seqActions = cmdCommands.map { cmbBlock ->
+            SeqActionObject().apply {
+                cmbBlock
+                    .map { cmd -> Parser_v4.parseToCommand(cmd) }
+                    .also { Commands = it.toArrayList() }
+            }
+        }.toArrayList()
+
+        val cmd_Pre = useClass.seqActions!!
         val classAsJson = gson.toJsonTree(useClass).asJsonObject
-        // result items
+
+        // Start test - parsing "loaded" data
         val jsonToClass = gson.fromJson(classAsJson, RecordedInteractions::class.java)
-        val cmd_Post = jsonToClass.seqActions
+        val cmd_Post = jsonToClass.seqActions!!
 
-        commands.forEachIndexed { index, item ->
-            println("Asserting [$index]: $item")
+        // do the tests
+        Assert.assertEquals(cmd_Pre.size, cmd_Post.size)
+        cmd_Pre.forEachIndexed { index_root, seqActionObject ->
+            println("Asserting root index: $index_root")
 
-            val cmdTest = cmd_Post?.getOrNull(0)?.getOrNull(index)
-            Assert.assertNotNull(cmdTest)
-            requireNotNull(cmdTest)
+            val cmd_gp = cmd_Post.getOrNull(index_root)
+            Assert.assertNotNull(cmd_gp)
+            requireNotNull(cmd_gp)
+            Assert.assertTrue(seqActionObject.Commands.isNotEmpty())
+            Assert.assertEquals(seqActionObject.ID, cmd_gp.ID)
 
-            Assert.assertEquals(item.toString(), cmdTest.toString())
+            seqActionObject.Commands.forEachIndexed { index_item, p4Command ->
+                println("Asserting item[$index_item]: $p4Command")
+                val cmdObj = cmd_gp.Commands.getOrNull(index_item)
+                Assert.assertNotNull(cmdObj)
+                requireNotNull(cmdObj)
+                Assert.assertEquals(p4Command.toString(), cmdObj.toString())
+            }
         }
     }
 }

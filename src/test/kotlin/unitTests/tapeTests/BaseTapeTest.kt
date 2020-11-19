@@ -10,7 +10,7 @@ import io.mockk.every
 import io.mockk.mockk
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import okreplay.TapeMode
 import org.junit.Assert
 import org.junit.Before
@@ -121,7 +121,6 @@ class BaseTapeTest {
         val testChain = testObject.requestToChain(request)
 
         Assert.assertNotNull(testChain)
-        requireNotNull(testChain)
 
         val testRequest = testChain.request()
 
@@ -129,12 +128,12 @@ class BaseTapeTest {
         Assert.assertNotNull(routeUrl)
         requireNotNull(routeUrl)
 
-        Assert.assertEquals(routeUrl.host(), "host.url")
+        Assert.assertEquals(routeUrl.host, "host.url")
 
         val testHost = testRequest.header("HOST")
-        Assert.assertEquals(testHost, routeUrl.host())
+        Assert.assertEquals(testHost, routeUrl.host)
 
-        Assert.assertEquals(testRequest.url().host(), routeUrl.host())
+        Assert.assertEquals(testRequest.url.host, routeUrl.host)
     }
 
     @Test
@@ -163,7 +162,7 @@ class BaseTapeTest {
             }
             """.replace(" +|\n|\r".toRegex(), "")
         val urlStr = "http://url.ext/action?opId=GET_LIST&Version=v2.0"
-        val requestData = mockk<Requestdata> {
+        val requestData = mockk<RequestData> {
             every { httpUrl } returns urlStr.asHttpUrl
             every { body } returns reqBody
         }

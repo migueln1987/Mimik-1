@@ -5,7 +5,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlinx.html.*
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
 
 object NetworkDataEditor : EditorModule() {
@@ -63,7 +63,7 @@ object NetworkDataEditor : EditorModule() {
 
                     when (isRequest) {
                         true -> {
-                            val nData = pData.networkData as? Requestdata
+                            val nData = pData.networkData as? RequestData
                             tr {
                                 th { +"Method" }
                                 td {

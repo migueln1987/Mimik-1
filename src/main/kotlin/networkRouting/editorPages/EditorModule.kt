@@ -1,10 +1,14 @@
+@file:Suppress("ClassName", "KDocUnresolvedReference", "SpellCheckingInspection", "PropertyName", "FunctionName")
+
 package networkRouting.editorPages
 
 import TapeCatalog
 import helpers.*
 import helpers.attractors.RequestAttractorBit
 import helpers.attractors.RequestAttractors
+import helpers.lzma.LZMA_Decode
 import helpers.parser.P4Command
+import helpers.parser.Parser_v4
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import kotlinx.html.*
@@ -28,6 +32,10 @@ abstract class EditorModule {
          * "{ no data }"
          */
         const val noData = "{ no data }"
+
+        /**
+         *  "{ blank }"
+         */
         const val isBlank = "{ blank }"
     }
 
@@ -794,6 +802,53 @@ abstract class EditorModule {
         return modTape
     }
 
+    private fun parseSeqData(inputData: String?): List<SeqActionObject> {
+        if (inputData.isNullOrEmpty()) return listOf()
+
+        data class itemData(val ID: String, val Data: String, val ZData: String? = null)
+
+        data class seqDataClass(
+            val hostOrder: Map<String, Int>,
+            val hosts: Map<String, Map<String, Int>>,
+            val items: ArrayList<itemData>
+        )
+
+        val parseData = inputData.fromJson<seqDataClass>() ?: return listOf()
+
+        // empty ZData = no change
+        // "Missing sub-source" + ZData = save new data
+        // Commands[ID].not contain newCommand.ID = remove Commands[ID]
+        val objItems = parseData.items.map {
+            Pair(
+                it.ID.toInt(),
+                it.Data.fromBase64.let { data ->
+                    if (data.startsWith("Invalid") || data.startsWith("Missing"))
+                        LZMA_Decode(it.ZData.orEmpty()).fromJson<P4Command?>()?.also { cmd ->
+                            cmd.source_name = cmd.source_name?.fromBase64
+                            cmd.source_match = cmd.source_match?.fromBase64
+                            cmd.act_match = cmd.act_match?.fromBase64
+                            cmd.act_name = cmd.act_name?.fromBase64
+                        }
+                    else
+                        Parser_v4.parseToCommand(data)
+                }
+            )
+        }.filterNot { it.second.isNull() }.map { it.first to it.second!! }.toMap()
+
+        val hosts = parseData.hosts
+            .mapKeys { it.key.toInt() }
+            .mapValues { (hostID, ItemIDs) ->
+                SeqActionObject { newObj ->
+                    newObj.ID = hostID
+                    newObj.Commands = ItemIDs.map { (id, idx) -> idx to objItems[id.toInt()] }
+                        .sortedBy { it.first }.mapNotNull { it.second }.toArrayList()
+                }
+            }
+
+        return parseData.hostOrder.map { (id, idx) -> idx to id.toInt() }
+            .sortedBy { it.first }.mapNotNull { hosts[it.second] }
+    }
+
     fun Map<String, String>.saveChapter(tape: BaseTape): RecordedInteractions {
         val modChap = tape.chapters
             .firstOrNull { it.name == get("name_pre") }
@@ -803,6 +858,7 @@ abstract class EditorModule {
             chap.chapterName = get("nameChap")
             chap.attractors = filterToAttractors()
             chap.cachedCalls.clear()
+            chap.seqActions = parseSeqData(get("seqData")).toArrayList()
 
             chap.mockUses = get("usesCount")?.toIntOrNull() ?: MockUseStates.ALWAYS.state
             if (get("usesEnabled") != "on")
@@ -871,8 +927,8 @@ abstract class EditorModule {
             }
         }
         if (get(mKey.allowAny_ID) == "on") {
-            return results.toMutableList().also {
-                it.add(0, RequestAttractorBit { it.allowAllInputs = true })
+            return results.toMutableList().apply {
+                add(0, RequestAttractorBit { it.allowAllInputs = true })
             }
         }
 
@@ -1188,7 +1244,7 @@ abstract class EditorModule {
     /**
      * Displays the input [data], or displays "{ no data }" if it's null
      */
-    fun FlowContent.displayInteractionData(data: Networkdata?) {
+    fun FlowContent.displayInteractionData(data: NetworkData?) {
         if (data == null) {
             +noData
             return
@@ -1196,7 +1252,7 @@ abstract class EditorModule {
 
         div {
             id = when (data) {
-                is Requestdata -> "requestDiv"
+                is RequestData -> "requestDiv"
                 is Responsedata -> "responseDiv"
                 else -> ""
             }
@@ -1226,12 +1282,12 @@ abstract class EditorModule {
         }
     }
 
-    private fun TR.tapeDataRow(data: Networkdata) {
+    private fun TR.tapeDataRow(data: NetworkData) {
         td {
             style = "vertical-align: top;"
             div {
                 when (data) {
-                    is Requestdata -> {
+                    is RequestData -> {
                         text("Method: \n${data.method}")
                         br()
                         +"Url: "
@@ -1261,7 +1317,7 @@ abstract class EditorModule {
             val divID = "resizingTapeData_${data.hashCode()}"
             val headers = data.headers
 
-            if (headers == null || headers.size() == 0)
+            if (headers == null || headers.size == 0)
                 +noData
             else {
                 div {
@@ -1322,7 +1378,7 @@ abstract class EditorModule {
                 infoText("[Base64]")
 
             val areaID = when (data) {
-                is Requestdata -> "requestBody"
+                is RequestData -> "requestBody"
                 is Responsedata -> "responseBody"
                 else -> ""
             }
@@ -1350,7 +1406,7 @@ abstract class EditorModule {
 
         var tape: BaseTape? = null
         var chapter: RecordedInteractions? = null
-        var networkData: Networkdata? = null
+        var networkData: NetworkData? = null
 
         /**
          * tape is null
@@ -1368,7 +1424,7 @@ abstract class EditorModule {
             get() = networkData == null
 
         val networkIsRequest
-            get() = networkData is Requestdata
+            get() = networkData is RequestData
 
         val networkIsResponse
             get() = networkData is Responsedata
@@ -1399,7 +1455,10 @@ abstract class EditorModule {
         fun hardChapName(default: String = RandomHost().valueAsUUID) =
             expectedChapName ?: default
 
-        val seqActions: ArrayList<ArrayList<P4Command>>
+        /**
+         * All the active sequences for this chapter
+         */
+        val seqActions: ArrayList<SeqActionObject>
             get() = chapter?.seqActions.orEmpty().toArrayList()
 
         val expectedNetworkType

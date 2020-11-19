@@ -442,7 +442,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                     .filter { handles.contains(it.handle) }
                     .forEach {
                         val sb = StringBuilder()
-                        sb.appendln("Stopping test bounds (${it.handle})...")
+                        sb.appendLine("Stopping test bounds (${it.handle})...")
                         when (it.state) {
                             BoundStates.Ready -> sb.append("Test was idle. no change".green())
                             BoundStates.Stopped -> sb.append("Test was already stopped")

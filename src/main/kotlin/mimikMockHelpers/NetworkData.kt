@@ -3,14 +3,15 @@ package mimikMockHelpers
 import helpers.isTrue
 import io.ktor.http.HttpHeaders
 import okhttp3.Headers
+import okhttp3.Headers.Companion.headersOf
 
-abstract class Networkdata {
+abstract class NetworkData {
     var headers: Headers? = null
     val tapeHeaders: Headers
         get() {
             return headers?.let {
-                if (it.size() < 1) null else it
-            } ?: Headers.of(HttpHeaders.ContentType, "text/plain")
+                if (it.size < 1) null else it
+            } ?: headersOf(HttpHeaders.ContentType, "text/plain")
         }
 
     var body: String? = null

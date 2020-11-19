@@ -1,11 +1,15 @@
+@file:Suppress("RemoveRedundantQualifierName")
+
 package unitTests.testManagerTests
 
 import helpers.content
 import helpers.parser.Parser_v4
 import io.mockk.*
 import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.SeqActionObject
 import networkRouting.testingManager.*
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okio.BufferedSink
 import org.junit.Assert
 import org.junit.Test
@@ -66,42 +70,36 @@ class TestManagerTest {
         val chapName = "chapName"
         val bodyStr = "this is a 123 test"
 
-        val actionsResults = listOf(
-            Triple(
-                "request:body:{\\d+}->numberGrab",
-                "var",
-                "numberGrab : 123"
-            ),
-            Triple(
-                "request:body:{\\w+}->firstWord",
-                "var",
-                "firstWord : test"
-            ),
-            Triple(
-                "response:head[something]->{code_@{numberGrab}}",
-                "head",
-                "something : code_123"
-            ),
-            Triple(
-                "response:body:{(.+)test}->{@{1}final}",
-                "body",
-                "this is a 123 final"
-            )
+        val requestActions = listOf(
+            "request:body:{\\d+}->%numberGrab",
+            "request:body:{\\w+}->%firstWord",
+            "response:head[something]->{code_@{%numberGrab}}",
+            "response:body:{(.+)test}->{@{1}final}"
+        )
+
+        val expectedResults = listOf(
+            Triple("var", "numberGrab", "123"),
+            Triple("var", "firstWord", "this"),
+            Triple("head", "something", "code_123"),
+            Triple("body", "", "this is a 123 final")
         )
 
         val bounds = TestBounds("", mutableListOf())
         bounds.boundData[chapName] = BoundChapterItem().also { chap ->
-            actionsResults
-                .map { (cmd, _, _) -> Parser_v4.parseToSteps(cmd) }
-                .also { chap.seqSteps.add(it) }
+            requestActions.map { Parser_v4.parseToCommand(it) }
+                .also { cmds ->
+                    chap.seqSteps.add(
+                        SeqActionObject(true) { it.Commands.addAll(cmds) }
+                    )
+                }
         }
 
         val mockRequest = mockk<okhttp3.Request> {
-            every { headers() } returns mockk()
-            every { body() } returns object : RequestBody() {
+            every { headers } returns mockk()
+            every { body } returns object : RequestBody() {
                 override fun contentType(): MediaType? = null
-                override fun writeTo(p0: BufferedSink) {
-                    p0.writeString(bodyStr, Charset.defaultCharset())
+                override fun writeTo(sink: BufferedSink) {
+                    sink.writeString(bodyStr, Charset.defaultCharset())
                 }
             }
         }
@@ -110,7 +108,8 @@ class TestManagerTest {
         val resultHeader = slot<Headers>()
 
         val mockResponse = mockk<okhttp3.Response> {
-            every { headers() } returns mockk {
+            every { headers } returns mockk {
+                every { size } returns 0
                 every { values(any()) } returns listOf()
                 every { toMultimap() } returns mapOf()
             }
@@ -119,26 +118,23 @@ class TestManagerTest {
                 every { body(capture(resultBody)) } returns mockk()
                 every { build() } returns mockk()
             }
-            every { body() } returns mockk {
+            every { body } returns mockk {
                 every { contentLength() } returns bodyStr.length.toLong()
                 every { bytes() } returns bodyStr.toByteArray()
                 every { close() } just runs
-                every { contentType() } returns MediaType.parse("text/plain")
+                every { contentType() } returns "text/plain".toMediaTypeOrNull()
             }
         }
 
         val interaction = mockk<RecordedInteractions> {
             every { name } returns chapName
+            every { seqActions } returns arrayListOf()
         }
 
         // Do the test!
         mockResponse.boundActions(mockRequest, bounds, interaction)
 
-        actionsResults.forEach { (_, type, expected) ->
-            // split the key/ values for vars and heads
-            val (xKey, xVal) = expected.split(" : ")
-                .let { if (it.size == 2) (it[0] to it[1]) else (it[0] to "") }
-
+        expectedResults.forEach { (type, xKey, xVal) ->
             when (type) {
                 "var" -> {
                     Assert.assertTrue(bounds.scopeVars.containsKey(xKey))
@@ -151,10 +147,10 @@ class TestManagerTest {
                 "head" -> {
                     val data = resultHeader.captured
 
-                    Assert.assertTrue(data.get(xKey) != null)
+                    Assert.assertTrue(data[xKey] != null)
                     Assert.assertEquals(
                         xVal,
-                        data.get(xKey)
+                        data[xKey]
                     )
                 }
 
@@ -162,7 +158,7 @@ class TestManagerTest {
                     val rBody = resultBody.captured.content()
 
                     Assert.assertEquals(
-                        expected,
+                        xVal,
                         rBody
                     )
                 }

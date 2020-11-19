@@ -1,4 +1,5 @@
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import helpers.*
 import helpers.attractors.RequestAttractors
 import io.ktor.application.ApplicationCall
@@ -11,9 +12,11 @@ import kotlinx.coroutines.sync.withPermit
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
+import mimikMockHelpers.SeqActionObject
 import networkRouting.testingManager.*
 import okreplay.OkReplayInterceptor
 import tapeItems.BaseTape
+import tapeItems.ResponseLinkerUtil
 import java.io.File
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -26,13 +29,23 @@ class TapeCatalog {
     val config by lazy { VCRConfig.getConfig }
     val tapes: MutableList<BaseTape> = mutableListOf()
     val requestList = mutableMapOf<String, Semaphore>()
-    var processingRequests = Collections.synchronizedMap(requestList)
+    val processingRequests: MutableMap<String, Semaphore> by lazy { Collections.synchronizedMap(requestList) }
 
+    /**
+     * List of tapes to load (from JSON files)
+     */
     val tapeFiles: List<File>?
         get() = config.tapeRoot.get()?.jsonFiles()
 
+    val responseLinker by lazy { ResponseLinkerUtil() }
+
     companion object {
         var isTestRunning = false
+        val gson: Gson by lazy {
+            GsonBuilder().apply {
+                registerTypeAdapterFactory(SeqActionObject.typeFactory)
+            }.create()
+        }
 
         val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
     }
@@ -42,7 +55,6 @@ class TapeCatalog {
      */
     fun loadTapeData() {
         val files = tapeFiles ?: return
-        val gson = Gson()
 
         tapes.clear()
         files.asSequence()
@@ -59,6 +71,26 @@ class TapeCatalog {
                 }
             }
             .forEach { tapes.add(it) }
+
+        // repair duplicate UIDs
+        val chapIDs = tapes.flatMap { tape ->
+            tape.chapters.map { Triple(tape, it, it.UID.orEmpty()) }
+        }
+
+        val sameIDs = chapIDs.groupingBy { it.third }.eachCount().filter { it.value > 1 }
+        if (sameIDs.isNotEmpty()) {
+            val resaveTapes = mutableListOf<BaseTape>()
+            sameIDs.forEach { (sID, _) ->
+                chapIDs.filter { it.third == sID }
+                    .forEach {
+                        resaveTapes.add(it.first)
+                        it.second.UID = null
+                        it.second.UID
+                    }
+            }
+
+            resaveTapes.forEach { it.saveFile() }
+        }
     }
 
     /**
@@ -95,10 +127,10 @@ class TapeCatalog {
                     .filter { it.attractors != null }
                     .associateWith { it.attractors!! }
 
-                val path = request.url().encodedPath().removePrefix("/")
-                val queries = request.url().query()
-                val headers = request.headers().toStringPairs()
-                val body = request.body()?.content()
+                val path = request.url.encodedPath.removePrefix("/")
+                val queries = request.url.query
+                val headers = request.headers.toStringPairs()
+                val body = request.body?.content()
 
                 val validChapters = RequestAttractors.findBest_many(
                     readyChapters,
@@ -144,9 +176,9 @@ class TapeCatalog {
      * - HttpStatusCode.Conflict (409) = null item
      */
     fun findTapeByQuery(request: okhttp3.Request): QueryResponse<BaseTape> {
-        val path = request.url().encodedPath().removePrefix("/")
-        val queries = request.url().query()
-        val headers = request.headers().toStringPairs()
+        val path = request.url.encodedPath.removePrefix("/")
+        val queries = request.url.query
+        val headers = request.headers.toStringPairs()
 
         val validTapes = tapes.asSequence()
             .filter { it.mode.isWritable }
@@ -161,7 +193,7 @@ class TapeCatalog {
 
     suspend fun processCall(call: ApplicationCall): okhttp3.Response {
         val callRequest: okhttp3.Request = call.toOkRequest()
-        val callUrl = callRequest.url().toString()
+        val callUrl = callRequest.url.toString()
 
         processingRequests.computeIfAbsent(callUrl) { Semaphore(1) }
 
@@ -198,10 +230,13 @@ class TapeCatalog {
                         Duration.ofSeconds(timeOver).toString().removePrefix("PT")
                     )
                 }
-                !bounds.isEnabled.value ->
+
+                !bounds.isEnabled.get() ->
                     "Test with handle ${bounds.handle} is not enabled (stopped)."
+
                 bounds.tapes.isEmpty() ->
                     "Test with handle ${bounds.handle} has no tapes."
+
                 else -> null
             }?.also { response ->
                 println(response.red())
@@ -232,7 +267,7 @@ class TapeCatalog {
         }
 
         if (bounds != null) return callRequest.createResponse(HttpStatusCode.Forbidden) {
-            "Test bounds [${bounds.handle}] has no matching recordings for ${callRequest.url()}."
+            "Test bounds [${bounds.handle}] has no matching recordings for ${callRequest.url}."
                 .also { println(it.red()) }
         }
 

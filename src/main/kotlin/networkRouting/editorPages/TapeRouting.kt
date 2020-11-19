@@ -8,7 +8,7 @@ import io.ktor.response.respondRedirect
 import io.ktor.response.respondText
 import io.ktor.routing.*
 import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.Requestdata
+import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
 import networkRouting.RoutingContract
 import networkRouting.editorPages.ChapterEditor.getChapterPage
@@ -79,7 +79,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                     return@get
                 }
 
-                EditorModule.randomHost.nextRandom()
+                randomHost.nextRandom()
                 call.respondHtml {
                     if (limitParams.contains("tape")) {
                         if (limitParams.contains("chapter")) {
@@ -123,9 +123,9 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
                 respondRedirect {
                     if (foundTape != null && data["resumeEdit"] == "true") {
-                        path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                        path(RoutePaths.EDIT.asSubPath)
                         parameters["tape"] = data["tape"].orEmpty()
-                    } else path(TapeRouting.RoutePaths.ALL.asSubPath)
+                    } else path(RoutePaths.ALL.asSubPath)
                 }
             }
 
@@ -133,7 +133,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
             "Edit" -> {
                 respondRedirect {
-                    path(path, TapeRouting.RoutePaths.EDIT.path)
+                    path(path, RoutePaths.EDIT.path)
                     parameters.apply {
                         data.filterNot { it.key == "Action" }
                             .forEach { (t, u) -> append(t, u) }
@@ -146,17 +146,17 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                     ?.also { tape ->
                         data["chapter"]?.also { chap ->
                             tape.chapters.removeIf { it.name == chap }
-                            respondRedirect(TapeRouting.RoutePaths.EDIT.path)
+                            respondRedirect(RoutePaths.EDIT.path)
                             return
                         } ?: tapeCatalog.tapes.remove(tape)
                     }
 
-                respondRedirect(TapeRouting.RoutePaths.ALL.path)
+                respondRedirect(RoutePaths.ALL.path)
             }
 
             "Delete" -> {
                 respondRedirect {
-                    path(path, TapeRouting.RoutePaths.DELETE.path)
+                    path(path, RoutePaths.DELETE.path)
                     val filterKeys = listOf("tape", "chapter")
                     parameters.apply {
                         data.asSequence()
@@ -166,14 +166,14 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                 }
             }
 
-            else -> respondRedirect(TapeRouting.RoutePaths.ALL.path)
+            else -> respondRedirect(RoutePaths.ALL.path)
         }
     }
 
     private suspend fun ApplicationCall.Action_SaveTape(data: Map<String, String>) {
         val tape = data.saveToTape()
         respondRedirect {
-            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+            path(RoutePaths.EDIT.asSubPath)
 
             parameters["tape"] = tape.name
             when (data["afterAction"]) {
@@ -181,7 +181,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                 "addNew" -> parameters["tape"] = ""
                 "allTapes" -> {
                     parameters.remove("tape")
-                    path(TapeRouting.RoutePaths.ALL.asSubPath)
+                    path(RoutePaths.ALL.asSubPath)
                 }
             }
         }
@@ -199,7 +199,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val chap = data.saveChapter(foundTape)
 
         respondRedirect {
-            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+            path(RoutePaths.EDIT.asSubPath)
             parameters["tape"] = foundTape.name
             parameters["chapter"] = chap.name
             when (data["afterAction"]) {
@@ -221,11 +221,11 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val foundChap = foundTape.chapters
             .firstOrNull { it.name == data["chapter"] }
             ?: let {
-                foundTape.createNewInteraction() { it.chapterName = data["chapter"] }
+                foundTape.createNewInteraction { it.chapterName = data["chapter"] }
             }
 
         val network = when (data["network"]) {
-            "request" -> (foundChap.requestData ?: Requestdata()).also {
+            "request" -> (foundChap.requestData ?: RequestData()).also {
                 it.method = data["requestMethod"]?.toUpperCase()
                 it.url = data["requestUrl"]?.ensureHttpPrefix
             }
@@ -237,7 +237,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             else -> null
         }
             ?.also { nData ->
-                if (nData is Requestdata) {
+                if (nData is RequestData) {
                     val queries = data["reqQuery"].toPairs()
                     nData.url = nData.httpUrl.reQuery(queries).toString()
 
@@ -247,11 +247,11 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
                 val headersData = data["netHeaders"].toPairs().orEmpty()
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
-                    headersData.forEach {
-                        val headName = it.first.toLowerCase()
+                    headersData.forEach { (key, value) ->
+                        val headName = key.toLowerCase()
                             .replace("""-([a-z])""".toRegex()) { it.value.toUpperCase() }
                             .uppercaseFirstLetter()
-                        builder.add(headName, it.second)
+                        builder.add(headName, value)
                     }
                 }.build()
 
@@ -267,7 +267,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
         when (data["network"]) {
             "request" -> {
-                foundChap.requestData = network as? Requestdata
+                foundChap.requestData = network as? RequestData
                 if (data["parseAttractors"] == "on") {
                     foundChap.attractors = foundChap.requestData?.toAttractors
                     foundChap.cachedCalls.clear()
@@ -279,7 +279,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         foundTape.saveIfExists()
 
         respondRedirect {
-            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+            path(RoutePaths.EDIT.asSubPath)
 
             parameters["tape"] = foundTape.name
             parameters["chapter"] = foundChap.name
@@ -294,7 +294,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val tapeName = data["tape"]
         val tape = tapeCatalog.tapes.firstOrNull { it.name == tapeName }
         if (tape == null) {
-            respondRedirect(TapeRouting.RoutePaths.ALL.asSubPath)
+            respondRedirect(RoutePaths.ALL.asSubPath)
             return
         }
 
@@ -331,7 +331,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         }
 
         respondRedirect {
-            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+            path(RoutePaths.EDIT.asSubPath)
             parameters["tape"] = tape.name
 
             when (data["afterAction"]) {

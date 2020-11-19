@@ -53,30 +53,41 @@ inline fun <T, R : Comparable<R>> Sequence<T>.filterByMax(crossinline selector: 
         .map { it.first }
 }
 
+/**
+ * Returns an array of Byte containing all of the elements of this collection.
+ */
+fun Collection<Int>.toByteArray(): ByteArray = map { it.toByte() }.toByteArray()
+
+/**
+ * Returns the sum of this range. Returns 0 if empty
+ */
 val ClosedRange<Int>.size: Int
-    get() = endInclusive - start
+    get() = if (isEmpty()) 0 else endInclusive - start
 
+/**
+ * Returns the sum of this range. Returns 0 if empty
+ */
 val ClosedRange<Long>.size: Long
-    get() = endInclusive - start
-
-val <T> List<T>?.nonNull: List<T>
-    get() = this ?: listOf()
+    get() = if (isEmpty()) 0 else endInclusive - start
 
 /**
  * Returns the first element matching the given [predicate], or `null` if element was not found.
  */
-inline fun <T, R : Any> Iterable<T>.firstNotNullResult(predicate: (T) -> R?): R? {
-    for (element in this) {
-        val result = predicate(element)
-        if (result != null) return result
-    }
-    return null
-}
+inline fun <T, R : Any> Iterable<T>.firstNotNullResult(predicate: (T) -> R?): R? =
+    this.iterator().firstNotNullResult(predicate)
+
+/**
+ * Returns the first element matching the given [predicate], or `null` if element was not found.
+ *
+ * The operation is _terminal_.
+ */
+inline fun <T, R : Any> Sequence<T>.firstNotNullResult(predicate: (T) -> R?): R? =
+    this.iterator().firstNotNullResult(predicate)
 
 /**
  * Returns the first element matching the given [predicate], or `null` if element was not found.
  */
-inline fun <T, R : Any> Sequence<T>.firstNotNullResult(predicate: (T) -> R?): R? {
+inline fun <T, R : Any> Iterator<T>.firstNotNullResult(predicate: (T) -> R?): R? {
     for (element in this) {
         val result = predicate(element)
         if (result != null) return result
@@ -106,14 +117,12 @@ fun <T> Iterable<T>.firstMatchNotNull(vararg predicates: (T) -> Boolean): T? {
 /**
  * Appends each list in [lists] that isn't null
  */
-fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> {
-    return toMutableList().apply {
-        lists.forEach {
-            if (it != null) addAll(it)
-        }
-    }
-}
+fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> =
+    this.toList() + lists.filterNotNull().flatten()
 
+/**
+ * Returns a new [ArrayList] filled with all elements of this collection.
+ */
 fun <T> List<T>.toArrayList() = ArrayList(this)
 
 /**
@@ -129,9 +138,3 @@ fun <K, V> MutableMap<K, V>.putIfAbsent(from: Map<K, V>) {
         putIfAbsent(key, value)
     }
 }
-
-fun <K, V> MutableMap<K, V>.firstOrNull() =
-    keys.firstOrNull()?.let { get(it) }
-
-fun <K, V> MutableMap<K, V>.lastOrDefault(default: V) =
-    keys.lastOrNull()?.let { get(it) } ?: default

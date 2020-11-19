@@ -3,6 +3,7 @@
 package mimik
 
 import TapeCatalog
+import helpers.firstNotNullResult
 import helpers.tryGetBody
 import io.ktor.application.*
 import io.ktor.features.*
@@ -16,7 +17,6 @@ import io.ktor.server.engine.applicationEngineEnvironment
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.util.KtorExperimentalAPI
 import kotlinx.coroutines.runBlocking
 import networkRouting.CallProcessor
 import networkRouting.FetchResponder
@@ -27,24 +27,25 @@ import networkRouting.testingManager.TestManager
 import networkRouting.port
 import org.slf4j.event.Level
 import java.io.File
+import java.util.*
 
 object Ports {
     const val config = 4321
     const val live = 2202
 }
 
+@Suppress("UNUSED_PARAMETER")
 fun main(args: Array<String> = arrayOf()) {
     val env = applicationEngineEnvironment {
-        module { module() }
+        module { MimikModule() }
         connector { port = Ports.config }
         connector { port = Ports.live }
     }
     embeddedServer(Netty, env).start(true)
 }
 
-@KtorExperimentalAPI
 @kotlin.jvm.JvmOverloads
-fun Application.module(testing: Boolean = false) {
+fun Application.MimikModule(testing: Boolean = false) {
     installFeatures()
 
     TapeCatalog.isTestRunning = testing
@@ -87,7 +88,6 @@ fun Application.module(testing: Boolean = false) {
     }
 }
 
-@KtorExperimentalAPI
 private fun Application.installFeatures() {
 //    install(Compression) {
 //        gzip {
@@ -102,42 +102,49 @@ private fun Application.installFeatures() {
 //        }
 //    }
 
-    val deviceIDReg = """uniqueid.*?".+?"(.+?)"""".toRegex(RegexOption.IGNORE_CASE)
+    val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)
     install(DoubleReceive) // https://ktor.io/servers/features/double-receive.html
 
     install(CallId) {
         var activeID = ""
         fun ApplicationCall.getID(): String {
             if (request.local.port == Ports.config)
-                return ""
-            var result = request.headers["x-dcmguid"]
-            result = result ?: request.headers["x-up-subno"]
-            result = result ?: request.headers["x-jphone-uid"]
-            result = result ?: request.headers["x-em-uid"]
-            result = result ?: request.headers["uniqueid"]
-            if (result != null) return result.also {
-                activeID = it
-                println("Unique ID (via header): $it")
+                return "Port.Config"
+
+            val result = arrayOf(
+                "x-dcmguid", "x-up-subno", "x-jphone-uid", "x-em-uid",
+                "uniqueid"
+            ).asSequence().firstNotNullResult { request.headers[it] }
+
+            if (result == null) {
+                runBlocking {
+                    val body = tryGetBody()
+                    deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
+                }.orEmpty().also {
+                    activeID = it
+                    println("Unique ID (via body): $it")
+                }
+            } else {
+                result.also {
+                    activeID = it
+                    println("Unique ID (via header): $it")
+                }
             }
 
-            return runBlocking {
-                val body = tryGetBody()
-                deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
-            }.orEmpty().also {
-                activeID = it
-                println("Unique ID (via body): $it")
-            }
+            return activeID
         }
 
-        retrieve { it.getID() }
+        retrieve {
+            val useID = it.getID()
+            if (useID.isEmpty()) null else useID
+        }
 
         generate {
-            if (it.callId == null)
-                it.getID().also { gen ->
-                    activeID = gen
-                    println("Unique ID (via GenID): $gen")
-                }
-            else ""
+            if (it.callId == null) {
+                activeID = UUID.randomUUID().toString()
+                println("Unique ID (via GenID): $activeID")
+            }
+            it.callId ?: activeID
         }
 
         verify { it == activeID }
