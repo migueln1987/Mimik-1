@@ -238,16 +238,16 @@ class ParserTests {
         ),
         // + actions, to var
         "request:head->cc" to listOf(
-            "source", "rType", "rIn", "rInH", "act", "aV", "aVN"
+            "source", "rType", "rIn", "rInH", "act", "aV", "aVN", "aVT"
         ),
         "request:head[aa]->cc" to listOf(
-            "source", "rType", "rIn", "rInH", "rInHN", "act", "aV", "aVN"
+            "source", "rType", "rIn", "rInH", "rInHN", "act", "aV", "aVN", "aVT"
         ),
         "request:head[aa]:{bb}->cc" to listOf(
-            "source", "rType", "rIn", "rInH", "rInHN", "rM", "act", "aV", "aVN"
+            "source", "rType", "rIn", "rInH", "rInHN", "rM", "act", "aV", "aVN", "aVT"
         ),
         "request:head:{bb}->cc" to listOf(
-            "source", "rType", "rIn", "rInH", "rM", "act", "aV", "aVN"
+            "source", "rType", "rIn", "rInH", "rM", "act", "aV", "aVN", "aVT"
         ),
 
         // === Body
@@ -259,10 +259,10 @@ class ParserTests {
         ),
         // + actions, to var
         "request:body->cc" to listOf(
-            "source", "rType", "rIn", "rInB", "act", "aV", "aVN"
+            "source", "rType", "rIn", "rInB", "act", "aV", "aVN", "aVT"
         ),
         "request:body:{bb}->cc" to listOf(
-            "source", "rType", "rIn", "rInB", "rM", "act", "aV", "aVN"
+            "source", "rType", "rIn", "rInB", "rM", "act", "aV", "aVN", "aVT"
         ),
 
         // == Response
@@ -281,16 +281,16 @@ class ParserTests {
         ),
         // + actions, to var
         "response:head->cc" to listOf(
-            "source", "rType", "rOut", "rOutH", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutH", "act", "aV", "aVN", "aVT"
         ),
         "response:head[aa]->cc" to listOf(
-            "source", "rType", "rOut", "rOutH", "rOutHN", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutH", "rOutHN", "act", "aV", "aVN", "aVT"
         ),
         "response:head[aa]:{bb}->cc" to listOf(
-            "source", "rType", "rOut", "rOutH", "rOutHN", "rM", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutH", "rOutHN", "rM", "act", "aV", "aVN", "aVT"
         ),
         "response:head:{bb}->cc" to listOf(
-            "source", "rType", "rOut", "rOutH", "rM", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutH", "rM", "act", "aV", "aVN", "aVT"
         ),
         // +actions, to self
         "response:head[aa]->{dd}" to listOf(
@@ -312,13 +312,13 @@ class ParserTests {
         ),
         // + actions, to var
         "response:body->cc" to listOf(
-            "source", "rType", "rOut", "rOutB", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutB", "act", "aV", "aVN", "aVT"
         ),
         "response:body:{}->cc" to listOf(
-            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aVN", "aVT"
         ),
         "response:body:{bb}->cc" to listOf(
-            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aVN"
+            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aVN", "aVT"
         ),
         // + actions, to self
         "response:body->{dd}" to listOf(
@@ -343,16 +343,16 @@ class ParserTests {
         ),
         // + actions, to var
         "var->cc" to listOf(
-            "source", "vType", "act", "aV", "aVN"
+            "source", "vType", "act", "aV", "aVN", "aVT"
         ),
         "var[aa]->cc" to listOf(
-            "source", "vType", "vN", "act", "aV", "aVN"
+            "source", "vType", "vN", "act", "aV", "aVN", "aVT"
         ),
         "var:{mm}->cc" to listOf(
-            "source", "vType", "vM", "act", "aV", "aVN"
+            "source", "vType", "vM", "act", "aV", "aVN", "aVT"
         ),
         "var[aa]:{mm}->cc" to listOf(
-            "source", "vType", "vM", "vN", "act", "aV", "aVN"
+            "source", "vType", "vM", "vN", "act", "aV", "aVN", "aVT"
         ),
         // + actions, to self
         "var[aa]->{dd}" to listOf(
@@ -384,7 +384,7 @@ class ParserTests {
 
         // + actions
         "use:{3,5..6,9}->cc" to listOf(
-            "source", "uType", "uM", "act", "aV", "aVN"
+            "source", "uType", "uM", "act", "aV", "aVN", "aVT"
         ),
         "use->{dd}" to listOf(
             "source", "uType", "act", "aM"
@@ -417,7 +417,7 @@ class ParserTests {
         ),
         // to a scoped variable, instead of test bound variable
         "response:body:{bb}->&cc" to listOf(
-            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aSVL", "aSC", "aVN"
+            "source", "rType", "rOut", "rOutB", "rM", "act", "aV", "aSVL", "aSC", "aVN", "aVT"
         )
     )
 

@@ -190,7 +190,7 @@ object Parser_v4 {
      */
     private val variableMatch = "%s|%s|%s".format(
         "(?<index>\\d+)",
-        "(?<content>${Groups.varName})",
+        "(?<content>[&%^]*${Groups.varName})",
         "(?<final>['\"].+?['\"])"
     )
 

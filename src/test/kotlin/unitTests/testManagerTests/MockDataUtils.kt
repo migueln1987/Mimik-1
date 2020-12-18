@@ -58,6 +58,12 @@ class P4MockData(config: (P4MockData) -> Unit = {}) {
                         ).toMutableMap()
             }
 
+            /**
+             * Supplies a default string to the [body] variable based on [isRequest]
+             *
+             * - Request; "code: 14 \n other: 12"
+             * - Response; "test: 22 \n final: 44"
+             */
             fun loadDefaultBody() {
                 body = (if (isRequest)
                     """
