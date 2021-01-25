@@ -1,6 +1,6 @@
 package helpers.parser
 
-enum class PTokens(val flag: String) {
+enum class ParserTokens(val flag: String) {
     // === Conditional group
     /**
      * A conditional requirement is specified this command.

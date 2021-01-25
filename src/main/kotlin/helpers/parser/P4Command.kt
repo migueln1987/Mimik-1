@@ -154,12 +154,12 @@ class P4Command {
     var act_nSpreadType = -8
     var act_match: String? = null
 
-    private fun List<MatcherResult>.contains(token: PTokens): Boolean = contains(token.flag)
+    private fun List<MatcherResult>.contains(token: ParserTokens): Boolean = contains(token.flag)
 
     private fun List<MatcherResult>.contains(field: String): Boolean =
         firstOrNull { it.groupName == field }.isNotNull()
 
-    private fun List<MatcherResult>.find(token: PTokens): MatcherResult? = find(token.flag)
+    private fun List<MatcherResult>.find(token: ParserTokens): MatcherResult? = find(token.flag)
 
     private fun List<MatcherResult>.find(field: String): MatcherResult? =
         firstOrNull { it.groupName == field }
@@ -180,41 +180,41 @@ class P4Command {
      * - no `source` = all options turned off
      */
     constructor(items: List<MatcherResult>) {
-        if (items.isEmpty() || items.find(PTokens.source).isNull())
+        if (items.isEmpty() || items.find(ParserTokens.source).isNull())
             return
         isValid = true
 
-        if (items.contains(PTokens.cond)) {
-            if (items.contains(PTokens.cond_opt))
+        if (items.contains(ParserTokens.cond)) {
+            if (items.contains(ParserTokens.cond_opt))
                 cStOpt = true
 
             cStSrc = when {
-                items.contains(PTokens.cond_true) -> 1
-                items.contains(PTokens.cond_false) -> 2
+                items.contains(ParserTokens.cond_true) -> 1
+                items.contains(ParserTokens.cond_false) -> 2
                 cStOpt -> 0
                 else -> -1
             }
         }
 
         when {
-            items.contains(PTokens.type_RX) -> {
+            items.contains(ParserTokens.type_RX) -> {
                 when {
-                    items.contains(PTokens.rx_In) -> {
+                    items.contains(ParserTokens.rx_In) -> {
                         isRequest = true
-                        isHead = items.contains(PTokens.req_Header)
+                        isHead = items.contains(ParserTokens.req_Header)
                         if (isHead)
-                            source_name = items.find(PTokens.req_HeadName)?.value
+                            source_name = items.find(ParserTokens.req_HeadName)?.value
                         else
-                            isBody = items.contains(PTokens.req_Body)
+                            isBody = items.contains(ParserTokens.req_Body)
                     }
 
-                    items.contains(PTokens.rx_Out) -> {
+                    items.contains(ParserTokens.rx_Out) -> {
                         isResponse = true
-                        isHead = items.contains(PTokens.res_Header)
+                        isHead = items.contains(ParserTokens.res_Header)
                         if (isHead)
-                            source_name = items.find(PTokens.res_HeadName)?.value
+                            source_name = items.find(ParserTokens.res_HeadName)?.value
                         else
-                            isBody = items.contains(PTokens.res_Body)
+                            isBody = items.contains(ParserTokens.res_Body)
                     }
 
                     else -> {
@@ -223,25 +223,25 @@ class P4Command {
                     }
                 }
 
-                source_match = items.find(PTokens.rx_Match)?.value
+                source_match = items.find(ParserTokens.rx_Match)?.value
             }
 
-            items.contains(PTokens.type_Var) -> {
+            items.contains(ParserTokens.type_Var) -> {
                 varLevel = when {
-                    items.contains(PTokens.var_Chap) -> 1 // Chapter
-                    items.contains(PTokens.var_Bounds) -> 2 // test Bounds
+                    items.contains(ParserTokens.var_Chap) -> 1 // Chapter
+                    items.contains(ParserTokens.var_Bounds) -> 2 // test Bounds
                     else -> 0 // sequence
                 }
-                varSearchUp = items.contains(PTokens.var_UpSrc)
-                source_name = items.find(PTokens.var_Name)?.value
-                source_match = items.find(PTokens.var_Match)?.value
+                varSearchUp = items.contains(ParserTokens.var_UpSrc)
+                source_name = items.find(ParserTokens.var_Name)?.value
+                source_match = items.find(ParserTokens.var_Match)?.value
             }
 
-            items.contains(PTokens.type_Use) -> {
+            items.contains(ParserTokens.type_Use) -> {
                 isType_U = true
                 if (isType_U) {
-                    source_name = items.find(PTokens.use_Name)?.value
-                    source_match = items.find(PTokens.use_Match)?.value
+                    source_name = items.find(ParserTokens.use_Name)?.value
+                    source_match = items.find(ParserTokens.use_Match)?.value
                 }
             }
 
@@ -251,36 +251,36 @@ class P4Command {
             }
         }
 
-        if (items.contains(PTokens.action)) {
-            if (items.contains(PTokens.act_var)) {
+        if (items.contains(ParserTokens.action)) {
+            if (items.contains(ParserTokens.act_var)) {
                 act_scopeLevel = when {
-                    items.contains(PTokens.act_lvChap) -> 1
-                    items.contains(PTokens.act_lvBound) -> 2
+                    items.contains(ParserTokens.act_lvChap) -> 1
+                    items.contains(ParserTokens.act_lvBound) -> 2
                     else -> 0
                 }
-                act_name = items.find(PTokens.act_Name)?.value
-                if (items.contains(PTokens.act_VarTypes)) {
-                    act_nExists = items.contains(PTokens.act_Exist)
-                    act_nCount = items.contains(PTokens.act_Count)
-                    act_nResult = items.contains(PTokens.act_CondRst)
-                    if (items.contains(PTokens.act_IdxSprd)) {
+                act_name = items.find(ParserTokens.act_Name)?.value
+                if (items.contains(ParserTokens.act_VarTypes)) {
+                    act_nExists = items.contains(ParserTokens.act_Exist)
+                    act_nCount = items.contains(ParserTokens.act_Count)
+                    act_nResult = items.contains(ParserTokens.act_CondRst)
+                    if (items.contains(ParserTokens.act_IdxSprd)) {
                         act_nSpread = true
                         act_nSpreadType = when {
                             // keep specific index (or last)
-                            items.contains(PTokens.act_IdxSI) ->
-                                items.find(PTokens.act_IdxSI)?.value?.toIntOrNull()
+                            items.contains(ParserTokens.act_IdxSI) ->
+                                items.find(ParserTokens.act_IdxSI)?.value?.toIntOrNull()
                                     ?: -2
                             // spread all
-                            items.contains(PTokens.act_IdxSAll) -> -1
+                            items.contains(ParserTokens.act_IdxSAll) -> -1
                             // keep last index only
-                            items.contains(PTokens.act_IdxSL) -> -2
+                            items.contains(ParserTokens.act_IdxSL) -> -2
                             // do nothing
                             else -> -8
                         }
                     }
                 }
             } else {
-                act_match = items.find(PTokens.act_Match)?.value
+                act_match = items.find(ParserTokens.act_Match)?.value
             }
         }
     }
@@ -436,11 +436,11 @@ class P4Command {
         fun randomVarName(UseSymbols: Boolean = false): String {
             return RandomHost().valueToValid {
                 if (UseSymbols)
-                    it.add(RandomHost.useSymbols to Random.nextInt(1, 5))
+                    it.add(RandomHost.pool_LetterNumSymbols to Random.nextInt(1, 5))
                 else {
-                    it.add(RandomHost.chars to 1)
-                    it.add(RandomHost.word to Random.nextInt(0, 5))
-                    it.add(RandomHost.word to Random.nextInt(1, 5))
+                    it.add(RandomHost.pool_Letters to 1)
+                    it.add(RandomHost.pool_LetterNum to Random.nextInt(0, 5))
+                    it.add(RandomHost.pool_LetterNum to Random.nextInt(1, 5))
                 }
             }
         }

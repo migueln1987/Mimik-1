@@ -179,6 +179,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
 
     var chapters: MutableList<RecordedInteractions> = mutableListOf()
 
+    // Todo; finish feature, "create new chapter if request's unique data is different than an existing chapter"
     var byUnique: List<List<UniqueBit>>? = null
 
     private var tapeMode: TapeMode? = TapeMode.READ_WRITE
@@ -878,7 +879,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
     fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
         RecordedInteractions { nChap ->
             interaction.invoke(nChap)
-            appendIfUnique(nChap)
+            // appendIfUnique(nChap)
             chapters.add(nChap)
         }
 

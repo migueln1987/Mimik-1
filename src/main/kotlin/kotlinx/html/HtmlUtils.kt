@@ -6,6 +6,7 @@ import io.ktor.http.Parameters
 import io.ktor.util.toMap
 import okhttp3.Headers
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
@@ -21,12 +22,12 @@ fun FlowOrPhrasingOrMetaDataContent.unsafeScript(
 /**
  * Creates a line (2 "<[br]>") for each [lines] count
  */
-fun FlowOrPhrasingContent.linebreak(lines: Int = 1, classes: String? = null, block: BR.() -> Unit = {}) {
-    repeat(lines) {
-        br(classes, block)
-        br(classes, block)
-    }
-}
+fun FlowOrPhrasingContent.linebreak(lines: Int = 1) = repeat(lines) { br(2) }
+
+/**
+ * Line break [count] number of times
+ */
+fun FlowOrPhrasingContent.br(count: Int) = repeat(abs(count)) { br() }
 
 fun FlowOrInteractiveOrPhrasingContent.inputButton(
     formEncType: ButtonFormEncType? = null,
@@ -85,7 +86,7 @@ fun FlowContent.toggleArea(
         element.invoke(this)
     }
 
-    val rngName = "toggles_${RandomHost().value}"
+    val rngName = "toggles_${RandomHost().value_abs}"
     unsafeScript {
         +"var $rngName = setupToggleArea();%s".format(
             if (isExpanded) {
