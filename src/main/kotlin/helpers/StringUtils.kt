@@ -3,8 +3,8 @@
 package helpers
 
 import com.beust.klaxon.Klaxon
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
+import com.google.gson.*
+import com.google.gson.reflect.TypeToken
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.StringReader
@@ -168,7 +168,9 @@ val String?.isValidURL: Boolean
 val String?.asHttpUrl: HttpUrl?
     get() = this.orEmpty().ensureHttpPrefix.toHttpUrlOrNull()
 
-private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
+private val gson by lazy {
+    GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
+}
 
 /**
  * Converts the source [String] into a indent-formatted string
@@ -191,6 +193,12 @@ val String?.beautifyJson: String
  */
 val String.valueOrIsEmpty: String
     get() = if (this.isEmpty()) "{empty}" else this
+
+/**
+ * Returns [this] string, unless [this] is null/ blank/ empty
+ */
+val String?.valueOrNull: String?
+    get() = if (this.isNullOrBlank()) null else this
 
 /** Prints the given [message], with optional formatting [args],
  *  to the standard output stream. */
@@ -243,20 +251,31 @@ fun StringBuilder.appendLines(vararg lines: String): StringBuilder {
 }
 
 /**
- * The action in [valueAction] is applied to [value],
- * the result is appended to this [StringBuilder],
- * then followed by a line separator
+ * The action in [valueAction] is applied to [value].
+ * If the result of [valueAction] is a string,
+ * then it will be appended and followed by a line separator.
  */
-fun StringBuilder.appendLine(value: String = "", valueAction: (String) -> String): StringBuilder {
-    return appendLine(valueAction.invoke(value))
+fun StringBuilder.appendLine(value: String = "", valueAction: StringBuilder.(String) -> Any): StringBuilder {
+    valueAction.invoke(this, value)
+        .also { if (it is String) this.appendLine(it) }
+    return this
 }
 
 /**
  * The action in [valueAction] is applied to [value],
  * then the result is appended to this [StringBuilder]
  */
-fun StringBuilder.append(value: String = "", valueAction: (String) -> String): StringBuilder {
-    return append(valueAction.invoke(value))
+fun StringBuilder.append(
+    value: String = "",
+    preAppend: String = "",
+    postAppend: String = "",
+    valueAction: StringBuilder.(String) -> Any
+): StringBuilder {
+    return append(preAppend)
+        .also { sb ->
+            valueAction.invoke(sb, value)
+                .also { if (it is String) sb.append(it) }
+        }.append(postAppend)
 }
 
 /**

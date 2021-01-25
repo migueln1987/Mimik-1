@@ -490,7 +490,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
         var result = randHost.valueAsChars()
         while (boundManager.any { it.handle == result }) {
             println("New Handle: $result".magenta())
-            randHost.nextRandom()
+            randHost.nextInt()
             result = randHost.valueAsChars()
         }
 

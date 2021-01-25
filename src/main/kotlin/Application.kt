@@ -18,13 +18,11 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import kotlinx.coroutines.runBlocking
-import networkRouting.CallProcessor
-import networkRouting.FetchResponder
-import networkRouting.MimikMock
+import networkRouting.*
 import networkRouting.editorPages.DataGen
 import networkRouting.editorPages.TapeRouting
+import networkRouting.help.HelpPages
 import networkRouting.testingManager.TestManager
-import networkRouting.port
 import org.slf4j.event.Level
 import java.io.File
 import java.util.*
@@ -63,6 +61,7 @@ fun Application.MimikModule(testing: Boolean = false) {
 
         port(Ports.config) {
             MimikMock().init(this)
+            HelpPages().init(this)
             TapeRouting().init(this)
             DataGen().init(this)
             FetchResponder().init(this)

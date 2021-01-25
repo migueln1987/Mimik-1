@@ -19,6 +19,12 @@ import networkRouting.editorPages.TapeEditor.getTapePage
 import okhttp3.internal.http.HttpMethod
 import tapeItems.BaseTape
 
+/**
+ * GUI page for editing tapes and processor of edit commands (action and delete)
+ *
+ * @see <a href="0.0.0.0:4321/">all</a>
+ * @see <a href="0.0.0.0:4321/edit">edit</a>
+ */
 class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
     enum class RoutePaths(val path: String) {
@@ -79,7 +85,6 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                     return@get
                 }
 
-                randomHost.nextRandom()
                 call.respondHtml {
                     if (limitParams.contains("tape")) {
                         if (limitParams.contains("chapter")) {

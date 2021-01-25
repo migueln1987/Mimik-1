@@ -168,12 +168,13 @@ class BaseTapeTest {
         }
 
         testObject.also {
-            val uList = listOf(
-                UniqueBit("opId=GET_LIST", UniqueTypes.Query),
-                UniqueBit("EndPoint[^\\d]+\\d+", UniqueTypes.Body),
-                UniqueBit("ForId[^\\d]+\\d+", UniqueTypes.Body)
+            it.byUnique = listOf(
+                listOf(
+                    UniqueBit("opId=GET_LIST", UniqueTypes.Query),
+                    UniqueBit("EndPoint[^\\d]+\\d+", UniqueTypes.Body),
+                    UniqueBit("ForId[^\\d]+\\d+", UniqueTypes.Body)
+                )
             )
-            it.byUnique = listOf(uList)
         }
 
         val result = testObject.createNewInteraction {

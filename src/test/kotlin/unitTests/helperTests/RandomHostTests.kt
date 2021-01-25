@@ -1,7 +1,7 @@
 package unitTests.helperTests
 
 import helpers.RandomHost
-import io.ktor.html.*
+import helpers.RegBuilder
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -15,24 +15,15 @@ class RandomHostTests {
     }
 
     @Test
-    fun persistValue() {
-        val first = host.value
-        Assert.assertEquals(first, host.value)
-
-        val second = host.value
-        Assert.assertEquals(second, host.value)
-    }
-
-    @Test
     fun zeroBoundValue() {
-        val test = host.nextRandom(0)
+        val test = host.nextInt(0)
         Assert.assertTrue(test > 0)
     }
 
     @Test
     fun newValue() {
         val first = host.value
-        val second = host.nextRandom()
+        val second = host.nextInt()
 
         Assert.assertNotEquals(first, second)
         Assert.assertEquals(second, host.value)
@@ -62,5 +53,14 @@ class RandomHostTests {
                 Assert.assertTrue(it in list)
             }
         }
+    }
+
+    @Test
+    fun rangeConvertTester() {
+        val builder = RegBuilder()
+        val input = "01236789<=>ABCDEFGHJKLMOPQRSTUVXYZabcdeghijklmnopqrsuyz".toMutableList()
+        val expected = "0-36-9<=>A-HJ-MO-VXYZa-eg-suyz"
+        val output = builder.rangeConverter(input)
+        Assert.assertEquals(expected, output)
     }
 }

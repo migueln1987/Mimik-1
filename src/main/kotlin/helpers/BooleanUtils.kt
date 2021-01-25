@@ -74,3 +74,8 @@ fun Any?.isNotNull() = this != null
 inline fun <reified T> Any?.tryCast(): T? {
     return if (this is T) this else null
 }
+
+/**
+ * Returns true if [this] matches any [items]
+ */
+fun <T> T.isAny(vararg items: T) = items.any { it == this }

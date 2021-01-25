@@ -1439,7 +1439,7 @@ abstract class EditorModule {
         /**
          * Expected tape name, or a generated name (optional [default])
          */
-        fun hardTapeName(default: String = RandomHost().value.toString()) =
+        fun hardTapeName(default: String = RandomHost().value_abs.toString()) =
             expectedTapeName ?: default
 
         /**
