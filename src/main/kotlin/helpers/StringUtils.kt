@@ -265,7 +265,7 @@ fun StringBuilder.appendLine(value: String = "", valueAction: StringBuilder.(Str
  * The action in [valueAction] is applied to [value],
  * then the result is appended to this [StringBuilder]
  */
-fun StringBuilder.append(
+inline fun StringBuilder.append(
     value: String = "",
     preAppend: String = "",
     postAppend: String = "",
@@ -277,6 +277,43 @@ fun StringBuilder.append(
                 .also { if (it is String) sb.append(it) }
         }.append(postAppend)
 }
+
+/**
+ * Appends a JSON object to this builder
+ *
+ * ex: "[name]": { [valueAction] }
+ */
+fun StringBuilder.appendObject(
+    name: String,
+    postAppend: String = "",
+    valueAction: StringBuilder.(objName: String) -> Any = {}
+): StringBuilder {
+    val useName = if (name.isEmpty()) "" else "\"$name\": "
+    return append("$useName{").also { sb ->
+        valueAction.invoke(sb, name)
+            .also {
+                if (it is String)
+                    sb.append(it.removeSurrounding("{", "}"))
+            }
+    }.append("}$postAppend")
+}
+
+/**
+ * Appends a JSON item to this builder
+ *
+ * ex: "[name]": [valueAction]
+ */
+fun StringBuilder.appendItem(
+    name: String,
+    postAppend: String = "",
+    valueAction: StringBuilder.() -> Any = {}
+): StringBuilder {
+    return append("\"$name\": ").also { sb ->
+        valueAction.invoke(sb)
+            .also { if (it is String) sb.append(it) }
+    }.append(postAppend)
+}
+
 
 /**
  * Appends [message] to this [StringBuffer] with the optional formatting [args]

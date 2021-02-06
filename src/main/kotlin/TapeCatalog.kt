@@ -139,7 +139,7 @@ class TapeCatalog {
 
                 fun useMatchesTest(chap: RecordedInteractions, test: (Int) -> Boolean) =
                     allowedTapes.first { it.chapters.contains(chap) }
-                        .run { test.invoke(chap.uses) }
+                        .run { test(chap.uses) }
 
                 val items = validChapters.item
                 when {
@@ -290,7 +290,7 @@ class TapeCatalog {
 
             else -> {
                 BaseTape.Builder().build().apply {
-                    println("Creating new tape/mock of $name".green())
+                    println("Creating new tape: $name".green())
                     createNewInteraction { mock ->
                         mock.requestData = callRequest.toTapeData
                         mock.attractors = RequestAttractors(mock.requestData)

@@ -12,9 +12,8 @@ class HttpTapeTests {
     fun deleteTape() {
         val tapeName = "DeleteTapeTest"
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", tapeName)
-                addHeader("mockTape_Only", "true")
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+                addHeader("mockName", tapeName)
             }.response {
                 Assert.assertEquals(HttpStatusCode.Created, it.status())
             }

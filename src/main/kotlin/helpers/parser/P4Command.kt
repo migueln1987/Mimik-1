@@ -329,10 +329,8 @@ class P4Command {
         }
 
         if (source_HasSubItem) {
-            if (source_name.isNotNull())
-                sb.append("[").append(source_name).append("]")
-            if (source_match.isNotNull())
-                sb.append(":{").append(source_match).append("}")
+            source_name.isNotNull { sb.append("[$it]") }
+            source_match.isNotNull { sb.append(":{$it}") }
         }
 
         if (hasAction) {

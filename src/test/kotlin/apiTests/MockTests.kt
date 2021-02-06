@@ -15,11 +15,23 @@ import org.junit.*
 
 class MockTests : ApiTests {
     @Test
-    fun testCreateTape_NoParams() {
+    fun test_MockCall() {
         TestApp {
-            val call = handleRequest(HttpMethod.Put, "/mock", Ports.config)
+            handleRequest(HttpMethod.Put, "/mock", Ports.config).response {
+                Assert.assertEquals(HttpStatusCode.ExpectationFailed, it.status())
+            }
+        }
+    }
 
-            call.response {
+    @Test
+    fun testCreate_NoParams() {
+        TestApp {
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config).response {
+                Assert.assertEquals(HttpStatusCode.BadRequest, it.status())
+                assertStartsWith("Missing mock params", it.content)
+            }
+
+            handleRequest(HttpMethod.Put, "/mock/chapter", Ports.config).response {
                 Assert.assertEquals(HttpStatusCode.BadRequest, it.status())
                 assertStartsWith("Missing mock params", it.content)
             }
@@ -27,67 +39,33 @@ class MockTests : ApiTests {
     }
 
     @Test
-    fun testCreateTape() {
+    fun test_CreateFind() {
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "testCreateTape")
-                addHeader("mockTape_Only", "true")
-            }.apply {
-                response {
-                    Assert.assertEquals(HttpStatusCode.Created, it.status())
-                }
-            }
-        }
-    }
-
-    @Test
-    fun testUseTape() {
-        TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "testUseTape")
-                addHeader("mockTape_Only", "true")
+            val tapeName = "tapeName"
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+                addHeader("mockName", tapeName)
+            }.response {
+                Assert.assertEquals(HttpStatusCode.Created, it.status())
             }
 
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "testUseTape")
-                addHeader("mockTape_Only", "true")
-            }.apply {
-                response {
-                    Assert.assertEquals(HttpStatusCode.Found, it.status())
-                }
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+                addHeader("mockName", tapeName)
+            }.response {
+                Assert.assertEquals(HttpStatusCode.Found, it.status())
             }
-        }
-    }
 
-    @Test
-    fun testCreateTape_CreateMock() {
-        TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "testCreateTape_CreateMock")
+            handleRequest(HttpMethod.Put, "/mock/chapter", Ports.config) {
+                addHeader("mockTapeName", tapeName)
                 addHeader("mockName", "GetMail")
-            }.apply {
-                response {
-                    Assert.assertEquals(HttpStatusCode.Created, it.status())
-                }
-            }
-        }
-    }
-
-    @Test
-    fun testCreateMock_FindTape() {
-        TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "FindTape")
-                addHeader("mockName", "GetMail")
+            }.response {
+                Assert.assertEquals(HttpStatusCode.Created, it.status())
             }
 
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "FindTape")
+            handleRequest(HttpMethod.Put, "/mock/chapter", Ports.config) {
+                addHeader("mockTapeName", tapeName)
                 addHeader("mockName", "GetMail")
-            }.apply {
-                response {
-                    Assert.assertEquals(HttpStatusCode.Found, it.status())
-                }
+            }.response {
+                Assert.assertEquals(HttpStatusCode.Found, it.status())
             }
         }
     }
@@ -98,8 +76,12 @@ class MockTests : ApiTests {
         Assert.assertTrue(testBody.isValidJSON)
 
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", "useMock")
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+                addHeader("mockName", "useMock")
+            }
+
+            handleRequest(HttpMethod.Put, "/mock/chapter", Ports.config) {
+                addHeader("mockTapeName", "useMock")
                 addHeader("mockMethod", "POST")
                 addHeader("mockResponseCode", "200")
                 addHeader("mockFilter_Path", "/mail")
@@ -124,18 +106,16 @@ class MockTests : ApiTests {
         val queryMatch = "queryMatch"
 
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", testingTapes[0])
-                addHeader("mockTape_Only", "true")
-                addHeader("mockTape_Url", "http://valid.url")
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+                addHeader("mockName", testingTapes[0])
+                addHeader("mockUrl", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
                 addHeader("mockFilter_Query", "Query.+")
             }
 
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
-                addHeader("mockTape_Name", testingTapes[1])
-                addHeader("mockTape_Only", "true")
-                addHeader("mockTape_Url", "http://valid.url")
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+                addHeader("mockName", testingTapes[1])
+                addHeader("mockUrl", "http://valid.url")
                 addHeader("mockFilter_Path", "/long/path/name")
                 addHeader("mockFilter_Query", "Query=Value")
             }

@@ -69,10 +69,16 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
          */
 
         /**
+         * Usage: [Chapter]
+         *
+         * Name of tape to use, required for chapters
+         */
+        TapeName,
+
+        /**
          * Usage: [Tape], [Chapter]
          *
-         * Name of tape/chapter to use (or create)
-         * {Tape}{Chapter}
+         * Name of tape/chapter
          */
         Name,
 
@@ -182,6 +188,10 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
     private val Route.mock: Route
         get() = route(RoutePaths.MOCK.path) {
             put {
+                val responseMsg =
+                    "Call `PUT /mock/Tape` to add a tape, or `PUT /mock/Chapter` to add a chapter to a tape"
+                call.respond(HttpStatusCode.ExpectationFailed, responseMsg)
+
 //                call.processPutMock().apply {
 //                    println(responseMsg)
 //                    call.respond(status, responseMsg.orEmpty())
@@ -241,6 +251,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
     private fun ApplicationCall.processTapeData(): QueryResponse<BaseTape> {
         // Step 0; pre-process data
+        // [mockParams]: header mock params which have been de-"mock"ed
         val (mockParams, checkStatus, checkMsg) = preProcessCheck()
         if (checkStatus == HttpStatusCode.BadRequest || mockParams.isNullOrEmpty()) {
             return QueryResponse {
@@ -249,11 +260,11 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
             }
         }
 
-        val attractors = createRequestAttractor("tape", request.headers)
+        val attractors = createRequestAttractor(request.headers)
 //        val uniqueFilters = createUniqueFilters(request.headers)
 
         // Step 1: get existing tape or create a new tape
-        val tapeQuery = getTape(mockParams, true)
+        val tapeQuery = getTape(mockParams)
         val tape = tapeQuery.item ?: return QueryResponse {
             status = HttpStatusCode.InternalServerError
             responseMsg = HttpStatusCode.InternalServerError.description
@@ -299,21 +310,26 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
         val mockParams = prepData.item.orEmpty()
 
-        // Step 1: get existing tape or fail
-        val tapeItems = mockParams.filterKeys { it.startsWith("tape") }
-            .map { (key, value) -> key.removePrefix("tape") to value }.toMap()
-        val tapeQuery = getTape(tapeItems)
-        val tape = tapeQuery.item ?: return QueryResponse {
-            status = HttpStatusCode.FailedDependency
-            responseMsg = when {
-                !tapeItems.containsKey("name") -> "Missing header `tape_name`"
-                tapeItems.containsKey("name") -> "Unable to find tape, ${tapeItems["name"]}"
-                else -> HttpStatusCode.FailedDependency.description
+        when (mockParams[HeaderTags.TapeName]) {
+            null -> "Missing header `TapeName`"
+            "" -> "Invalid header for `TapeName"
+            else -> null
+        }.isNotNull { msg ->
+            return QueryResponse {
+                status = HttpStatusCode.FailedDependency
+                responseMsg = msg
             }
         }
 
+        // Step 1: get existing tape or fail
+        val tapeQuery = getTape(mockParams)
+        val tape = tapeQuery.item ?: return QueryResponse {
+            status = HttpStatusCode.InternalServerError
+            responseMsg = HttpStatusCode.InternalServerError.description
+        }
+
         // apply the tape's attractors to this object
-        val attractors = createRequestAttractor("chap", request.headers).also {
+        val attractors = createRequestAttractor(request.headers).also {
             it.append(tape.attractors)
         }
 
@@ -429,8 +445,6 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
                     bodyText.isValidJSONMsg
             }
         }
-
-        return QueryResponse()
     }
 
     /**
@@ -462,7 +476,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         // Step 0.5: prepare variables
         mockParams = mockParams
             .filterNot { it.key.startsWith("filter", true) }
-        val attractors = createRequestAttractor("", request.headers)
+        val attractors = createRequestAttractor(request.headers)
         val uniqueFilters = createUniqueFilters(request.headers)
         val alwaysLive = if (mockParams["live"].isStrTrue()) true else null
 
@@ -608,10 +622,10 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
     }
 
     /**
-     * Creates a Request Attractor from the input [headers] that contain "mock{[prefixReq]}Filter"
+     * Creates a Request Attractor from the input [headers] that start with "mockFilter"
      */
-    private fun createRequestAttractor(prefixReq: String = "", headers: Headers): RequestAttractors {
-        val filterKey = "mock${prefixReq}filter_"
+    private fun createRequestAttractor(headers: Headers): RequestAttractors {
+        val filterKey = "mockfilter_"
         val filters = headers.entries()
             .filter { it.key.contains(filterKey, true) }
             .associateBy(
@@ -717,12 +731,9 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
     }
 
     /**
-     * Attempts to find an existing tape suitable tape (by name) or creates a new one.
+     * Attempts to find an existing tape (by name) or creates a new one.
      *
      * If a tape is created, it'll also be added to the tape catalog automatically
-     *
-     * @param canCreateTape Determines if this function can create a tape (during the `mock/tape` call
-     * - Returns [null] if the tape can't be found or created
      * @param name What the tape is named
      * - May include path, but not supported yet
      * @param url Routing url
@@ -731,8 +742,10 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
      * @return Query response containing the requested tape, or a newly created tape (if [canCreateTape] is [true])
      */
     @Suppress("KDocUnresolvedReference", "SpellCheckingInspection")
-    private fun getTape(mockParams: Map<String, String>, canCreateTape: Boolean = false): QueryResponse<BaseTape> {
-        val paramTapeName = mockParams[HeaderTags.Name]?.split("/")?.last()
+    private fun getTape(mockParams: Map<String, String>): QueryResponse<BaseTape> {
+        // when null, it means we're processing a 'mock/tape' call
+        val tapeName = mockParams[HeaderTags.TapeName]
+        val paramTapeName = (tapeName ?: mockParams[HeaderTags.Name])?.split("/")?.last()
         // todo; add an option for sub-directories
         // val paramTapeDir = mockParams["tape_name"]?.replace(paramTapeName ?: "", "")
 
@@ -742,7 +755,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
                 ?.also { status = HttpStatusCode.Found }
         }
 
-        if (canCreateTape && result.status != HttpStatusCode.Found) {
+        if (tapeName.isNull() && result.status != HttpStatusCode.Found) {
             result.status = HttpStatusCode.Created
             result.item = BaseTape.Builder {
                 it.tapeName = paramTapeName

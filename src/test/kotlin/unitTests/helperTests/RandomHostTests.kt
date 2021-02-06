@@ -15,12 +15,6 @@ class RandomHostTests {
     }
 
     @Test
-    fun zeroBoundValue() {
-        val test = host.nextInt(0)
-        Assert.assertTrue(test > 0)
-    }
-
-    @Test
     fun newValue() {
         val first = host.value
         val second = host.nextInt()
