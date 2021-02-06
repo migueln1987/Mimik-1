@@ -4,6 +4,7 @@ package mimik
 
 import TapeCatalog
 import helpers.firstNotNullResult
+import helpers.isNotEmpty
 import helpers.tryGetBody
 import io.ktor.application.*
 import io.ktor.features.*
@@ -16,7 +17,8 @@ import io.ktor.routing.routing
 import io.ktor.server.engine.applicationEngineEnvironment
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.netty.*
+import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import networkRouting.*
 import networkRouting.editorPages.DataGen
@@ -32,6 +34,7 @@ object Ports {
     const val live = 2202
 }
 
+@InternalAPI
 @Suppress("UNUSED_PARAMETER")
 fun main(args: Array<String> = arrayOf()) {
     val env = applicationEngineEnvironment {
@@ -42,6 +45,7 @@ fun main(args: Array<String> = arrayOf()) {
     embeddedServer(Netty, env).start(true)
 }
 
+@InternalAPI
 @kotlin.jvm.JvmOverloads
 fun Application.MimikModule(testing: Boolean = false) {
     installFeatures()
@@ -87,6 +91,7 @@ fun Application.MimikModule(testing: Boolean = false) {
     }
 }
 
+@InternalAPI
 private fun Application.installFeatures() {
 //    install(Compression) {
 //        gzip {
@@ -101,9 +106,9 @@ private fun Application.installFeatures() {
 //        }
 //    }
 
-    val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)
     install(DoubleReceive) // https://ktor.io/servers/features/double-receive.html
 
+    val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)
     install(CallId) {
         var activeID = ""
         fun ApplicationCall.getID(): String {
@@ -119,12 +124,12 @@ private fun Application.installFeatures() {
                 runBlocking {
                     val body = tryGetBody()
                     deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
-                }.orEmpty().also {
+                }?.isNotEmpty {
                     activeID = it
                     println("Unique ID (via body): $it")
                 }
             } else {
-                result.also {
+                result.isNotEmpty {
                     activeID = it
                     println("Unique ID (via header): $it")
                 }

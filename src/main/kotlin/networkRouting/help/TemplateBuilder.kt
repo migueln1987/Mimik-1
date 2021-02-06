@@ -1,12 +1,15 @@
 package networkRouting.help
 
 import helpers.append
+import helpers.appendItem
+import helpers.appendObject
 import helpers.toJson
 
 enum class CreateTypes {
     Tape, Chapter
 }
 
+@Suppress("PropertyName")
 object TemplateBuilder {
     object TemplateItems {
         enum class ItemCounts {
@@ -17,13 +20,18 @@ object TemplateBuilder {
             Int, Bool
         }
 
+        interface TemplateItem {
+            var Description: String?
+        }
+
         class SuffixItems {
             val Optional = "~"
             val Except = "!"
             val isBase64 = "#"
         }
 
-        class DataFormatItems {
+        class DataFormatItems : TemplateItem {
+            override var Description: String? = null
             var Regex: Boolean? = null
             var Style: String? = null
             var Style_A: String? = null
@@ -39,14 +47,14 @@ object TemplateBuilder {
                         Allow_Any = ".*"
                 }
 
-            operator fun invoke(config: (DataFormatItems) -> Unit): DataFormatItems {
+            operator fun invoke(config: DataFormatItems.() -> Unit): DataFormatItems {
                 config.invoke(this)
                 return this
             }
         }
 
-        class AttratorBuilder {
-            var Description: String? = null
+        class AttractorBuilder : TemplateItem {
+            override var Description: String? = null
             var Count: ItemCounts = ItemCounts.One
             var Required: Boolean = true
             var Key_Format: String? = null
@@ -65,11 +73,11 @@ object TemplateBuilder {
 
             @Suppress("unused")
             private constructor()
-            constructor(config: (AttratorBuilder) -> Unit) {
+            constructor(config: (AttractorBuilder) -> Unit) {
                 config(this)
             }
 
-            fun postEdit(config: (AttratorBuilder) -> Unit): AttratorBuilder {
+            fun postEdit(config: (AttractorBuilder) -> Unit): AttractorBuilder {
                 config(this)
                 return this
             }
@@ -77,7 +85,9 @@ object TemplateBuilder {
             override fun toString() = this.toJson
         }
 
-        class FlagBuilder(config: FlagBuilder.() -> Unit = {}) {
+        class FlagBuilder(config: FlagBuilder.() -> Unit = {}) : TemplateItem {
+            override var Description: String? = null
+
             @Transient
             var prefix: String = "mock"
             var Format: String = ""
@@ -97,43 +107,45 @@ object TemplateBuilder {
 
         /**
          * Creates a string in the format of:
-         * - mock${mockType}_$name
+         * - mock${prefix}$name
          *
          * Attributes are:
          * - Key Suffix: False
          * - Regex: False
          * - Style: String
          */
-        fun header_Item(mockType: String = "", name: String): String {
-            return AttratorBuilder {
-                it.Key_Format = "mock${mockType}_$name"
+        inline fun header_Item(
+            name: String,
+            prefix: String = "",
+            config: AttractorBuilder.() -> Unit = {}
+        ): String {
+            return AttractorBuilder {
+                it.Key_Format = "mock${prefix}$name"
                 it.hasKeySuffix = false
-                it.Data_Format { fmt ->
-                    fmt.Regex = false
-                    fmt.Style = "String"
+                it.Data_Format {
+                    Regex = false
+                    Style = "String"
                 }
-            }.toString()
+            }.also { config(it) }.toString()
         }
 
         fun header_attrItem(
-            mockType: String,
             Key: String,
-            edit: (AttratorBuilder) -> Unit
+            edit: (AttractorBuilder) -> Unit
         ): String {
-            return AttratorBuilder {
+            return AttractorBuilder {
                 it.Count = ItemCounts.Many
-                it.Key_Format = "mock${mockType}Filter_$Key"
+                it.Key_Format = "mockFilter_$Key"
             }.postEdit(edit).toString()
         }
 
         inline fun header_flags(
-            mockType: String,
             Key: String,
             edit: (FlagBuilder) -> Unit = {}
         ): String {
             val builder = FlagBuilder {
                 this.Key = Key
-                this.Format = "$prefix$mockType$Key".decapitalize()
+                this.Format = "$prefix$Key"
             }
             edit(builder)
             return builder.toJson
@@ -141,95 +153,97 @@ object TemplateBuilder {
     }
 
     fun build(create: CreateTypes): String {
-        val createType = create.name
-        val sb = StringBuilder()
-        sb.append(preAppend = "{", postAppend = "}") {
-            append(preAppend = "\"Headers\":{", postAppend = "}") {
-                append(preAppend = "\"Name\":", postAppend = ",") {
-                    TemplateItems.header_Item(createType, "name")
+        return StringBuilder().appendObject("") {
+            appendObject("Headers") {
+                if (create == CreateTypes.Chapter)
+                    appendItem("TapeName", ",") {
+                        TemplateItems.header_Item("Name", "Tape")
+                    }
+                appendItem("Name", ",") {
+                    TemplateItems.header_Item("Name") {
+                        Required = false
+                    }
                 }
 
                 if (create == CreateTypes.Tape)
-                    append(preAppend = "\"Url\":", postAppend = ",") {
-                        TemplateItems.header_Item(createType, "Url")
+                    appendItem("Url", ",") {
+                        TemplateItems.header_Item("Url") {
+                            Required = false
+                        }
                     }
 
-                append(preAppend = "\"Attractors\":{", postAppend = "},") {
-                    append(preAppend = "\"Path\":", postAppend = ",") {
-                        TemplateItems.header_attrItem(createType, "Path") {
+                appendObject("Attractors", ",") {
+                    appendObject("Path", ",") { objName ->
+                        TemplateItems.header_attrItem(objName) {
                             it.Count = TemplateItems.ItemCounts.One
                             it.hasKeySuffix = false
-                            it.Data_Format { fmt ->
-                                fmt.Regex = true
-                                fmt.Style = "String"
+                            it.Data_Format {
+                                Regex = true
+                                Style = "String"
                             }
                         }
                     }
 
-                    append(preAppend = "\"Query\":", postAppend = ",") {
-                        TemplateItems.header_attrItem(createType, "Query") {
+                    appendObject("Query", ",") { objName ->
+                        TemplateItems.header_attrItem(objName) {
                             it.Required = false
-                            it.Data_Format { fmt ->
-                                fmt.Regex = true
-                                fmt.Style_A = "Field=Value"
-                                fmt.Style_B = "Field1=Value1&Field2=Value2"
-                                fmt.hasAllowAny = true
+                            it.Data_Format {
+                                Regex = true
+                                Style_A = "Field=Value"
+                                Style_B = "Field1=Value1&Field2=Value2"
+                                hasAllowAny = true
                             }
                         }
                     }
 
-                    append(preAppend = "\"Header\":", postAppend = ",") {
-                        TemplateItems.header_attrItem(createType, "Header") {
+                    appendObject("Header", ",") { objName ->
+                        TemplateItems.header_attrItem(objName) {
                             it.Required = false
-                            it.Data_Format { fmt ->
-                                fmt.Regex = true
-                                fmt.Style = "Key=Value"
-                                fmt.hasAllowAny = true
+                            it.Data_Format {
+                                Regex = true
+                                Style = "Key=Value"
+                                hasAllowAny = true
                             }
                         }
                     }
 
-                    append(preAppend = "\"Body\":") {
-                        TemplateItems.header_attrItem(createType, "Body") {
+                    appendObject("Body") { objName ->
+                        TemplateItems.header_attrItem(objName) {
                             it.Required = false
-                            it.Data_Format { fmt ->
-                                fmt.Regex = true
-                                fmt.Style = "String"
-                                fmt.hasAllowAny = true
+                            it.Data_Format {
+                                Regex = true
+                                Style = "String"
+                                hasAllowAny = true
                             }
                         }
                     }
                 }
 
-                append(preAppend = "\"Flags\":{", postAppend = "}") {
-                    append("", "\"Save to File\":", ",") {
-                        TemplateItems.header_flags("", "SaveToFile")
+                appendObject("Flags") {
+                    appendItem("Save to File", ",") {
+                        TemplateItems.header_flags("SaveToFile")
                     }
 
-                    append("", "\"Live\":", ",") {
-                        TemplateItems.header_flags(createType, "Live")
+                    appendItem("Live", ",") {
+                        TemplateItems.header_flags("Live")
                     }
 
                     when (create) {
                         CreateTypes.Tape -> {
-                            append("", "\"RecordByFilter\":") {
-                                TemplateItems.header_flags(createType, "RecordNew")
+                            appendItem("RecordByFilter") {
+                                TemplateItems.header_flags("RecordNew")
                             }
                         }
 
                         CreateTypes.Chapter -> {
-                            append("", "\"Enabled\":", ",") {
-                                TemplateItems.header_flags(createType, "Enabled")
+                            appendItem("Enabled", ",") {
+                                TemplateItems.header_flags("Enabled")
                             }
 
-                            append("", "\"Usages\":", ",") {
-                                TemplateItems.header_flags(createType, "Uses") {
+                            appendItem("Usages", ",") {
+                                TemplateItems.header_flags("Uses") {
                                     it.Type = TemplateItems.FlagTypes.Int
                                 }
-                            }
-
-                            append("", "\"EnhancedBody\":") {
-                                TemplateItems.header_flags(createType, "BodyPlus")
                             }
                         }
                     }
@@ -238,31 +252,27 @@ object TemplateBuilder {
 
             if (create == CreateTypes.Chapter) {
                 append(",")
-                append(preAppend = "\"Body\":{", postAppend = "}") {
-                    append(preAppend = "\"Standard\": {", postAppend = "},") {
-                        """"Format": "Any""""
+                appendObject("Body") {
+                    appendObject("Standard", ",") {
+                        appendItem("Format") { "Any" }
                     }
-                    append(preAppend = "\"Enhanced\": {", postAppend = "}") {
-                        """
-                       "Format": "Json",
-                        "Data": {
-                            "Response": {
-                                "Key": "Response",
-                                "Data": "String"
-                            },
-                            "Sequence": {
-                                "Output": {
-                                    "Key": "Sequences",
-                                    "Data": "Json"
+                    appendObject("Enhanced") {
+                        appendItem("Format", ",") { "Json" }
+                        appendObject("Data") {
+                            appendObject("Response", ",") {
+                                appendItem("Key", ",") { "Response" }
+                                appendItem("Data") { "String" }
+                            }
+                            appendObject("Sequence") {
+                                appendObject("Output") {
+                                    appendItem("Key", ",") { "Sequences" }
+                                    appendItem("Data") { "Json" }
                                 }
                             }
                         }
-                       """
                     }
                 }
             }
-        }
-
-        return sb.toString()
+        }.toString()
     }
 }

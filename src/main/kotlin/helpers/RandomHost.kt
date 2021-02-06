@@ -118,9 +118,9 @@ class RandomHost(init: Int? = null) {
     /**
      * Generates a new random value from 0 (inclusive) until (exclusive) [Max]
      *
-     * - 0: Int.MIN_VALUE -> Int.MAX_VALUE
-     * - null: Int.MIN_VALUE -> Int.MAX_VALUE
-     * - else: ([Min]|0) -> ([Max] - 1)
+     * - 0: Int.MIN_VALUE .. Int.MAX_VALUE
+     * - null: Int.MIN_VALUE .. Int.MAX_VALUE
+     * - else: ([Min]|0) .. ([Max] - 1)
      */
     fun nextInt(Max: Int? = null, Min: Int = 0): Int {
         value = when (Max) {
