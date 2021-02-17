@@ -8,6 +8,10 @@ import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.RecordedInteractions
+import networkRouting.AttractorHtmlUtils.addMatcherRow
+import networkRouting.JsUtils
+import networkRouting.JsUtils.disableEnterKey
+import networkRouting.StyleUtils.setupStyle
 import tapeItems.BaseTape
 import kotlin.math.absoluteValue
 import kotlin.math.max
@@ -115,7 +119,7 @@ object TapeEditor : EditorModule() {
                                 p {
                                     inputButton(name = "Action") {
                                         onClick = """
-                                            if (confirm(${R.getProperty("viewTapeRemoveInfo")}))
+                                            if (confirm(${R["viewTapeRemoveInfo", ""]}))
                                                 submit();
                                             else
                                                 type = "button";
@@ -129,7 +133,7 @@ object TapeEditor : EditorModule() {
                                     p {
                                         inputButton(name = "Action") {
                                             onClick = """
-                                                if (confirm(${R.getProperty("deleteInfo").format("tape")}))
+                                                if (confirm(${R["deleteInfo", ""].format("tape")}))
                                                     submit();
                                                 else
                                                     type = "button";
@@ -153,10 +157,10 @@ object TapeEditor : EditorModule() {
         val pData = params.toActiveEdit
         val randomVal = randomHost.value
         val randomValStr = randomHost.valueAsChars()
-        val root = tapeCatalog.config.tapeRoot.get()
+        val root = MimikContainer.config.tapeRoot.get()
         val currentPath = root.path
 
-        val folders = mutableListOf(subDirectoryDefault)
+        val folders = mutableListOf(R["directoryDefault", ""])
             .apply { addAll(root.getFolders()) }
         head {
             unsafeScript {
@@ -171,7 +175,7 @@ object TapeEditor : EditorModule() {
                         SaveNewCalls.disabled = disableChapters;
                         SaveAddChapters.disabled = disableChapters;
                     }
-                """.trimIndent().appendLines(JS.all)
+                """.trimIndent().appendLines(JsUtils.Functions.all)
             }
         }
 
@@ -216,9 +220,9 @@ object TapeEditor : EditorModule() {
                                     onKeyUp = """
                                          definedSubDirectory.selectedIndex = 0;
                                         if (value.trim().length > 0)
-                                            definedSubDirectory.options[0].label = "$subDirectoryCustom";
+                                            definedSubDirectory.options[0].label = "${R["directoryCustom", ""]}";
                                         else
-                                            definedSubDirectory.options[0].label = "$subDirectoryDefault";
+                                            definedSubDirectory.options[0].label = "${R["directoryDefault", ""]}";
                                         """.trimIndent()
                                 }
                                 +" "
@@ -325,7 +329,7 @@ object TapeEditor : EditorModule() {
                                 disableEnterKey
                                 id = name
                                 if (pData.newTape) {
-                                    placeholder = R.getProperty("urlPlaceholderExample")
+                                    placeholder = R["urlPlaceholderExample", ""]
                                     value = ""
                                 } else {
                                     pData.tape?.also {
@@ -829,7 +833,7 @@ object TapeEditor : EditorModule() {
                     getButton {
                         formAction = TapeRouting.RoutePaths.DELETE.path
                         onClick = """
-                            if (confirm(${R.getProperty("deleteInfo").format("chapter")}))
+                            if (confirm(${R["deleteInfo", ""].format("chapter")}))
                                 submit();
                             else
                                 type = "button";
@@ -859,7 +863,7 @@ object TapeEditor : EditorModule() {
                                 width = "13%"
                                 +"URL"
                             }
-                            td { +(chap.requestData?.url ?: noData) }
+                            td { +(chap.requestData?.url ?: R["noData", ""]) }
                         }
                         tr {
                             th { +"Response" }

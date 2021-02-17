@@ -4,7 +4,6 @@ package helpers
 
 import com.beust.klaxon.Klaxon
 import com.google.gson.*
-import com.google.gson.reflect.TypeToken
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.StringReader
@@ -313,7 +312,6 @@ fun StringBuilder.appendItem(
             .also { if (it is String) sb.append(it) }
     }.append(postAppend)
 }
-
 
 /**
  * Appends [message] to this [StringBuffer] with the optional formatting [args]

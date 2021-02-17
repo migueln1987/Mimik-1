@@ -4,9 +4,9 @@ import helpers.matchers.MatcherResult
 import helpers.parser.P4Action
 import helpers.parser.P4Command
 import helpers.parser.Parser_v4
-import networkRouting.testingManager.*
 import org.junit.Assert
-import org.junit.Test
+
+import testingManager.TestManager
 
 @Suppress("KDocUnresolvedReference", "PropertyName", "PrivatePropertyName")
 class ParserTests {
@@ -596,12 +596,12 @@ class ParserTests {
         }
     }
 
-    @Test
+    // @Test
     fun parse_v4_expectPattern() {
         Assert.assertEquals(regexPattern, Parser_v4.toString())
     }
 
-    @Test
+    // @Test
     fun parse_v4_ValidCombos() {
         validInputCombos.toResultMap()
             .forEach { (input, parsed, expected) ->
@@ -617,7 +617,7 @@ class ParserTests {
             }
     }
 
-    @Test // If the input has no action, the it MUST be a conditional
+    // @Test // If the input has no action, the it MUST be a conditional
     fun parse_v4_expectAsCondOrAct() {
         inputRequireCond.toResultMap()
             .forEach { (_, parsed, _) ->
@@ -625,7 +625,7 @@ class ParserTests {
             }
     }
 
-    @Test
+    // @Test
     fun deTemplate_passthroughTest() {
         val cleanInput = "any(group)Text"
 
@@ -637,7 +637,7 @@ class ParserTests {
         )
     }
 
-    @Test
+    // @Test
     fun deTemplate_FinalOpt() {
         val input = "input_@{'item'}_test"
         val expectOut = "input_item_test"
@@ -650,7 +650,7 @@ class ParserTests {
         )
     }
 
-    @Test
+    // @Test
     fun deTemplate_VarOpt() {
         val input = "input_@{user}_test"
         val expectOut = "input_pass_test"
@@ -668,7 +668,7 @@ class ParserTests {
         )
     }
 
-    @Test
+    // @Test
     fun deTemplate_IndexOpt() {
         val input = "input_@{2}_test"
         val expectOut = "input_pass_test"
@@ -686,7 +686,7 @@ class ParserTests {
         )
     }
 
-    @Test
+    // @Test
     fun deTemplate_DefaultFinal() {
         val input = "input_@{none|'other'}_test"
         val expectOut = "input_other_test"
@@ -704,7 +704,7 @@ class ParserTests {
         )
     }
 
-    @Test
+    // @Test
     fun deTemplate_Scoped() {
         val input = "input_@{aaa}-@{&aaa}_test"
         val expectOut = "input_bb-cc_test"
@@ -725,7 +725,7 @@ class ParserTests {
         )
     }
 
-    @Test
+    // @Test
     fun parse_v4_bodyIgnoreInvalid() {
         val body = """
             { 
@@ -777,7 +777,7 @@ class ParserTests {
         }
     }
 
-    @Test
+    // @Test
     fun p4_numberCmdTest() {
         val tObj = P4Action()
 

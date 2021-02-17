@@ -1,4 +1,4 @@
-package networkRouting.testingManager
+package testingManager
 
 import helpers.*
 import helpers.parser.P4Action
@@ -81,7 +81,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
      */
     val enabledTableList by lazy {
         if (tapes.contains("##All"))
-            TapeCatalog.Instance.tapes.map { it.name }
+            MimikContainer.tapeCatalog.tapes.map { it.name }
         else tapes
     }
 
@@ -89,7 +89,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
         if (tapes.contains("##All")) {
             // for unit tests only, lazy adds ALL the known tapes
             tapes.clear()
-            tapes.addAll(TapeCatalog.Instance.tapes.map { it.name })
+            tapes.addAll(MimikContainer.tapeCatalog.tapes.map { it.name })
         }
         isEnabled.set(true)
         expireTimer?.cancel()

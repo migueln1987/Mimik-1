@@ -8,11 +8,10 @@ import mimikMockHelpers.Responsedata
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.junit.Assert
-import org.junit.Test
 
 class tapeDataTests {
 
-    @Test
+    // @Test
     fun requestReplayConversion() {
         val urlData = "http://valid.url/"
         val methodData = "POST"
@@ -41,7 +40,7 @@ class tapeDataTests {
         Assert.assertTrue(test.body().isNotEmpty())
     }
 
-    @Test
+    // @Test
     fun responseReplayConversion() {
         val codeData = 200
         val headerValue = "value"

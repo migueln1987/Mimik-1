@@ -6,7 +6,6 @@ import helpers.toArrayList
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.SeqActionObject
 import org.junit.Assert
-import org.junit.Test
 
 class ChapterTests {
 
@@ -16,7 +15,7 @@ class ChapterTests {
             .create()
     }
 
-    @Test
+    // @Test
     fun importExportCommandTests() {
         val useClass = RecordedInteractions()
 

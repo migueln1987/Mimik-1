@@ -1,53 +1,33 @@
-import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import helpers.*
-import helpers.attractors.RequestAttractors
-import io.ktor.application.ApplicationCall
-import io.ktor.features.callId
+import helpers.attractors.Attractor
 import io.ktor.http.HttpStatusCode
-import kolor.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.RecordedInteractions
 import mimikMockHelpers.SeqActionObject
-import networkRouting.testingManager.*
-import okreplay.OkReplayInterceptor
 import tapeItems.BaseTape
-import tapeItems.ResponseLinkerUtil
 import java.io.File
-import java.time.Duration
-import java.time.temporal.ChronoUnit
-import java.util.Collections
-import java.util.Date
 import kotlin.io.println
 
 class TapeCatalog {
-    private val okreplay by lazy { OkReplayInterceptor() }
-    val config by lazy { VCRConfig.getConfig }
     val tapes: MutableList<BaseTape> = mutableListOf()
-    val requestList = mutableMapOf<String, Semaphore>()
-    val processingRequests: MutableMap<String, Semaphore> by lazy { Collections.synchronizedMap(requestList) }
 
     /**
      * List of tapes to load (from JSON files)
      */
     val tapeFiles: List<File>?
-        get() = config.tapeRoot.get()?.jsonFiles()
-
-    val responseLinker by lazy { ResponseLinkerUtil() }
+        get() = MimikContainer.config.tapeRoot.get()?.jsonFiles()
 
     companion object {
         var isTestRunning = false
-        val gson: Gson by lazy {
+        val gson by lazy {
             GsonBuilder().apply {
                 registerTypeAdapterFactory(SeqActionObject.typeFactory)
             }.create()
         }
 
-        val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
+//        val Instance by lazy { TapeCatalog().also { it.loadTapeData() } }
     }
 
     /**
@@ -132,7 +112,7 @@ class TapeCatalog {
                 val headers = request.headers.toStringPairs()
                 val body = request.body?.content()
 
-                val validChapters = RequestAttractors.findBest_many(
+                val validChapters = Attractor.findBest_many(
                     readyChapters,
                     path, queries, headers, body
                 )
@@ -185,121 +165,9 @@ class TapeCatalog {
             .filter { it.attractors != null }
             .associateBy({ it }, { it.attractors!! })
 
-        return RequestAttractors.findBest(
+        return Attractor.findBest(
             validTapes,
             path, queries, headers
         )
-    }
-
-    suspend fun processCall(call: ApplicationCall): okhttp3.Response {
-        val callRequest: okhttp3.Request = call.toOkRequest()
-        val callUrl = callRequest.url.toString()
-
-        processingRequests.computeIfAbsent(callUrl) { Semaphore(1) }
-
-        return processingRequests.getValue(callUrl).withPermit {
-            println("Adding url lock for $callUrl".blue())
-            val startTime = System.currentTimeMillis()
-
-            try {
-                doCallAction(call, callRequest)
-            } finally {
-                printlnF(
-                    "Releasing lock (%d ms): %s".blue(),
-                    System.currentTimeMillis() - startTime,
-                    callUrl
-                )
-            }
-        }
-    }
-
-    private suspend fun doCallAction(
-        call: ApplicationCall,
-        callRequest: okhttp3.Request
-    ): okhttp3.Response {
-        val bounds = TestManager.getManagerByID(call.callId)
-        if (bounds != null) {
-            when {
-                Date().after(bounds.expireTime) -> {
-                    val timeOver = ChronoUnit.SECONDS.between(
-                        Date().toInstant(),
-                        (bounds.expireTime ?: Date()).toInstant()
-                    )
-                    "Testing bounds for (%s) is expired. %s past.".format(
-                        bounds.handle,
-                        Duration.ofSeconds(timeOver).toString().removePrefix("PT")
-                    )
-                }
-
-                !bounds.isEnabled.get() ->
-                    "Test with handle ${bounds.handle} is not enabled (stopped)."
-
-                bounds.tapes.isEmpty() ->
-                    "Test with handle ${bounds.handle} has no tapes."
-
-                else -> null
-            }?.also { response ->
-                println(response.red())
-                return callRequest.createResponse(HttpStatusCode.Forbidden) { response }
-            }
-        }
-
-        val (resp, chap) = findResponseByQuery(callRequest, bounds?.tapes)
-        resp.item?.also { tape ->
-            printlnF(
-                "%sUsing response tape %s".green(),
-                bounds?.handle?.let { "[$it] " } ?: "",
-                tape.name
-            )
-            val chain = tape.requestToChain(callRequest)
-            okreplay.start(config, tape)
-            withContext(Dispatchers.IO) {
-                bounds.observe(tape) {
-                    okreplay.intercept(chain)
-                        .boundActions(callRequest, bounds, chap)
-                }
-            }?.also { return it }
-
-            return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
-                R.getProperty("processCall_InvalidUrl")
-                    .also { println(it.red()) }
-            }
-        }
-
-        if (bounds != null) return callRequest.createResponse(HttpStatusCode.Forbidden) {
-            "Test bounds [${bounds.handle}] has no matching recordings for ${callRequest.url}."
-                .also { println(it.red()) }
-        }
-
-        val hostTape = findTapeByQuery(callRequest)
-        return when (hostTape.status) {
-            HttpStatusCode.Found -> {
-                hostTape.item?.let {
-                    println("Response not found; Using tape ${it.name}".cyan())
-
-                    val chain = it.requestToChain(callRequest)
-                    okreplay.start(config, it)
-                    withContext(Dispatchers.IO) { okreplay.intercept(chain) }
-                } ?: let {
-                    callRequest.createResponse(HttpStatusCode.Conflict) {
-                        R.getProperty("processCall_ConflictingTapes")
-                            .also { println(it.red()) }
-                    }
-                }
-            }
-
-            else -> {
-                BaseTape.Builder().build().apply {
-                    println("Creating new tape: $name".green())
-                    createNewInteraction { mock ->
-                        mock.requestData = callRequest.toTapeData
-                        mock.attractors = RequestAttractors(mock.requestData)
-                    }
-                    saveFile()
-                    tapes.add(this)
-                }
-                callRequest.createResponse(hostTape.status) { hostTape.responseMsg.orEmpty() }
-            }
-        }
     }
 }

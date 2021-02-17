@@ -33,7 +33,7 @@ class CallProcessor : RoutingContract("{...}") {
             respond(HttpStatusCode.OK, "")
             return
         }
-        val processResponse = tapeCatalog.processCall(this)
+        val processResponse = MimikContainer.processCall(this)
         val contentType = (processResponse.header(HttpHeaders.ContentType) ?: "text/plain")
             .asContentType
         val code = HttpStatusCode.fromValue(processResponse.code)

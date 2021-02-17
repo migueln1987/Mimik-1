@@ -1,14 +1,14 @@
 package apiTests
 
+import MimikContainer
 import mimik.Ports
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.handleRequest
 import org.junit.Assert
-import org.junit.Test
 
 class HttpTapeTests {
-    @Test
+    // @Test
     fun deleteTape() {
         val tapeName = "DeleteTapeTest"
         TestApp {
@@ -20,7 +20,7 @@ class HttpTapeTests {
 
             handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName", Ports.config)
                 .response {
-                    val hasTape = TapeCatalog.Instance.tapes
+                    val hasTape = MimikContainer.tapeCatalog.tapes
                         .any { it.name == tapeName }
 
                     Assert.assertFalse(hasTape)

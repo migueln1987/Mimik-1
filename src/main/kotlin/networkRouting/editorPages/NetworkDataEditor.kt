@@ -1,5 +1,6 @@
 package networkRouting.editorPages
 
+import R
 import helpers.*
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -7,6 +8,9 @@ import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
+import networkRouting.JsUtils
+import networkRouting.JsUtils.disableEnterKey
+import networkRouting.StyleUtils.setupStyle
 
 object NetworkDataEditor : EditorModule() {
     fun HTML.dataEditor(params: Parameters) {
@@ -18,7 +22,7 @@ object NetworkDataEditor : EditorModule() {
                     function toParsedUrl(url) {
                         parsedUrl.innerText = preVerifyURL(url);
                     }
-                """.trimIndent().appendLines(JS.all)
+                """.trimIndent().appendLines(JsUtils.Functions.all)
             }
         }
 
@@ -87,7 +91,7 @@ object NetworkDataEditor : EditorModule() {
                                     textInput(name = "requestUrl") {
                                         disableEnterKey
                                         id = name
-                                        placeholder = nData?.httpUrl?.hostPath ?: R.getProperty("urlPlaceholderExample")
+                                        placeholder = nData?.httpUrl?.hostPath ?: R["urlPlaceholderExample", ""]
                                         value = nData?.httpUrl?.hostPath.orEmpty()
                                         size = "${placeholder.length + 20}"
                                         onKeyUp = "toParsedUrl(value)"

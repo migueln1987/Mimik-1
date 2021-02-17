@@ -10,7 +10,6 @@ import kolor.yellow
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Test
 
 class TestBoundTests : ApiTests {
 
@@ -60,7 +59,7 @@ class TestBoundTests : ApiTests {
         }
     }
 
-    @Test
+    // @Test
     fun emptyVarReturnsEmptyString() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -102,7 +101,7 @@ class TestBoundTests : ApiTests {
         }
     }
 
-    @Test
+    // @Test
     fun emptyVarReturnsFirstDefault() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -144,7 +143,7 @@ class TestBoundTests : ApiTests {
         }
     }
 
-    @Test
+    // @Test
     fun setVarAfterCall() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {

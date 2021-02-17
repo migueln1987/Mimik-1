@@ -1,6 +1,5 @@
 package mimikMockHelpers
 
-import helpers.isNotNull
 import helpers.isValidJSON
 import helpers.tryGetBody
 import io.ktor.http.*

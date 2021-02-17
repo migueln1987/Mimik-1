@@ -1,10 +1,15 @@
 package networkRouting.editorPages
 
+import R
 import com.google.gson.Gson
 import helpers.*
 import io.ktor.http.Parameters
 import kotlinx.html.*
 import mimikMockHelpers.MockUseStates
+import networkRouting.AttractorHtmlUtils.addMatcherRow
+import networkRouting.JsUtils
+import networkRouting.JsUtils.disableEnterKey
+import networkRouting.StyleUtils.setupStyle
 import kotlin.math.max
 
 object ChapterEditor : EditorModule() {
@@ -15,7 +20,7 @@ object ChapterEditor : EditorModule() {
         val pData = params.toActiveEdit
 
         head {
-            unsafeScript { +JS.all }
+            unsafeScript { +JsUtils.Functions.all }
             script(src = "../assets/libs/Sortable.js") {}
             script(src = "../assets/libs/htmlUtils.js") {}
         }
@@ -412,7 +417,7 @@ object ChapterEditor : EditorModule() {
                                                         disabled = true
                                                     onClick = """
                                                         if (checked && ${pData.chapter?.awaitResponse.isFalse})
-                                                            if (confirm(${R.getProperty("chapAwaitConfirm")})) {
+                                                            if (confirm(${R["chapAwaitConfirm", ""]})) {
                                                                 responseDiv.classList.add('opacity50');
                                                                 return true;
                                                             } else return false;

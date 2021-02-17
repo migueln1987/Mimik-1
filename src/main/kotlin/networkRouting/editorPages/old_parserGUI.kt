@@ -1,5 +1,6 @@
 package networkRouting.editorPages
 
+import R
 import helpers.parser.P4Command
 import kotlinx.html.*
 import kotlin.math.absoluteValue
@@ -53,8 +54,8 @@ fun DIV.kotlinUIEditor(testGroups: ArrayList<ArrayList<P4Command>>) {
                         };
                         """.trimIndent()
             }
-                    .fold(StringBuilder()) { a, b -> a.appendLine(b) }
-                    .toString()
+                .fold(StringBuilder()) { a, b -> a.appendLine(b) }
+                .toString()
         }
 
         table(classes = "sjs_group-item nested-1") {
@@ -187,7 +188,7 @@ fun DIV.SequenceBody(seq: P4Command) {
                         id = seqData.deleteBtn
                         display = DisplayFlags.none
                         onClick = """
-                            if (confirm(${R.getProperty("deleteInfo").format("Sequence Command")}))
+                            if (confirm(${R["deleteInfo", ""].format("Sequence Command")}))
                                 alert("Removing element: $itemID");
                             else
                                 type = "button";
@@ -244,8 +245,8 @@ fun FlowContent.ParserEditor(dataID: Int) {
                 th {
                     width = "20%"
                     tooltipText(
-                            "Conditional",
-                            "Determines pre/ post actions of a source's results"
+                        "Conditional",
+                        "Determines pre/ post actions of a source's results"
                     )
 
                     checkBoxInput {
@@ -263,15 +264,15 @@ fun FlowContent.ParserEditor(dataID: Int) {
 
                 th {
                     tooltipText(
-                            "Source",
-                            "What is the context of this step"
+                        "Source",
+                        "What is the context of this step"
                     )
                 }
 
                 th {
                     tooltipText(
-                            "Action",
-                            "Processing with the source content"
+                        "Action",
+                        "Processing with the source content"
                     )
 
                     checkBoxInput {
@@ -295,8 +296,8 @@ fun FlowContent.ParserEditor(dataID: Int) {
                     div {
                         id = condFieldID_Off
                         tooltipText(
-                                "Disabled",
-                                "This step's end state will not affect other steps"
+                            "Disabled",
+                            "This step's end state will not affect other steps"
                         )
                     }
 
@@ -306,9 +307,9 @@ fun FlowContent.ParserEditor(dataID: Int) {
 
                         group {
                             tooltipText(
-                                    "Optional",
-                                    "True; further steps will still run even if this one doesn't pass.\n" +
-                                            "False: The conditional must pass for this and future lines to run."
+                                "Optional",
+                                "True; further steps will still run even if this one doesn't pass.\n" +
+                                    "False: The conditional must pass for this and future lines to run."
                             )
                             checkBoxInput {
                                 checked = true
@@ -319,8 +320,8 @@ fun FlowContent.ParserEditor(dataID: Int) {
 
                         group {
                             tooltipText(
-                                    "Requirement: ",
-                                    "What kind of state must the source have to Pass"
+                                "Requirement: ",
+                                "What kind of state must the source have to Pass"
                             )
 
                             select {
@@ -356,8 +357,8 @@ fun FlowContent.ParserEditor(dataID: Int) {
                     div {
                         id = actFieldID_Off
                         tooltipText(
-                                "Disabled",
-                                "This step will not produce any actions"
+                            "Disabled",
+                            "This step will not produce any actions"
                         )
                     }
 
@@ -392,8 +393,8 @@ private fun TABLE.SourceRows(dataID: Int) {
     tr {
         td {
             tooltipText(
-                    "Root source type",
-                    "What data this command will interact with"
+                "Root source type",
+                "What data this command will interact with"
             )
         }
 
@@ -436,8 +437,8 @@ private fun TABLE.SourceRows(dataID: Int) {
 
         td {
             tooltipText(
-                    "HTML sub-source type",
-                    "What data this command will interact with"
+                "HTML sub-source type",
+                "What data this command will interact with"
             )
         }
 
@@ -473,8 +474,8 @@ private fun TABLE.SourceRows(dataID: Int) {
 
         td {
             tooltipText(
-                    "Variable scope level",
-                    "Scope area of the search."
+                "Variable scope level",
+                "Scope area of the search."
             )
         }
         td {
@@ -508,16 +509,16 @@ private fun TABLE.SourceRows(dataID: Int) {
             }
 
             tooltipText(
-                    "Source index",
-                    "Item Index within the source item."
+                "Source index",
+                "Item Index within the source item."
             )
         }
 
         td {
             id = source_iNameOff
             tooltipText(
-                    "Disabled",
-                    "No items within the source will be referenced."
+                "Disabled",
+                "No items within the source will be referenced."
             )
         }
 
@@ -551,16 +552,16 @@ private fun TABLE.SourceRows(dataID: Int) {
             }
 
             tooltipText(
-                    "Source match",
-                    "Item matcher to act on the source."
+                "Source match",
+                "Item matcher to act on the source."
             )
         }
 
         td {
             id = source_iMatchOff
             tooltipText(
-                    "Disabled",
-                    "No matcher will act on the source."
+                "Disabled",
+                "No matcher will act on the source."
             )
         }
 

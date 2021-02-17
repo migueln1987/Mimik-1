@@ -1,7 +1,6 @@
-import org.junit.Test
 
 class AAAA {
-    @Test
+    // @Test
     fun eee() {
     }
 }

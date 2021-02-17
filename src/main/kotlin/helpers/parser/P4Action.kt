@@ -5,8 +5,8 @@ import helpers.matchers.MatcherCollection
 import helpers.matchers.MatcherResult
 import helpers.matchers.matchResults
 import mimikMockHelpers.MockUseStates
-import networkRouting.testingManager.TestBounds
-import networkRouting.testingManager.BoundChapterItem
+import testingManager.TestBounds
+import testingManager.BoundChapterItem
 import okhttp3.Headers
 
 /**
@@ -722,7 +722,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
         1 -> chapBounds.scopeVars
         2 -> testBounds.scopeVars
         else -> mutableMapOf()
-    }.filter { filter.invoke(it) }
+    }.filter { filter(it) }
 
     /**
      * Returns the requested key or key's value

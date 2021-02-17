@@ -10,4 +10,12 @@ object R : Properties() {
             }
         }
     }
+
+    @Deprecated("Use array access instead", ReplaceWith("R[key]"))
+    override fun getProperty(key: String) = ""
+
+    operator fun get(s: String): String? = super.getProperty(s)
+
+    operator fun get(s: String, default: String = ""): String =
+        super.getProperty(s) ?: default
 }

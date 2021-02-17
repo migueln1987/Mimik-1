@@ -110,15 +110,13 @@ fun FlowOrPhrasingContent.infoText(
     formatArgs: Any = "",
     divArgs: DIV.() -> Unit = {}
 ) {
-    val displayLines = (R.getProperty(property) ?: property)
-        .run {
-            when (formatArgs) {
-                is Array<*> -> format(*formatArgs)
-                is Collection<*> -> format(*formatArgs.toTypedArray())
-                else -> format(formatArgs)
-            }
+    val displayLines = R[property, property].run {
+        when (formatArgs) {
+            is Array<*> -> format(*formatArgs)
+            is Collection<*> -> format(*formatArgs.toTypedArray())
+            else -> format(formatArgs)
         }
-        .split('\n')
+    }.split('\n')
 
     val divConfig: DIV.() -> Unit = {
         divArgs.invoke(this)
@@ -148,7 +146,7 @@ fun FlowOrPhrasingContent.tooltipText(
     position: TooltipPositions = TooltipPositions.Top,
     divArgs: DIV.() -> Unit = {}
 ) {
-    val splitLines = (R.getProperty(textProperty) ?: textProperty)
+    val splitLines = R[textProperty, textProperty]
         .split('\n')
 
     val divConfig: DIV.() -> Unit = {
@@ -168,7 +166,7 @@ fun FlowContent.toolTip(
     position: TooltipPositions = TooltipPositions.Top
 ) {
     val spanClasses = "tooltiptext ${position.value}"
-    val splitLines = (R.getProperty(property) ?: property)
+    val splitLines = R[property, property]
         .split('\n')
 
     div(classes = spanClasses) {

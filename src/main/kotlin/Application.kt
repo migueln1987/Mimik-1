@@ -1,8 +1,6 @@
 @file:Suppress("PackageDirectoryMismatch")
-
 package mimik
 
-import TapeCatalog
 import helpers.firstNotNullResult
 import helpers.isNotEmpty
 import helpers.tryGetBody
@@ -18,13 +16,13 @@ import io.ktor.server.engine.applicationEngineEnvironment
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.*
-import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import networkRouting.*
 import networkRouting.editorPages.DataGen
 import networkRouting.editorPages.TapeRouting
 import networkRouting.help.HelpPages
-import networkRouting.testingManager.TestManager
+import networkRouting.loaders.MimikMock
+import testingManager.TestManager
 import org.slf4j.event.Level
 import java.io.File
 import java.util.*
@@ -34,7 +32,12 @@ object Ports {
     const val live = 2202
 }
 
-@InternalAPI
+object localhost {
+    const val android = "10.0.2.2"
+    const val local = "0.0.0.0"
+    val All = listOf(android, local)
+}
+
 @Suppress("UNUSED_PARAMETER")
 fun main(args: Array<String> = arrayOf()) {
     val env = applicationEngineEnvironment {
@@ -45,13 +48,13 @@ fun main(args: Array<String> = arrayOf()) {
     embeddedServer(Netty, env).start(true)
 }
 
-@InternalAPI
 @kotlin.jvm.JvmOverloads
 fun Application.MimikModule(testing: Boolean = false) {
     installFeatures()
 
+    MimikContainer.init()
     TapeCatalog.isTestRunning = testing
-    TapeCatalog.Instance // +loads the tape data
+//    TapeCatalog.Instance // +loads the tape data
 
 //    val client =
 //    HttpClient(OkHttp) { engine {} }
@@ -91,7 +94,6 @@ fun Application.MimikModule(testing: Boolean = false) {
     }
 }
 
-@InternalAPI
 private fun Application.installFeatures() {
 //    install(Compression) {
 //        gzip {
@@ -106,6 +108,7 @@ private fun Application.installFeatures() {
 //        }
 //    }
 
+    @Suppress("EXPERIMENTAL_API_USAGE")
     install(DoubleReceive) // https://ktor.io/servers/features/double-receive.html
 
     val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)

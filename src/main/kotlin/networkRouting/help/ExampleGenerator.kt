@@ -3,7 +3,6 @@ package networkRouting.help
 import helpers.*
 import helpers.parser.P4Command
 import kotlin.math.absoluteValue
-import kotlin.random.Random
 
 object ExampleGenerator {
     private val rHost = RandomHost()
@@ -146,10 +145,10 @@ object ExampleGenerator {
             rHost.nextBool()
         )
 
-        if (!useAdvBody) return "{${baseResponse}}"
+        if (!useAdvBody) return "{$baseResponse}"
 
         return """{
-            "Response": {${baseResponse}},
+            "Response": {$baseResponse},
             "Sequence": [${seqGenerator()}]
         }"""
     }

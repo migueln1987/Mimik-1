@@ -1,5 +1,6 @@
 package networkRouting.editorPages
 
+import R
 import mimik.Ports
 import com.github.kittinunf.fuel.core.ResponseResultOf
 import com.github.kittinunf.fuel.httpGet
@@ -16,7 +17,9 @@ import io.ktor.routing.*
 import kotlinx.html.*
 import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
+import networkRouting.JsUtils
 import networkRouting.RoutingContract
+import networkRouting.StyleUtils.setupStyle
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.Date
@@ -200,7 +203,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
         head {
             setupStyle()
-            unsafeScript { +JS.all }
+            unsafeScript { +JsUtils.Functions.all }
         }
 
         body {
@@ -291,7 +294,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                             readonly = true
                                             disabled = true
                                             if (isValid) readonlyBG else disabledBG
-                                            value = data ?: noData
+                                            value = data ?: R["noData", ""]
                                         }
                                     }
 
@@ -330,7 +333,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                 toggleArea {
                                     div(classes = "radioDiv") {
                                         usingURL = actTape.routingUrl.asHttpUrl
-                                        val data = usingURL.let { it?.hostPath ?: noData }
+                                        val data = usingURL.let { it?.hostPath ?: R["noData", ""] }
                                         val isValid = data.isValidURL
                                         useCustom = !isValid
                                         radioInput(name = "reqUrl") {
@@ -354,7 +357,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                                     div(classes = "radioDiv") {
                                         usingURL = actChap.requestData?.url.asHttpUrl
-                                        val data = usingURL.let { it?.hostPath ?: noData }
+                                        val data = usingURL.let { it?.hostPath ?: R["noData", ""] }
                                         val isValid = data.isValidURL
                                         useCustom = !isValid
                                         radioInput(name = "reqUrl") {
@@ -386,7 +389,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         br()
 
                                         textInput(classes = "hoverExpand") {
-                                            placeholder = data ?: R.getProperty("urlPlaceholderExample")
+                                            placeholder = data ?: R["urlPlaceholderExample", ""]
                                             value = data.orEmpty()
                                             onKeyUp = "reqUrlCustom.value = value;"
                                         }
@@ -590,7 +593,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         td {
                             style = "text-align: center;"
                             if (genResponses.isEmpty())
-                                +noData else {
+                                +R["noData", ""] else {
                                 select {
                                     name = "selectResponse"
                                     id = name
@@ -700,7 +703,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                         val headerMap = actItem.headers?.toMultimap()
 
                                         if (headerMap.isNullOrEmpty())
-                                            +noData
+                                            +R["noData", ""]
                                         else
                                             table {
                                                 thead {
@@ -749,7 +752,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                 }
                             }
                         }
-                    } else +noData
+                    } else +R["noData", ""]
                 }
             }
         }

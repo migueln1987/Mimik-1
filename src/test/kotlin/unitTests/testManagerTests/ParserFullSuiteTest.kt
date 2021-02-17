@@ -12,9 +12,8 @@ import kolor.blue
 import kolor.cyan
 import kolor.green
 import kolor.yellow
-import networkRouting.testingManager.BoundChapterItem
+import testingManager.BoundChapterItem
 import org.junit.Assert
-import org.junit.Test
 
 class ParserFullSuiteTest {
 
@@ -715,15 +714,15 @@ class ParserFullSuiteTest {
             return runTests
         }
 
-    @Test
+    // @Test
     fun subTestSuite() {
         val tests = mockSuiteCommands.filter {
-            it.name.startsWith("Baseline")
+            it.name.startsWith("7.5.b")
         }
         suiteRunner(tests)
     }
 
-    @Test
+    // @Test
     fun fullTestSuite() {
         suiteRunner(mockSuiteCommands)
     }

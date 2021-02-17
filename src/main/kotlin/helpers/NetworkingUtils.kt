@@ -6,7 +6,7 @@ import TapeCatalog
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
-import helpers.attractors.RequestAttractors
+import helpers.attractors.Attractor
 import io.ktor.application.ApplicationCall
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -19,6 +19,7 @@ import io.ktor.response.ResponseHeaders
 import io.ktor.util.StringValues
 import io.ktor.util.filter
 import io.ktor.util.toMap
+import mimik.localhost
 import mimikMockHelpers.RequestData
 import mimikMockHelpers.Responsedata
 import okhttp3.*
@@ -441,7 +442,7 @@ inline fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okht
 val okhttp3.Request.contentHash: Int
     get() {
         val filterHeaders = headers.asIterable()
-            .filterNot { h -> RequestAttractors.skipHeaders.any { h.first == it } }
+            .filterNot { h -> Attractor.skipHeaders.any { h.first == it } }
             .joinToString(separator = "\n") { it.first + ": " + it.second }
 
         return "%s%s%s%s".format(
@@ -616,8 +617,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         }
 
         // resolve what host would be taking to
-        val localHosts = listOf("0.0.0.0", "10.0.2.2")
-        if (localHosts.any { headerCache["host"].orEmpty().startsWith(it) })
+        if (localhost.All.any { headerCache["host"].orEmpty().startsWith(it) })
             headerCache["host"] = outboundHost
 
         build.headers(headerCache.build())

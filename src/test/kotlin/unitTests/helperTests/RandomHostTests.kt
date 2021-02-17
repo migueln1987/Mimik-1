@@ -4,7 +4,6 @@ import helpers.RandomHost
 import helpers.RegBuilder
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Test
 
 class RandomHostTests {
     lateinit var host: RandomHost
@@ -14,7 +13,7 @@ class RandomHostTests {
         host = RandomHost()
     }
 
-    @Test
+    // @Test
     fun newValue() {
         val first = host.value
         val second = host.nextInt()
@@ -23,13 +22,13 @@ class RandomHostTests {
         Assert.assertEquals(second, host.value)
     }
 
-    @Test
+    // @Test
     fun stringValue() {
         val test = host.valueAsChars()
         Assert.assertTrue(test.length in (5..10))
     }
 
-    @Test
+    // @Test
     fun valueToValidTests() {
         val checkListSource = listOf(
             ('a'..'c').toList(),
@@ -49,7 +48,7 @@ class RandomHostTests {
         }
     }
 
-    @Test
+    // @Test
     fun rangeConvertTester() {
         val builder = RegBuilder()
         val input = "01236789<=>ABCDEFGHJKLMOPQRSTUVXYZabcdeghijklmnopqrsuyz".toMutableList()

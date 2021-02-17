@@ -1,4 +1,4 @@
-package networkRouting
+package networkRouting.loaders
 
 import helpers.*
 import helpers.attractors.RequestAttractorBit
@@ -16,6 +16,7 @@ import io.ktor.routing.route
 import mimikMockHelpers.MockUseStates
 import mimikMockHelpers.QueryResponse
 import mimikMockHelpers.Responsedata
+import networkRouting.RoutingContract
 import okhttp3.internal.http.HttpMethod
 import tapeItems.BaseTape
 

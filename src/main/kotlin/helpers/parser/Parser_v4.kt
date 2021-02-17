@@ -8,7 +8,7 @@ import helpers.matchers.MatcherResult
 import helpers.matchers.matchResults
 import kolor.red
 import mimikMockHelpers.SeqActionObject
-import networkRouting.testingManager.BoundChapterItem
+import testingManager.BoundChapterItem
 
 /**
  * Example
@@ -59,7 +59,7 @@ object Parser_v4 {
 
         // continue searching till we hit the end of the line or action
         private val toEOM
-            get() = """(?=->|\s|$)"""
+            get() = """(?=->|$)"""
 
         private val toEOA
             get() = """(?=\s|$)"""
@@ -115,15 +115,36 @@ object Parser_v4 {
             get() = """
                 (?<vType>
                   (?:
-                    (?=[&%\^])
-                    (?<vbound>
-                      (?:(?<vC>&)|(?<vB>%))?
-                      (?<vU>\^)?
-                    )|(?:)
+                    $vBound|$vBounds|(?:)
                   )
                   var
                   (?:\[(?<vN>$varName)\])?
                   (?::\{(?<vM>.+?)\}$toEOM)?
+                )
+            """
+
+        // search specific scope, optionally search up too
+        private val vBound
+            get() = """
+                (?<vBound>
+                  (?=.+\.)
+                  (?<vS>[cthb])?
+                  (?<vU>\^)?
+                  \.
+                )
+            """
+
+        /**
+         * Search specific scopes in the requested order
+         * - can not search up
+         * - self-scope is assigned to 'x'
+         */
+        private val vBounds
+            get() = """
+                (?<vbounds>
+                  \[
+                  (?<vSG>[xcthb]+)
+                  \]\.
                 )
             """
 
@@ -149,30 +170,38 @@ object Parser_v4 {
                 (?<act>->
                   (?:$act_match|$act_var)
                 )?
-                """
+            """
 
+        /**
+         * Regex-like template to update the source
+         * - everything within "{" & "}$" will be sub-parsed in a futher step
+         */
         private val act_match
             get() = """
-                (?:\{(?<aM>.*?)\}(?=\s|$))
+                (?:\{(?<aM>.*?)\}$)
             """
 
         private val act_var
             get() = """
                 (?<aV>
-                (?<aSVL>
-                  (?<aSC>&)|(?<aSB>%)
-                )?
-                (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
-                (?:
-                  (?<aVT>
-                    (?<aVE>\?)?
-                    (?<aVC>\#)?
-                    (?<aVR>@)?
-                    (?<aVS>_(?:(?<aVSA>\#(?<aVSI>\d+)?)|(?<aVSL>\?)))?
+                  (?<aSVL>[cthb]\.)?
+                  (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
+                  (?:
+                    (?<aVT>
+                      (?<aVE>\?)?
+                      (?<aVC>\#)?
+                      (?<aVR>@)?
+                      (?<aVS>_
+                       (?:
+                        (?<aVSI>\#\d+)|
+                        (?<aVSA>\#)|
+                        (?<aVSL>\?)
+                       )
+                      )?
+                    )
                   )
                 )
-              )
-        """
+            """
     }
 
     override fun toString() = Groups.makeScript()
