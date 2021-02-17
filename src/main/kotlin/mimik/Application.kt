@@ -10,6 +10,7 @@ import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.util.*
+import kotlinUtils.collections.tryMap
 import kotlinx.coroutines.runBlocking
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor
@@ -36,6 +37,11 @@ fun main(args: Array<String> = arrayOf()) {
         module { MimikModule() }
         connector { port = Ports.config }
         connector { port = Ports.live }
+        // https://ktor.io/docs/auto-reload.html
+        developmentMode = false
+        watchPaths = listOf(".").tryMap {
+            File(it).canonicalPath
+        }
     }
     embeddedServer(Netty, env).start(true)
 }

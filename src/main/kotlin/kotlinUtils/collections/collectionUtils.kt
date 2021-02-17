@@ -1,5 +1,7 @@
 package kotlinUtils.collections
 
+import kotlinUtils.tryOrNull
+
 /**
  * Loops through the [Iterable] doing [action] on each item.
  *
@@ -99,3 +101,9 @@ fun <K, V> MutableMap<K, V>.putIfAbsent(from: Map<K, V>) {
  * Returns an array of Byte containing all of the elements of this collection.
  */
 fun Collection<Int>.toByteArray(): ByteArray = map { it.toByte() }.toByteArray()
+
+/**
+ * Tries to map all the items. Any mapping which throws an error, are ignored
+ */
+inline fun <T, R> Iterable<T>.tryMap(transform: (T) -> R): List<R> =
+    mapNotNull { tryOrNull { transform(it) } }
