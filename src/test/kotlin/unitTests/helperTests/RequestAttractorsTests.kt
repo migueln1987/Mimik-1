@@ -1,8 +1,8 @@
 package unitTests.helperTests
 
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import helpers.attractors.getMatches
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
+import mimik.helpers.attractors.getMatches
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test

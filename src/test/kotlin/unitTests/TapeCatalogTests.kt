@@ -1,19 +1,19 @@
 package unitTests
 
-import TapeCatalog
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import helpers.createResponse
 import io.ktor.http.HttpStatusCode
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import mimikMockHelpers.MockUseStates
-import mimikMockHelpers.RecordedInteractions
+import mimik.TapeCatalog
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
+import mimik.mockHelpers.MockUseStates
+import mimik.mockHelpers.RecordedInteractions
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import tapeItems.BaseTape
+import mimik.tapeItems.BaseTape
+import okhttp3.createResponse
 
 class TapeCatalogTests {
 

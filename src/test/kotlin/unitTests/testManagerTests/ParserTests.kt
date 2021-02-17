@@ -1,10 +1,10 @@
 package unitTests.testManagerTests
 
-import helpers.matchers.MatcherResult
-import helpers.parser.P4Action
-import helpers.parser.P4Command
-import helpers.parser.Parser_v4
-import networkRouting.testingManager.*
+import mimik.helpers.matchers.MatcherResult
+import mimik.helpers.parser.P4Action
+import mimik.helpers.parser.P4Command
+import mimik.helpers.parser.Parser_v4
+import mimik.networkRouting.testingManager.TestManager
 import org.junit.Assert
 import org.junit.Test
 

@@ -1,8 +1,10 @@
 package unitTests.helperTests
 
 import com.google.gson.Gson
-import helpers.*
-import helpers.matchers.matchResults
+import kotlinUtils.ensurePrefix
+import kotlinUtils.isStrTrue
+import kotlinUtils.isValidJSON
+import mimik.helpers.matchers.matchResults
 import org.junit.Assert
 import org.junit.Test
 

@@ -2,18 +2,21 @@
 
 package unitTests.testManagerTests
 
-import helpers.content
-import helpers.parser.Parser_v4
+import mimik.helpers.content
+import mimik.helpers.parser.Parser_v4
 import io.mockk.*
-import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.SeqActionObject
-import networkRouting.testingManager.*
+import mimik.mockHelpers.RecordedInteractions
+import mimik.mockHelpers.SeqActionObject
+import mimik.networkRouting.testingManager.BoundChapterItem
+import mimik.networkRouting.testingManager.TestBounds
+import mimik.networkRouting.testingManager.boundActions
+import mimik.networkRouting.testingManager.observe
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okio.BufferedSink
 import org.junit.Assert
 import org.junit.Test
-import tapeItems.BaseTape
+import mimik.tapeItems.BaseTape
 import java.nio.charset.Charset
 import kotlin.test.fail
 

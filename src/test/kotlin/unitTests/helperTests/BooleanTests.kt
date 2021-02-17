@@ -1,9 +1,9 @@
 package unitTests.helperTests
 
-import helpers.allTrue
-import helpers.anyTrue
-import helpers.isFalse
-import helpers.isTrue
+import kotlinUtils.allTrue
+import kotlinUtils.anyTrue
+import kotlinUtils.isFalse
+import kotlinUtils.isTrue
 import org.junit.Assert
 import org.junit.Test
 

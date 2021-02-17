@@ -1,6 +1,7 @@
 val ktor_version = "1.4.1"
 val fuel_version = "2.3.0"
 
+group = "mimik"
 version = "0.8.0"
 
 plugins {
@@ -59,4 +60,14 @@ tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
     }
+}
+
+kotlin.sourceSets {
+    get("main").kotlin.srcDirs("src/main/kotlin")
+    get("test").kotlin.srcDirs("src/test/kotlin")
+}
+
+sourceSets {
+    get("main").resources.srcDirs("src/main/resources")
+    get("test").resources.srcDirs("src/test/resources")
 }

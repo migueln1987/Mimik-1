@@ -1,6 +1,6 @@
 package unitTests.testManagerTests
 
-import helpers.toHeaders_dupKeys
+import mimik.helpers.toHeaders_dupKeys
 import okhttp3.Headers
 
 /**

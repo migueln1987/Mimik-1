@@ -1,7 +1,7 @@
 package unitTests.helperTests
 
-import helpers.RandomHost
-import helpers.RegBuilder
+import mimik.helpers.RandomHost
+import mimik.helpers.RegBuilder
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
