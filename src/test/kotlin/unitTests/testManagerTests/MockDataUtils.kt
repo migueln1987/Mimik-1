@@ -1,7 +1,7 @@
 package unitTests.testManagerTests
 
-import mimik.helpers.toHeaders_dupKeys
 import okhttp3.Headers
+import okhttp3.toHeaders_dupKeys
 
 /**
  * Class which holds all the input/ output variables of the testing bounds

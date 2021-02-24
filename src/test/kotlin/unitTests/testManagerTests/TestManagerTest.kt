@@ -2,7 +2,6 @@
 
 package unitTests.testManagerTests
 
-import mimik.helpers.content
 import mimik.helpers.parser.Parser_v4
 import io.mockk.*
 import mimik.mockHelpers.RecordedInteractions

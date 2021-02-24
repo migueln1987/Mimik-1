@@ -44,6 +44,7 @@ val removeCommentFilter: (List<String>) -> Boolean
  *
  * [allowFilter]: If the value returns true, the item is allowed
  */
+@Suppress("CHANGING_ARGUMENTS_EXECUTION_ORDER_FOR_NAMED_VARARGS")
 inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = { true }): Sequence<Pair<String, String>>? {
     if (this == null) return null
 

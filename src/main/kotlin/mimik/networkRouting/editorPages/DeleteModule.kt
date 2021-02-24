@@ -1,9 +1,8 @@
 package mimik.networkRouting.editorPages
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.response.respondRedirect
-import io.ktor.util.pipeline.PipelineContext
+import io.ktor.application.*
+import io.ktor.response.*
+import io.ktor.util.pipeline.*
 import kotlinUtils.isTrue
 
 object DeleteModule : EditorModule() {
@@ -14,16 +13,16 @@ object DeleteModule : EditorModule() {
                     null -> {
                         if (tapeCatalog.tapes.remove(tape) && tape.file?.exists().isTrue)
                             tape.file?.delete()
-                        call.respondRedirect(TapeRouting.RoutePaths.ALL.path)
+                        call.redirect(TapeRouting.RoutePaths.ALL.asSubPath)
                     }
                     else -> {
                         if (tape.chapters.removeIf { it.name == chapterName })
                             tape.saveIfExists()
 
-                        call.respondRedirect {
+                        call.redirect(TapeRouting.RoutePaths.EDIT.path) {
                             val pathStart = this.encodedPath.substringBeforeLast('/')
                                 .removePrefix("/")
-                            path(pathStart, TapeRouting.RoutePaths.EDIT.path)
+//                            path(pathStart, TapeRouting.RoutePaths.EDIT.path)
                             parameters.clear()
                             parameters["tape"] = tape.name
                         }

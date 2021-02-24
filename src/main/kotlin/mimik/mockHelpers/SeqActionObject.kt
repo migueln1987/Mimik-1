@@ -5,13 +5,12 @@ import com.google.gson.TypeAdapter
 import com.google.gson.TypeAdapterFactory
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.*
+import kotlinUtils.tryCast
 import mimik.helpers.lzma.LZMA_Encode
 import mimik.helpers.lzma.cleanJsonString
 import mimik.helpers.parser.P4Command
 import mimik.helpers.parser.Parser_v4
 import mimik.helpers.toHexString
-import mimik.helpers.tryCast
-import kotlin.collections.ArrayList
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 

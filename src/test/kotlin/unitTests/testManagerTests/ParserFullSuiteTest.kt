@@ -1,6 +1,5 @@
 package unitTests.testManagerTests
 
-import mimik.helpers.isNotNull
 import mimik.helpers.parser.P4Action
 import mimik.helpers.parser.Parser_v4
 import io.mockk.every
@@ -11,6 +10,7 @@ import kolor.cyan
 import kolor.green
 import kolor.yellow
 import kotlinUtils.ensurePrefix
+import kotlinUtils.isNotNull
 import mimik.helpers.toJson
 import mimik.networkRouting.testingManager.BoundChapterItem
 import org.junit.Assert

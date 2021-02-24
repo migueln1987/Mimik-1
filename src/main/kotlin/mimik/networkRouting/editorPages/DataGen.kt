@@ -1,26 +1,27 @@
 package mimik.networkRouting.editorPages
 
-import mimik.Ports
+import R
 import com.github.kittinunf.fuel.core.ResponseResultOf
 import com.github.kittinunf.fuel.core.toRequestData
 import com.github.kittinunf.fuel.core.toResponseData
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
-import io.ktor.application.call
-import io.ktor.html.respondHtml
+import io.ktor.application.*
+import io.ktor.html.*
 import io.ktor.http.*
-import io.ktor.response.respondRedirect
+import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.routing.Route
 import kotlinUtils.*
 import kotlinx.html.*
+import mimik.Ports
 import mimik.helpers.*
 import mimik.mockHelpers.toAttractors
 import mimik.networkRouting.RoutingContract
 import mimik.networkRouting.editorPages.DataGen.RoutePaths.Response
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import java.util.Date
+import java.util.*
 
 class DataGen : RoutingContract(RoutePaths.rootPath) {
 
@@ -51,8 +52,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
     private val Route.response
         get() = route(Response.path) {
             get {
-                val limitParams = call.parameters
-                    .limit(listOf("ref", "item"))
+                val limitParams = call.parameters.limitKeys("ref", "item")
 
                 if (call.parameters != limitParams) {
                     call.respondRedirect {
@@ -94,7 +94,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         val (request, response, _) = params.asResponseCall()
 
                         if (chap == null) {
-                            call.respondRedirect(Response.path)
+                            call.redirect(Response.path)
                             return@post
                         }
 
@@ -107,8 +107,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                         }
                         chap.genResponses?.add(requestResponse)
 
-                        call.respondRedirect {
-                            path(RoutePaths.Response.asSubPath)
+                        call.redirect(Response.path) {
                             parameters["ref"] = params["ref"].orEmpty()
                             parameters["item"] = requestResponse.hashCode().toString()
                         }
@@ -119,16 +118,14 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             it.hashCode().toString() == params["selectResponse"]
                         }
 
-                        call.respondRedirect {
-                            path(RoutePaths.Response.asSubPath)
+                        call.redirect(Response.path) {
                             parameters["ref"] = params["ref"].orEmpty()
                         }
                     }
 
                     ResponseActions.Use -> {
                         if (chap == null) {
-                            call.respondRedirect {
-                                path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                            call.redirect_abs(TapeRouting.RoutePaths.EDIT.asSubPath) {
                                 parameters["tape"] = tape.name
                             }
                             return@post
@@ -138,8 +135,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                             ?.firstOrNull { it.hashCode().toString() == params["selectResponse"] }
                         tape.saveIfExists()
 
-                        call.respondRedirect {
-                            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                        call.redirect_abs(TapeRouting.RoutePaths.EDIT.asSubPath) {
                             parameters.clear()
                             parameters["tape"] = tape.name
                             parameters["chapter"] = chap.name
@@ -176,8 +172,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                         tape.saveIfExists()
 
-                        call.respondRedirect {
-                            path(TapeRouting.RoutePaths.EDIT.asSubPath)
+                        call.redirect_abs(TapeRouting.RoutePaths.EDIT.asSubPath) {
                             parameters.clear()
                             parameters["tape"] = tape.name
                             parameters["chapter"] = newChap.name
@@ -761,7 +756,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val isLocalhostCall = get("useLocalhost") != null
         val url = get("reqUrl").orEmpty().ensureHttpPrefix.let {
             if (isLocalhostCall) {
-                it.toHttpUrlOrNull().reHost("0.0.0.0").rePort(Ports.live).toString()
+                it.toHttpUrlOrNull().reHost("0.0.0.0").rePort(Ports.mock).toString()
             } else it
         }
         val params = this["reqQuery"]

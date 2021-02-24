@@ -1,10 +1,10 @@
 package mimik.networkRouting.help
 
 import kotlinUtils.beautifyJson
+import kotlinUtils.isNotNull
 import kotlinUtils.toBase64
-import mimik.helpers.parser.P4Command
 import mimik.helpers.RandomHost
-import mimik.helpers.isNotNull
+import mimik.helpers.parser.P4Command
 import kotlin.math.absoluteValue
 
 object ExampleGenerator {

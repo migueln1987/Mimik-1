@@ -1,9 +1,6 @@
-package mimik.networkRouting
+package mimik.networkRouting.routers
 
-import io.ktor.routing.Route
-import io.ktor.routing.RouteSelector
-import io.ktor.routing.RouteSelectorEvaluation
-import io.ktor.routing.RoutingResolveContext
+import io.ktor.routing.*
 
 /**
  * Builds a route to match specified [port]
@@ -11,6 +8,16 @@ import io.ktor.routing.RoutingResolveContext
 fun Route.port(port: Int, body: Route.() -> Unit): Route {
     val selector = HttpPortRouteSelector(port)
     return createChild(selector).apply(body)
+}
+
+/**
+ * Builds a route to match each specified [port]
+ */
+fun Route.port(vararg port: Int, body: Route.() -> Unit): List<Route> {
+    return port.map {
+        val selector = HttpPortRouteSelector(it)
+        createChild(selector).apply(body)
+    }
 }
 
 /**

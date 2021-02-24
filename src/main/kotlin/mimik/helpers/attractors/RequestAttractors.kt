@@ -1,15 +1,14 @@
 package mimik.helpers.attractors
 
-import mimik.helpers.matchers.matchResults
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 import kotlinUtils.allTrue
 import kotlinUtils.anyTrue
 import kotlinUtils.isTrue
-import mimik.helpers.toStringPairs
+import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.QueryResponse
 import okhttp3.RequestData
 import okhttp3.internal.http.HttpMethod
+import okhttp3.toStringPairs
 
 class RequestAttractors {
     var routingPath: RequestAttractorBit? = null

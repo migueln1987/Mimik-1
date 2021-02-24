@@ -1,6 +1,6 @@
 package mimik.mockHelpers
 
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 
 /**
  * Object which contains:

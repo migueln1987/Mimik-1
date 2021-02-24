@@ -4,6 +4,7 @@ import kotlin.math.abs
 import kotlin.random.Random
 
 // EBNF ref: https://github.com/kean/Regex/blob/master/grammar.ebnf
+@Suppress("MemberVisibilityCanBePrivate")
 class RegBuilder(val randomHost: RandomHost = RandomHost()) {
 
     class RegexBuilder(config: RegexBuilder.() -> Unit) {

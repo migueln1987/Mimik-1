@@ -2,26 +2,23 @@
 
 package mimik.networkRouting
 
+import io.ktor.application.*
+import io.ktor.http.*
+import io.ktor.response.*
+import io.ktor.routing.*
+import kotlinUtils.*
+import mimik.helpers.*
 import mimik.helpers.attractors.RequestAttractorBit
 import mimik.helpers.attractors.RequestAttractors
 import mimik.helpers.attractors.UniqueBit
 import mimik.helpers.attractors.UniqueTypes
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.http.Headers
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.*
-import io.ktor.routing.Route
-import io.ktor.routing.put
-import io.ktor.routing.route
-import kotlinUtils.*
-import mimik.helpers.*
 import mimik.mockHelpers.MockUseStates
 import mimik.mockHelpers.QueryResponse
+import mimik.tapeItems.BaseTape
 import okhttp3.ResponseData
 import okhttp3.internal.http.HttpMethod
-import mimik.tapeItems.BaseTape
-import kotlin.text.removePrefix
+import okhttp3.toHeaders
+import okhttp3.valueOrNull
 
 /**
  * Server handle for creating mock tapes/ chapters from an API call
@@ -168,7 +165,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         CHAPTER("chapter");
 
         companion object {
-            const val rootPath = "mock"
+            const val rootPath = "setup"
         }
     }
 

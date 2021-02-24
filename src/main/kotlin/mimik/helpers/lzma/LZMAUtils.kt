@@ -3,7 +3,6 @@ package mimik.helpers.lzma
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.LZMAInputStream
 import org.tukaani.xz.LZMAOutputStream
-import java.lang.Exception
 
 /**
  * converts a multi-line json into a single line (to reduce unneeded bytes)

@@ -1,4 +1,4 @@
-import java.util.Properties
+import java.util.*
 
 object R : Properties() {
     init {

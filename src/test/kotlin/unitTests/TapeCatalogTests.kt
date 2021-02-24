@@ -4,7 +4,7 @@ import io.ktor.http.HttpStatusCode
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import mimik.TapeCatalog
+import mimik.tapeItems.TapeCatalog
 import mimik.helpers.attractors.RequestAttractorBit
 import mimik.helpers.attractors.RequestAttractors
 import mimik.mockHelpers.MockUseStates

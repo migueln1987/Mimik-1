@@ -2,27 +2,25 @@
 
 package mimik.networkRouting.editorPages
 
+import io.ktor.http.*
+import kotlinUtils.*
+import kotlinUtils.collections.eachHasNext
+import kotlinUtils.collections.toArrayList
+import kotlinx.html.*
+import mimik.helpers.*
 import mimik.helpers.attractors.RequestAttractorBit
 import mimik.helpers.attractors.RequestAttractors
 import mimik.helpers.lzma.LZMA_Decode
 import mimik.helpers.parser.P4Command
 import mimik.helpers.parser.Parser_v4
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
-import kotlinUtils.*
-import kotlinUtils.collections.eachHasNext
-import kotlinUtils.collections.toArrayList
-import kotlinx.html.*
-import mimik.TapeCatalog
-import mimik.helpers.*
 import mimik.mockHelpers.*
-import okhttp3.Headers
 import mimik.tapeItems.BaseTape
+import mimik.tapeItems.TapeCatalog
+import okhttp3.Headers
 import okhttp3.NetworkData
 import okhttp3.RequestData
 import okhttp3.ResponseData
-import java.util.Date
-import kotlin.text.substring
+import java.util.*
 
 abstract class EditorModule {
     val tapeCatalog by lazy { TapeCatalog.Instance }

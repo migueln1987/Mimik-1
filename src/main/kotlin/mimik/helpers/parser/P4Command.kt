@@ -1,9 +1,9 @@
 package mimik.helpers.parser
 
+import kotlinUtils.isNotNull
+import kotlinUtils.isNull
 import kotlinUtils.toBase64
 import mimik.helpers.RandomHost
-import mimik.helpers.isNotNull
-import mimik.helpers.isNull
 import mimik.helpers.matchers.MatcherResult
 import kotlin.random.Random
 

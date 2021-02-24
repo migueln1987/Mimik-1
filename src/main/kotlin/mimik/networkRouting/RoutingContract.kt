@@ -1,6 +1,6 @@
 package mimik.networkRouting
 
-import io.ktor.routing.Route
+import io.ktor.routing.*
 import mimik.networkRouting.editorPages.EditorModule
 
 abstract class RoutingContract(val path: String) : EditorModule() {

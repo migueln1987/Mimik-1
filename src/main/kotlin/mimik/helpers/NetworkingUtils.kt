@@ -5,34 +5,22 @@ package mimik.helpers
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
-import mimik.helpers.attractors.RequestAttractors
-import io.ktor.application.ApplicationCall
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
-import io.ktor.http.content.PartData
-import io.ktor.http.content.readAllParts
+import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.request.*
-import io.ktor.util.StringValues
-import io.ktor.util.filter
-import io.ktor.util.toMap
 import kotlinUtils.isFalse
 import kotlinUtils.isValidJSON
 import kotlinUtils.tryOrNull
-import mimik.TapeCatalog
-import okhttp3.RequestData
-import okhttp3.ResponseData
+import mimik.helpers.attractors.RequestAttractors
+import mimik.tapeItems.TapeCatalog
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.internal.http.HttpMethod
-import okio.Buffer
 import okreplay.toTapeData
 import org.w3c.dom.NodeList
 import java.nio.charset.Charset
-import java.util.TreeMap
 
 // == okHttp3
 /**
@@ -48,144 +36,6 @@ val okhttp3.Response.toJson: String
                 .toJsonString(prettyPrint = true, canonical = true)
         }
     }.orEmpty()
-
-/**
- * Returns the string contents of a RequestBody, or [default] in the case the body is empty
- */
-fun RequestBody?.content(default: String = ""): String {
-    return this?.let { _ ->
-        Buffer().let { buffer ->
-            writeTo(buffer)
-            val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
-            buffer.readString(charset)
-        }
-    } ?: default
-}
-
-/**
- * toMultiMap function which can preserve the case of header keys
- */
-fun Headers.toMultimap(caseSensitive: Boolean): Map<String, List<String>> {
-    if (!caseSensitive) return this.toMultimap()
-
-    val result = TreeMap<String, ArrayList<String>>()
-    (0 until size).forEach { i ->
-        val name = name(i)
-        if (!result.containsKey(name))
-            result[name] = ArrayList()
-        val data = result.getValue(name)
-        data.add(value(i))
-    }
-
-    return result
-}
-
-val StringValues.toHeaders: Headers
-    get() {
-        return Headers.Builder().also { build ->
-            entries().forEach { entry ->
-                entry.value.forEach { value ->
-                    build.add(entry.key, value)
-                }
-            }
-        }.build()
-    }
-
-val Map<String, String>.toHeaders: Headers
-    get() {
-        return Headers.Builder().also { build ->
-            forEach { entry ->
-                build.add(entry.key, entry.value)
-            }
-        }.build()
-    }
-
-/**
- * Creates a [Headers] which can have multiple different values to the same key
- */
-val Map<String, List<String>>.toHeaders_dupKeys: Headers
-    get() {
-        return Headers.Builder().also { build ->
-            forEach { (key, values) ->
-                values.forEach { value ->
-                    build.add(key, value)
-                }
-            }
-        }.build()
-    }
-
-val Iterable<Pair<String, String>>.toHeaders: Headers
-    get() {
-        return Headers.Builder()
-            .also { build -> forEach { build.add(it.first, it.second) } }
-            .build()
-    }
-
-/**
- * Returns the value of [Headers] if it contains any values, or [null]
- */
-val Headers.valueOrNull: Headers?
-    get() = if (size > 0) this else null
-
-fun Headers.contains(key: String, value: String) = values(key).contains(value)
-
-/** Returns an immutable (optional) case-sensitive set of header names. */
-fun Headers.names(caseSensitive: Boolean): Set<String> {
-    return if (caseSensitive) {
-        (0 until size).map { name(it) }.toSet()
-    } else names()
-}
-
-/**
- * Converts the [Headers] into a list of Key/Value pairs
- */
-val Headers.toPairs: List<Pair<String, String>>
-    get() = toMultimap().asSequence()
-//        .filter { it.key != null }
-        .flatMap { kv ->
-            kv.value.asSequence().map { kv.key to it }
-        }
-        .toList()
-
-val Headers.toArray: Array<String>
-    get() {
-        val result = mutableListOf<String>()
-        toPairs.forEach {
-            result.add(it.first)
-            result.add(it.second)
-        }
-        return result.toTypedArray()
-    }
-
-/**
- * Returns this [Headers] as a list of "Key: Value", or user defined [format]
- */
-inline fun Headers.toStringPairs(
-    format: (Pair<String, String>) -> String = { "${it.first}: ${it.second}" }
-) = toPairs.map(format)
-
-fun okhttp3.Headers.asIterable() = toPairs.asIterable()
-
-val StringValues.toParameters: Parameters
-    get() = Parameters.build { appendAll(this@toParameters) }
-
-/**
- * Limits the input [StringValues] to only those within the [items] list.
- */
-fun StringValues.limit(items: List<String>, allowDuplicates: Boolean = false): Parameters {
-    val limitParams: MutableList<String> = mutableListOf()
-
-    return filter { s, _ ->
-        s.toLowerCase().let { pKey ->
-            if (items.contains(pKey)) {
-                if (limitParams.contains(pKey) && !allowDuplicates)
-                    return@filter false
-                limitParams.add(pKey)
-                return@filter true
-            } else false
-        }
-    }.toParameters
-}
 
 /**
  * Converts a [okhttp3.Request] to [okreplay.Request]
@@ -311,25 +161,6 @@ operator fun okhttp3.Headers.Builder.invoke(action: (okhttp3.Headers.Builder) ->
 // == end okHttp3
 
 // == ktor
-/**
- * Tries to get the body text from this request (if request supports hosting a body).
- * [default] is returned if the body is expected, but can't be recieved.
- * [null] is returned if the request does not support hosting a body
- */
-suspend fun ApplicationCall.tryGetBody(default: String = ""): String? {
-    return when {
-        HttpMethod.requiresRequestBody(request.httpMethod.value) -> {
-            try {
-                receiveText()
-            } catch (ex: Exception) {
-                println("ApplicationCall.tryGetBody \n$ex")
-                default
-            }
-        }
-        else -> null
-    }
-}
-
 suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): okhttp3.Request {
     val requestBody = tryGetBody()
 
@@ -338,7 +169,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
             "%s://%s%s".format(request.local.scheme, outboundHost, request.local.uri)
         )
 
-        val headerCache = Headers.Builder()
+        val headerCache = okhttp3.Headers.Builder()
         request.headers.forEach { s, list ->
             list.forEach { headerCache[s] = it }
         }
@@ -359,29 +190,6 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         )
     }.build()
 }
-
-/**
- * Returns the [Parameters] which this [ApplicationCall] provides.
- *
- * Supports single and MultiPart type calls.
- */
-suspend fun ApplicationCall.anyParameters(): Parameters {
-    if (!request.isMultipart()) return parameters
-
-    return Parameters.build {
-        receiveMultipart()
-            .readAllParts().asSequence()
-            .filterIsInstance<PartData.FormItem>()
-            .filterNot { it.name.isNullOrBlank() }
-            .forEach { append(it.name!!, it.value) }
-    }
-}
-
-/**
- * Returns the first values for each key
- */
-val Parameters.toSingleMap: Map<String, String>
-    get() = toMap().mapValues { it.value.firstOrNull().orEmpty() }
 
 val String.asContentType: ContentType
     get() = ContentType.parse(this)
@@ -405,7 +213,3 @@ val hasNetworkAccess: Boolean
     }
 
 // == end Others
-
-// == fuel
-
-// == end fuel

@@ -2,10 +2,10 @@ package mimik.helpers.attractors
 
 import kotlinUtils.collections.appendNotNull
 import kotlinUtils.collections.firstNotNullResult
-import mimik.helpers.*
 import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.RecordedInteractions
 import okhttp3.queryItems
+import okhttp3.toStringPairs
 
 enum class UniqueTypes {
     Query, Header, Body, Unknown;

@@ -3,16 +3,15 @@
 package mimik.mockHelpers
 
 import kotlinUtils.isTrue
+import mimik.helpers.*
 import mimik.helpers.attractors.AttractorMatches
 import mimik.helpers.attractors.RequestAttractors
-import mimik.helpers.*
 import okhttp3.RequestData
 import okhttp3.ResponseData
 import okhttp3.orDefault
 import okreplay.toOkRequest
 import okreplay.toTapeData
 import java.util.*
-import kotlin.collections.ArrayList
 
 /**
  * Single recorded mock interaction which contains the following

@@ -3,6 +3,8 @@ package okhttp3
 import io.ktor.http.*
 import kotlinUtils.tryOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okio.Buffer
+import java.nio.charset.Charset
 
 /**
  * Returns a brief okHttp response to respond with a defined response [status] and [message]
@@ -33,4 +35,17 @@ fun Request.reHost(outboundHost: HttpUrl?): Request {
             }
         }
     }.build()
+}
+
+/**
+ * Returns the string contents of a RequestBody, or [default] in the case the body is empty
+ */
+fun RequestBody?.content(default: String = ""): String {
+    return this?.let { _ ->
+        Buffer().let { buffer ->
+            writeTo(buffer)
+            val charset: Charset = contentType()?.charset() ?: Charset.defaultCharset()
+            buffer.readString(charset)
+        }
+    } ?: default
 }

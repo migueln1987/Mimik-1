@@ -1,26 +1,25 @@
 package mimik.networkRouting.editorPages
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.html.respondHtml
-import io.ktor.response.respondRedirect
-import io.ktor.response.respondText
+import io.ktor.application.*
+import io.ktor.html.*
+import io.ktor.http.*
+import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinUtils.ensureHttpPrefix
 import kotlinUtils.uppercaseFirstLetter
 import mimik.helpers.*
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.toAttractors
-import okhttp3.RequestData
-import okhttp3.ResponseData
 import mimik.networkRouting.RoutingContract
 import mimik.networkRouting.editorPages.ChapterEditor.getChapterPage
 import mimik.networkRouting.editorPages.DeleteModule.deleteActions
 import mimik.networkRouting.editorPages.NetworkDataEditor.dataEditor
 import mimik.networkRouting.editorPages.TapeEditor.getAllTapesPage
 import mimik.networkRouting.editorPages.TapeEditor.getTapePage
-import okhttp3.internal.http.HttpMethod
 import mimik.tapeItems.BaseTape
+import okhttp3.RequestData
+import okhttp3.ResponseData
+import okhttp3.internal.http.HttpMethod
 import okhttp3.reQuery
 
 /**
@@ -41,6 +40,9 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             const val rootPath = "tapes"
         }
 
+        /**
+         * [rootPath]/[path]
+         */
         val asSubPath
             get() = "$rootPath/$path"
     }
@@ -51,21 +53,22 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             action
             edit
             delete
-            get { call.respondRedirect(RoutePaths.ALL.asSubPath) }
+            get { call.redirect(RoutePaths.ALL.asSubPath) }
         }
     }
 
     private val Route.all
         get() = route(RoutePaths.ALL.path) {
-            get { call.respondHtml { getAllTapesPage() } }
-            post { call.respondRedirect(RoutePaths.ALL.path) }
+            suspend fun ApplicationCall.action() = respondHtml { getAllTapesPage() }
+            get { call.action() }
+            post { call.action() }
         }
 
     private val Route.action
         get() = post(RoutePaths.ACTION.path) {
             val params = call.anyParameters()
             if (params.isEmpty())
-                call.respondRedirect(RoutePaths.ALL.path)
+                call.redirect(RoutePaths.ALL.path)
             else
                 call.processData(params.toSingleMap)
         }
@@ -73,21 +76,12 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
     private val Route.edit
         get() = route(RoutePaths.EDIT.path) {
             get {
-                if (call.parameters.isEmpty()) {
-                    call.respondRedirect(RoutePaths.ALL.path)
+                if (call.parameters.ignoreHostItems().isEmpty()) {
+                    call.redirect(RoutePaths.ALL.path)
                     return@get
                 }
-
                 val limitParams = call.parameters
-                    .limit(listOf("tape", "chapter", "network"))
-
-                if (call.parameters != limitParams) {
-                    call.respondRedirect {
-                        parameters.clear()
-                        parameters.appendAll(limitParams)
-                    }
-                    return@get
-                }
+                    .limitKeys("tape", "chapter", "network")
 
                 call.respondHtml {
                     if (limitParams.contains("tape")) {
@@ -103,7 +97,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             }
 
             post {
-                call.respondRedirect(RoutePaths.EDIT.asSubPath)
+                call.redirect(RoutePaths.EDIT.path)
             }
         }
 
@@ -130,19 +124,17 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                     .firstOrNull { it.name == data["tape"] }
                     ?.also { it.saveFile() }
 
-                respondRedirect {
-                    if (foundTape != null && data["resumeEdit"] == "true") {
-                        path(RoutePaths.EDIT.asSubPath)
+                if (foundTape != null && data["resumeEdit"] == "true") {
+                    redirect(RoutePaths.EDIT.path) {
                         parameters["tape"] = data["tape"].orEmpty()
-                    } else path(RoutePaths.ALL.asSubPath)
-                }
+                    }
+                } else redirect(RoutePaths.ALL.path)
             }
 
             "Clone" -> Action_Clone(data)
 
             "Edit" -> {
-                respondRedirect {
-                    path(path, RoutePaths.EDIT.path)
+                redirect(RoutePaths.EDIT.path) {
                     parameters.apply {
                         data.filterNot { it.key == "Action" }
                             .forEach { (t, u) -> append(t, u) }
@@ -155,17 +147,16 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                     ?.also { tape ->
                         data["chapter"]?.also { chap ->
                             tape.chapters.removeIf { it.name == chap }
-                            respondRedirect(RoutePaths.EDIT.path)
+                            redirect(RoutePaths.EDIT.path)
                             return
                         } ?: tapeCatalog.tapes.remove(tape)
                     }
 
-                respondRedirect(RoutePaths.ALL.path)
+                redirect(RoutePaths.ALL.path)
             }
 
             "Delete" -> {
-                respondRedirect {
-                    path(path, RoutePaths.DELETE.path)
+                redirect(RoutePaths.DELETE.path) {
                     val filterKeys = listOf("tape", "chapter")
                     parameters.apply {
                         data.asSequence()
@@ -175,22 +166,20 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                 }
             }
 
-            else -> respondRedirect(RoutePaths.ALL.path)
+            else -> redirect(RoutePaths.ALL.path)
         }
     }
 
     private suspend fun ApplicationCall.Action_SaveTape(data: Map<String, String>) {
         val tape = data.saveToTape()
-        respondRedirect {
-            path(RoutePaths.EDIT.asSubPath)
-
+        redirect(RoutePaths.EDIT.path) {
             parameters["tape"] = tape.name
             when (data["afterAction"]) {
                 "newChapter" -> parameters["chapter"] = ""
                 "addNew" -> parameters["tape"] = ""
                 "allTapes" -> {
                     parameters.remove("tape")
-                    path(RoutePaths.ALL.asSubPath)
+                    encodedPath += encodedPath.substringBeforeLast("/") + RoutePaths.ALL.path
                 }
             }
         }
@@ -207,8 +196,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
         val chap = data.saveChapter(foundTape)
 
-        respondRedirect {
-            path(RoutePaths.EDIT.asSubPath)
+        redirect(RoutePaths.EDIT.path) {
             parameters["tape"] = foundTape.name
             parameters["chapter"] = chap.name
             when (data["afterAction"]) {
@@ -287,9 +275,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         }
         foundTape.saveIfExists()
 
-        respondRedirect {
-            path(RoutePaths.EDIT.asSubPath)
-
+        redirect(RoutePaths.EDIT.path) {
             parameters["tape"] = foundTape.name
             parameters["chapter"] = foundChap.name
             parameters["network"] = data["network"].orEmpty()
@@ -303,7 +289,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
         val tapeName = data["tape"]
         val tape = tapeCatalog.tapes.firstOrNull { it.name == tapeName }
         if (tape == null) {
-            respondRedirect(RoutePaths.ALL.asSubPath)
+            redirect(RoutePaths.ALL.path)
             return
         }
 
@@ -339,8 +325,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
             tape.saveIfExists()
         }
 
-        respondRedirect {
-            path(RoutePaths.EDIT.asSubPath)
+        redirect(RoutePaths.EDIT.path) {
             parameters["tape"] = tape.name
 
             when (data["afterAction"]) {

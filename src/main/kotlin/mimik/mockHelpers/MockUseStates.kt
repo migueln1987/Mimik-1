@@ -7,6 +7,7 @@ class MockUseStates(val state: Int) {
         val ALWAYS = MockUseStates(-1)
         val DISABLE = MockUseStates(-2)
         val DISABLEDLIMITED = MockUseStates(0)
+
         /**
          * Single use mock
          */

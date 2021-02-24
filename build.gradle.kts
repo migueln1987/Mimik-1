@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 object Versions {
     const val kotlin = "1.4.30"
     const val ktor = "1.5.1"
@@ -9,22 +11,31 @@ group = "mimik"
 version = "0.8.0"
 
 plugins {
-    idea
     application
+    idea
+    war
     kotlin("jvm") version "1.4.30"
     id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
+    id("org.gretty") version "3.0.3"
 }
 
 application {
-    idea
+    idea {
+        module {
+            isDownloadJavadoc = true
+            isDownloadSources = true
+        }
+    }
     mainClassName = "mimik.ApplicationKt"
 }
 
-idea {
-    module {
-        isDownloadJavadoc = true
-        isDownloadSources = true
-    }
+war {
+    webAppDirName = "src/main/webapp"
+}
+
+gretty {
+    contextPath = "/"
+    logbackConfigFile = "resources/logback.xml"
 }
 
 repositories {
@@ -40,7 +51,9 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging:1.7.6")
 
     implementation("io.ktor:ktor-server-core", Versions.ktor)
-    implementation("io.ktor:ktor-server-netty", Versions.ktor)
+//    implementation("io.ktor:ktor-server-netty", Versions.ktor)
+    implementation("io.ktor:ktor-server-jetty", Versions.ktor)
+    implementation("io.ktor:ktor-server-servlet", Versions.ktor)
 
     implementation("io.ktor:ktor-client-core", Versions.ktor)
     implementation("io.ktor:ktor-client-core-jvm", Versions.ktor)
@@ -61,20 +74,28 @@ dependencies {
 }
 
 tasks {
-    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions.jvmTarget = "1.8"
+    withType<KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "1.8"
+            freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
+        }
     }
 }
 
-kotlin.sourceSets {
-    get("main").kotlin.srcDirs("src/main/kotlin")
-    get("test").kotlin.srcDirs("src/test/kotlin")
+kotlin {
+    experimental {
+//        coroutines = Coroutines.ENABLE
+    }
+    sourceSets {
+        main { kotlin.srcDirs("src/main/kotlin") }
+        test { kotlin.srcDirs("src/test/kotlin") }
+    }
 }
 
 sourceSets {
-    get("main").resources.srcDirs("src/main/resources")
-    get("test").resources.srcDirs("src/test/resources")
+    main { resources.srcDirs("src/main/resources") }
+    test { resources.srcDirs("src/test/resources") }
 }
 
-fun DependencyHandler.implementation(dependencyNotation: String, version: String = ""): Dependency? =
-    add("implementation", "$dependencyNotation:$version")
+fun DependencyHandler.implementation(dependencyNotation: String, version: String): Dependency? =
+    implementation("$dependencyNotation:$version")

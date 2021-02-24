@@ -11,7 +11,7 @@ object TapeHelp : HelperContract {
     override val subPath get() = "tape"
 
     override val Route.default: Route
-        get() = route(HelperContract.HelperPaths.DEFAULT.path) {
+        get() = apply {
             suspend fun PipelineContext<Unit, ApplicationCall>.action() {
                 call.respondText {
                     """
@@ -21,11 +21,11 @@ object TapeHelp : HelperContract {
             }
 
             get { action() }
-            put { action() }
+//            put { action() }
         }
 
     override val Route.format: Route
-        get() = route(HelperContract.HelperPaths.FORMAT.path) {
+        get() = route(HelperContract.HelperPaths.FORMAT) {
             suspend fun PipelineContext<Unit, ApplicationCall>.action() {
                 val tapeInfo = TemplateBuilder.build(CreateTypes.Tape).beautifyJson
                 call.response.headers.append(
@@ -36,17 +36,17 @@ object TapeHelp : HelperContract {
             }
 
             get { action() }
-            put { action() }
+//            put { action() }
         }
 
     override val Route.example: Route
-        get() = route(HelperContract.HelperPaths.EXAMPLE.path) {
+        get() = route(HelperContract.HelperPaths.EXAMPLE) {
             suspend fun PipelineContext<Unit, ApplicationCall>.action() {
                 val example = ExampleGenerator.build(CreateTypes.Tape)
                 call.respondText { example }
             }
 
             get { action() }
-            put { action() }
+//            put { action() }
         }
 }

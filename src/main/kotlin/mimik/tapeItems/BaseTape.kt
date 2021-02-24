@@ -4,14 +4,13 @@ package mimik.tapeItems
 
 import com.google.gson.*
 import com.google.gson.stream.JsonWriter
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 import kotlinUtils.*
 import kotlinUtils.collections.firstNotNullResult
 import kotlinUtils.text.append
 import kotlinUtils.text.appendLine
 import kotlinUtils.text.appendLines
 import kotlinx.coroutines.*
-import mimik.TapeCatalog
 import mimik.helpers.*
 import mimik.helpers.attractors.*
 import mimik.mockHelpers.*
@@ -22,12 +21,10 @@ import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.internal.http.HttpMethod
 import okreplay.*
-import okreplay.Response
 import java.io.File
 import java.io.Writer
 import java.nio.charset.Charset
-import java.util.ArrayDeque
-import java.util.Date
+import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.measureTimeMillis
@@ -125,7 +122,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
          * Empty response which returns [HttpStatusCode.Gone]
          */
         @Transient
-        private val defaultResponse = object : Response {
+        private val defaultResponse = object : okreplay.Response {
             override fun code() = HttpStatusCode.Gone.value
             override fun protocol() = Protocol.HTTP_1_1
 
@@ -401,7 +398,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         return "== Response ==\n$responseStr"
     }
 
-    override fun play(request: okreplay.Request): Response {
+    override fun play(request: okreplay.Request): okreplay.Response {
         val okRequest: okhttp3.Request = request.toOkRequest
         val logBuilder = StringBuilder()
 
@@ -433,7 +430,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         }
 
         val chapter = channelOutput.second.item
-        var returnResponse: Response? = null
+        var returnResponse: okreplay.Response? = null
 
         when (channelOutput.first) {
             SearchPreferences.AlwaysLive -> {
@@ -570,7 +567,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         return defaultResponse
     }
 
-    fun play_old(request: okreplay.Request): Response {
+    fun play_old(request: okreplay.Request): okreplay.Response {
         val okRequest: okhttp3.Request = request.toOkRequest
         val logBuilder = StringBuilder()
 

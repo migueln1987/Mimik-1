@@ -1,6 +1,6 @@
 package mimik.helpers
 
-import java.util.UUID
+import java.util.*
 import java.util.UUID.nameUUIDFromBytes
 import kotlin.experimental.and
 import kotlin.math.absoluteValue

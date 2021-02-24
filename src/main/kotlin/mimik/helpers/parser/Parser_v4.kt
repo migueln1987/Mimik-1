@@ -2,13 +2,13 @@ package mimik.helpers.parser
 
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
-import mimik.helpers.matchers.MatcherCollection
-import mimik.helpers.matchers.MatcherResult
-import mimik.helpers.matchers.matchResults
 import kolor.red
 import kotlinUtils.collections.toArrayList
+import kotlinUtils.isNotNull
+import kotlinUtils.tryCast
 import kotlinUtils.tryOrNull
-import mimik.helpers.*
+import mimik.helpers.firstNotNullResult
+import mimik.helpers.matchers.*
 import mimik.mockHelpers.SeqActionObject
 import mimik.networkRouting.testingManager.BoundChapterItem
 

@@ -1,14 +1,14 @@
 package kotlinx.html
 
 import R
-import io.ktor.http.Parameters
-import io.ktor.util.toMap
+import io.ktor.http.*
+import io.ktor.util.*
 import kotlinUtils.collections.eachHasNext
 import kotlinUtils.ensureSuffix
 import kotlinUtils.tryOrNull
 import mimik.helpers.RandomHost
-import mimik.helpers.toMultimap
 import okhttp3.Headers
+import okhttp3.toMultimap
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.absoluteValue

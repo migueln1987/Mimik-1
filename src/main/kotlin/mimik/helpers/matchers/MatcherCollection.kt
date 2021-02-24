@@ -3,8 +3,8 @@
 package mimik.helpers.matchers
 
 import kotlinUtils.ranges.size
+import kotlinUtils.tryCast
 import mimik.helpers.accessField
-import mimik.helpers.tryCast
 import java.util.regex.Matcher
 
 /**

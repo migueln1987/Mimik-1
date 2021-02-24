@@ -1,9 +1,8 @@
 package mimik.networkRouting
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
+import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.request.uri
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import okhttp3.content

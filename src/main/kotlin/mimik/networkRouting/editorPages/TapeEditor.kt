@@ -2,13 +2,13 @@ package mimik.networkRouting.editorPages
 
 import R
 import com.google.gson.Gson
-import mimik.helpers.attractors.RequestAttractors
-import io.ktor.http.Parameters
+import io.ktor.http.*
 import javaUtils.io.fileSize
 import javaUtils.io.foldersPaths
 import kotlinUtils.*
 import kotlinx.html.*
 import mimik.helpers.*
+import mimik.helpers.attractors.RequestAttractors
 import mimik.mockHelpers.MockUseStates
 import mimik.mockHelpers.RecordedInteractions
 import mimik.tapeItems.BaseTape
@@ -154,7 +154,7 @@ object TapeEditor : EditorModule() {
      */
     fun HTML.getTapePage(params: Parameters) {
         val pData = params.toActiveEdit
-        val randomVal = randomHost.value
+        val randomVal = randomHost.value.absoluteValue
         val randomValStr = randomHost.valueAsChars()
         val root = tapeCatalog.config.tapeRoot.get()
         val currentPath = root.path

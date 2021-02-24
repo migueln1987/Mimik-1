@@ -25,7 +25,7 @@ object RootHelp : HelperContract {
     }
 
     override val Route.default: Route
-        get() = route(HelperContract.HelperPaths.DEFAULT.path) {
+        get() = apply {
             val self = this
             suspend fun PipelineContext<Unit, ApplicationCall>.action() {
                 call.respondHtml {
@@ -49,7 +49,7 @@ object RootHelp : HelperContract {
             }
 
             get { action() }
-            put { action() }
+//            put { action() }
         }
 
     override val Route.format: Route

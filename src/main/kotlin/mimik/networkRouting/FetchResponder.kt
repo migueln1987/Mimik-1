@@ -1,13 +1,9 @@
 package mimik.networkRouting
 
-import mimik.helpers.anyParameters
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.response.respondText
-import io.ktor.routing.Route
-import io.ktor.routing.post
-import io.ktor.routing.route
-import io.ktor.util.pipeline.PipelineContext
+import io.ktor.application.*
+import io.ktor.response.*
+import io.ktor.routing.*
+import io.ktor.util.pipeline.*
 import mimik.helpers.toJson
 import java.io.File
 import kotlin.math.max

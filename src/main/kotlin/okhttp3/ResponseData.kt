@@ -4,7 +4,7 @@ import io.ktor.http.*
 import kotlinUtils.isValidJSON
 import okreplay.tryGetBody
 import java.nio.charset.Charset
-import java.util.Date
+import java.util.*
 
 class ResponseData : NetworkData {
     constructor(response: okreplay.Response) {

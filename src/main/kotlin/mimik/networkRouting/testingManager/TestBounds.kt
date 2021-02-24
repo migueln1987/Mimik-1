@@ -1,21 +1,20 @@
 package mimik.networkRouting.testingManager
 
 import javaUtils.util.plus
-import mimik.helpers.parser.P4Action
-import java.time.Duration
-import java.util.*
 import kolor.red
 import kolor.yellow
-import mimik.TapeCatalog
-import mimik.helpers.content
+import mimik.helpers.parser.P4Action
 import mimik.helpers.printlnF
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.SeqActionObject
-import okhttp3.ResponseBody.Companion.toResponseBody
-import kotlin.concurrent.schedule
 import mimik.tapeItems.BaseTape
+import mimik.tapeItems.TapeCatalog
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.content
+import java.time.Duration
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.schedule
 
 /**
  * Self-contained sandboxed testing environment
