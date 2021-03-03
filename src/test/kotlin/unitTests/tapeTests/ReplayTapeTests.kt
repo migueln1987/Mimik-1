@@ -1,20 +1,20 @@
 package unitTests.tapeTests
 
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
 import io.mockk.every
 import io.mockk.mockk
-import mimikMockHelpers.MockUseStates
-import mimikMockHelpers.RecordedInteractions
+import mimik.mockHelpers.MockUseStates
+import mimik.mockHelpers.RecordedInteractions
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.Protocol
 import okreplay.Request
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import tapeItems.BaseTape
+import mimik.tapeItems.BaseTape
+import okhttp3.Protocol
 
 class ReplayTapeTests {
     lateinit var testObject: BaseTape

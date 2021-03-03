@@ -1,6 +1,6 @@
 package kotlinx.html
 
-import helpers.tryOrNull
+import kotlinUtils.tryOrNull
 
 val CommonAttributeGroupFacade.disabledText: Unit
     get() = appendStyles("color: darkgray")

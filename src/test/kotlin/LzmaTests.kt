@@ -1,5 +1,5 @@
-import helpers.lzma.LZMA_Decode
-import helpers.lzma.LZMA_Encode
+import mimik.helpers.lzma.LZMA_Decode
+import mimik.helpers.lzma.LZMA_Encode
 import org.junit.Assert
 import org.junit.Test
 

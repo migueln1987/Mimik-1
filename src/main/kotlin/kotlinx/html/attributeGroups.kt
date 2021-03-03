@@ -1,3 +1,5 @@
+@file:Suppress("KDocUnresolvedReference", "unused", "MemberVisibilityCanBePrivate")
+
 package kotlinx.html
 
 class PaddingConfigs(val attributeGroup: CommonAttributeGroupFacade) {
@@ -89,7 +91,7 @@ class PaddingConfigs(val attributeGroup: CommonAttributeGroupFacade) {
  * Accessor to this element's padding attributes
  */
 fun CommonAttributeGroupFacade.padding(padConfig: PaddingConfigs.() -> Unit) =
-    padConfig.invoke(PaddingConfigs(this))
+    padConfig(PaddingConfigs(this))
 
 class MarginConfigs(val attributeGroup: CommonAttributeGroupFacade) {
     /**
@@ -180,7 +182,7 @@ class MarginConfigs(val attributeGroup: CommonAttributeGroupFacade) {
  * Accessor to this element's margin attributes
  */
 fun CommonAttributeGroupFacade.margin(marginConfig: MarginConfigs.() -> Unit) =
-    marginConfig.invoke(MarginConfigs(this))
+    marginConfig(MarginConfigs(this))
 
 class BorderConfigs(private val attributeGroup: CommonAttributeGroupFacade) {
 
@@ -194,19 +196,19 @@ class BorderConfigs(private val attributeGroup: CommonAttributeGroupFacade) {
         }
 
     fun all(config: SubConfigs.() -> Unit) =
-        config.invoke(SubConfigs())
+        config(SubConfigs())
 
     fun left(config: SubConfigs.() -> Unit) =
-        config.invoke(SubConfigs("left"))
+        config(SubConfigs("left"))
 
     fun right(config: SubConfigs.() -> Unit) =
-        config.invoke(SubConfigs("right"))
+        config(SubConfigs("right"))
 
     fun top(config: SubConfigs.() -> Unit) =
-        config.invoke(SubConfigs("top"))
+        config(SubConfigs("top"))
 
     fun bottom(config: SubConfigs.() -> Unit) =
-        config.invoke(SubConfigs("bottom"))
+        config(SubConfigs("bottom"))
 
     inner class SubConfigs(private val type: String? = null) {
         private val edgeType: String
@@ -242,7 +244,7 @@ class BorderConfigs(private val attributeGroup: CommonAttributeGroupFacade) {
  * Style of border around this element
  */
 fun CommonAttributeGroupFacade.border(borderConfig: BorderConfigs.() -> Unit) =
-    borderConfig.invoke(BorderConfigs(this))
+    borderConfig(BorderConfigs(this))
 
 fun CommonAttributeGroupFacade.border_3D() {
     border {

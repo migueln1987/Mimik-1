@@ -1,10 +1,7 @@
 package unitTests.testManagerTests
 
-import helpers.ensurePrefix
-import helpers.isNotNull
-import helpers.parser.P4Action
-import helpers.parser.Parser_v4
-import helpers.toJson
+import mimik.helpers.parser.P4Action
+import mimik.helpers.parser.Parser_v4
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -12,7 +9,10 @@ import kolor.blue
 import kolor.cyan
 import kolor.green
 import kolor.yellow
-import networkRouting.testingManager.BoundChapterItem
+import kotlinUtils.ensurePrefix
+import kotlinUtils.isNotNull
+import mimik.helpers.toJson
+import mimik.networkRouting.testingManager.BoundChapterItem
 import org.junit.Assert
 import org.junit.Test
 

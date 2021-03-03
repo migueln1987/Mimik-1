@@ -1,20 +1,22 @@
 package apiTests
 
-import com.beust.klaxon.internal.firstNotNullResult
 import mimik.Ports
-import helpers.isValidJSON
-import helpers.isTrue
-import helpers.orFalse
 import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
-import mimikMockHelpers.MockUseStates
+import kotlinUtils.collections.firstNotNullResult
+import kotlinUtils.isTrue
+import kotlinUtils.isValidJSON
+import kotlinUtils.orFalse
+import mimik.tapeItems.TapeCatalog
+import mimik.mockHelpers.MockUseStates
 import org.junit.*
 
 class MockTests : ApiTests {
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun test_MockCall() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config).response {
@@ -23,7 +25,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun testCreate_NoParams() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock/tape", Ports.config).response {
@@ -38,7 +41,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun test_CreateFind() {
         TestApp {
             val tapeName = "tapeName"
@@ -70,7 +74,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun useMock() {
         val testBody = "{\"test\":true }"
         Assert.assertTrue(testBody.isValidJSON)
@@ -88,7 +93,7 @@ class MockTests : ApiTests {
                 setBody(testBody)
             }
 
-            handleRequest(HttpMethod.Post, "/mail", Ports.live)
+            handleRequest(HttpMethod.Post, "/mail", Ports.mock)
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.OK, it.status())
@@ -98,7 +103,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test // This test filters each call (queryNone, queryNew, queryMatch) into the respected tapes
+    // todo; pending new API changes
+    // @Test // This test filters each call (queryNone, queryNew, queryMatch) into the respected tapes
     fun requiredFilterPriority() {
         val testingTapes = arrayOf("TestingTape1", "TestingTape2")
         val queryNone = "queryNone"
@@ -120,15 +126,15 @@ class MockTests : ApiTests {
                 addHeader("mockFilter_Query", "Query=Value")
             }
 
-            handleRequest(HttpMethod.Post, "/long/path/name", Ports.live) {
+            handleRequest(HttpMethod.Post, "/long/path/name", Ports.mock) {
                 setBody(queryNone) // should create a new tape & chapter
             }
 
-            handleRequest(HttpMethod.Post, "/long/path/name?Query=New", Ports.live) {
+            handleRequest(HttpMethod.Post, "/long/path/name?Query=New", Ports.mock) {
                 setBody(queryNew)
             }
 
-            handleRequest(HttpMethod.Post, "/long/path/name?Query=Value", Ports.live) {
+            handleRequest(HttpMethod.Post, "/long/path/name?Query=Value", Ports.mock) {
                 setBody(queryMatch)
             }
 
@@ -158,7 +164,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun awaitTape() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -169,7 +176,7 @@ class MockTests : ApiTests {
                 addHeader("mockFilter_Path", ".*")
             }
 
-            handleRequest(HttpMethod.Post, "/awaittape_test", Ports.live) {
+            handleRequest(HttpMethod.Post, "/awaittape_test", Ports.mock) {
                 request {
                     setBody("awaittape")
                 }
@@ -198,7 +205,7 @@ class MockTests : ApiTests {
     fun newCallCreatedAwaitTape() {
         val path = "await_test"
         TestApp {
-            handleRequest(HttpMethod.Post, "/$path", Ports.live) {
+            handleRequest(HttpMethod.Post, "/$path", Ports.mock) {
                 request {
                     setBody("testBody")
                 }
@@ -224,7 +231,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun exceptTest() {
         val avoidBody = "avoidBody"
         val successBody = "successBody"
@@ -245,7 +253,7 @@ class MockTests : ApiTests {
             }
 
             // this call should be filtered into the mock who does not allow a body containing "avoid"
-            handleRequest(HttpMethod.Post, "/path", Ports.live) {
+            handleRequest(HttpMethod.Post, "/path", Ports.mock) {
                 setBody("avoidThis")
             }.apply {
                 response {
@@ -253,7 +261,7 @@ class MockTests : ApiTests {
                 }
             }
 
-            handleRequest(HttpMethod.Post, "/path", Ports.live) {
+            handleRequest(HttpMethod.Post, "/path", Ports.mock) {
                 setBody("anyBody")
             }.apply {
                 response {
@@ -264,7 +272,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun headersOutTest() {
         val headerKey = "headerKey"
         val headerValue = "headerValue"
@@ -276,7 +285,7 @@ class MockTests : ApiTests {
                 addHeader("mockHeaderOut_$headerKey", headerValue)
             }
 
-            handleRequest(HttpMethod.Post, "/path", Ports.live) {}.apply {
+            handleRequest(HttpMethod.Post, "/path", Ports.mock) {}.apply {
                 response {
                     Assert.assertTrue(it.headers.contains(headerKey))
                     Assert.assertEquals(headerValue, it.headers[headerKey])
@@ -285,7 +294,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun alwaysLiveMock_NoUrl() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -302,7 +312,7 @@ class MockTests : ApiTests {
             Assert.assertTrue(mock?.alwaysLive.orFalse)
             Assert.assertNull(mock?.responseData)
 
-            handleRequest(HttpMethod.Post, "/mail", Ports.live)
+            handleRequest(HttpMethod.Post, "/mail", Ports.mock)
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.BadGateway, it.status())
@@ -311,7 +321,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun alwaysLiveMock() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -329,7 +340,7 @@ class MockTests : ApiTests {
             Assert.assertTrue(mock.alwaysLive.orFalse)
             Assert.assertNull(mock.responseData)
 
-            handleRequest(HttpMethod.Post, "/mail", Ports.live)
+            handleRequest(HttpMethod.Post, "/mail", Ports.mock)
                 .apply {
                     response {
                         Assert.assertEquals(HttpStatusCode.OK, it.status())
@@ -339,7 +350,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test // Runs the live mock a limited time, then mocking response
+    // todo; pending new API changes
+    // @Test // Runs the live mock a limited time, then mocking response
     fun alwaysLiveLimitedMock() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -376,7 +388,7 @@ class MockTests : ApiTests {
             Assert.assertTrue(mock.alwaysLive.orFalse)
             Assert.assertNull(mock.responseData)
 
-            handleRequest(HttpMethod.Post, "/mail", Ports.live)
+            handleRequest(HttpMethod.Post, "/mail", Ports.mock)
                 .response {
                     Assert.assertEquals(HttpStatusCode.OK, it.status())
                     Assert.assertTrue(MockUseStates.isDisabled(mock.mockUses))
@@ -384,7 +396,7 @@ class MockTests : ApiTests {
                     Assert.assertNotEquals(mockBody, it.content)
                 }
 
-            handleRequest(HttpMethod.Post, "/mail", Ports.live)
+            handleRequest(HttpMethod.Post, "/mail", Ports.mock)
                 .response {
                     Assert.assertEquals(HttpStatusCode.OK, it.status())
                     Assert.assertEquals(mockBody, it.content)
@@ -392,7 +404,8 @@ class MockTests : ApiTests {
         }
     }
 
-    @Test
+    // todo; pending new API changes
+    // @Test
     fun alwaysLiveTape() {
         TestApp {
             handleRequest(HttpMethod.Put, "/mock", Ports.config) {
@@ -411,7 +424,7 @@ class MockTests : ApiTests {
             requireNotNull(tape)
             Assert.assertTrue(tape.alwaysLive.orFalse)
 
-            handleRequest(HttpMethod.Post, "/mail", Ports.live)
+            handleRequest(HttpMethod.Post, "/mail", Ports.mock)
                 .response {
                     Assert.assertEquals(HttpStatusCode.OK, it.status())
                     Assert.assertTrue(tape.chapters.isNotEmpty())

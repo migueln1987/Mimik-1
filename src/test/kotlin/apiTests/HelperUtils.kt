@@ -24,10 +24,10 @@ fun TestApp(callback: TestApplicationEngine.() -> Unit) =
     withTestApplication({ MimikModule(testing = true) }, callback)
 
 fun TestApplicationCall.request(config: (TestApplicationRequest) -> Unit) =
-    config.invoke(request)
+    config(request)
 
 fun TestApplicationCall.response(config: (TestApplicationResponse) -> Unit) =
-    config.invoke(response)
+    config(response)
 
 /**
  * Asserts that [input] contains the string [search]
