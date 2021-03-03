@@ -19,7 +19,7 @@ import java.util.*
 @Suppress("unused")
 class RecordedInteractions {
     constructor(builder: (RecordedInteractions) -> Unit = {}) {
-        builder.invoke(this)
+        builder(this)
         originalMockUses = mockUses
     }
 
@@ -70,9 +70,8 @@ class RecordedInteractions {
      */
     var UID: String? = UUID.randomUUID().toString()
         get() {
-            return field ?: UUID.randomUUID().toString().also {
-                field = it
-            }
+            return field
+                ?: UUID.randomUUID().toString().also { field = it }
         }
 
     /**
@@ -204,7 +203,7 @@ class RecordedInteractions {
         it.mockUses = mockUses
         it.requestData = requestData?.clone()
         it.responseData = responseData?.clone()
-    }.also { postClone.invoke(it) }
+    }.also { postClone(it) }
 
     /**
      * @return

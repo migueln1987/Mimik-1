@@ -17,7 +17,7 @@ class RequestAttractors {
     var bodyMatchers: List<RequestAttractorBit>? = null
 
     constructor(config: (RequestAttractors) -> Unit = {}) {
-        config.invoke(this)
+        config(this)
     }
 
     constructor(request: RequestData?) {
@@ -145,7 +145,7 @@ class RequestAttractors {
             // Filter to early fail checks
             return source.mapValues { it.value to AttractorMatches() }
                 .asSequence()
-                .filter { it.parseMatch { _ -> custom.invoke(it.key) } }
+                .filter { it.parseMatch { _ -> custom(it.key) } }
                 .filter { it.parseMatch { it.matchesPath(path) } }
                 .filter { it.parseMatch { it.getQueryMatches(queries) } }
                 .filter { it.parseMatch { it.getHeaderMatches(headers) } }
@@ -167,7 +167,7 @@ class RequestAttractors {
         private inline fun Map.Entry<*, Pair<RequestAttractors, AttractorMatches>>.parseMatch(
             matcher: (RequestAttractors) -> AttractorMatches?
         ): Boolean {
-            val mResult = matcher.invoke(value.first)
+            val mResult = matcher(value.first)
             value.second.appendValues(mResult)
             if (!value.second.hasMatches)
                 Fails.add(value)
@@ -259,7 +259,7 @@ class RequestAttractors {
      */
     private fun matchAppender(matchers: MatcherPair.() -> Unit): List<RequestAttractorBit>? {
         return MatcherPair().apply {
-            matchers.invoke(this) // initialize matcherPair's data
+            matchers(this) // initialize matcherPair's data
 
             from?.also { newData ->
                 to = (to ?: listOf())

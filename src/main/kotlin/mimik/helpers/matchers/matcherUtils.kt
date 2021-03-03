@@ -1,6 +1,7 @@
 package mimik.helpers.matchers
 
 import kotlinUtils.isTrue
+import kotlin.math.min
 
 /**
  * Returns true if this [MatchResult] contains any matching groups
@@ -14,11 +15,10 @@ fun matchCount(inputFind: HashSet<Char>, compareMatch: HashSet<Char>): Int {
     // todo; figure out what to do with matchChars
     val matchChars = mutableListOf<Char>()
     return inputFind.intersect(compareMatch).map { x ->
-        kotlin.math.min(inputFind.count { it == x }, compareMatch.count { it == x })
-            .also {
-                if (logMatchChars)
-                    repeat((0 until it).count()) { matchChars.add(x) }
-            }
+        min(inputFind.count { it == x }, compareMatch.count { it == x }).also {
+            if (logMatchChars)
+                repeat(it) { matchChars.add(x) }
+        }
     }.sum()
 }
 

@@ -16,7 +16,7 @@ object MatchFilter {
         keyGroupBy: (AttractorMatches) -> Number
     ): Map<T, AttractorMatches> {
         return source.asSequence()
-            .map { keyGroupBy.invoke(it.value).toDouble() to (it.key to it.value) }
+            .map { keyGroupBy(it.value).toDouble() to (it.key to it.value) }
             .filterByMax { it.first }
             .associate { it.second }
     }

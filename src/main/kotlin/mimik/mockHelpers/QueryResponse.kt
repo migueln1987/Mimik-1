@@ -26,7 +26,7 @@ class QueryResponse<T>(var item: T? = null, build: QueryResponse<T>.() -> Unit =
     init {
         if (item != null)
             status = HttpStatusCode.Found
-        build.invoke(this)
+        build(this)
     }
 
     operator fun component1() = item

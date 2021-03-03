@@ -10,7 +10,7 @@ import kotlinUtils.tryOrNull
 inline fun <T> Iterable<T>.eachHasNext(action: (T) -> Unit, hasNext: () -> Unit = {}) {
     val iterator = iterator()
     while (iterator.hasNext()) {
-        action.invoke(iterator.next())
+        action(iterator.next())
         if (iterator.hasNext())
             hasNext.invoke()
     }
@@ -66,7 +66,7 @@ inline fun <T, R : Any> Iterable<T>.lastNotNullResult(predicate: (T) -> R?): R? 
  */
 fun <T> Iterable<T>.firstMatchNotNull(vararg predicates: (T) -> Boolean): T? {
     for (p in predicates) {
-        val element = firstOrNull { p.invoke(it) }
+        val element = firstOrNull { p(it) }
         if (element != null) return element
     }
     return null

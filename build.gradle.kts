@@ -26,7 +26,7 @@ application {
             isDownloadSources = true
         }
     }
-    mainClassName = "mimik.ApplicationKt"
+    mainClass.set("mimik.ApplicationKt")
 }
 
 war {

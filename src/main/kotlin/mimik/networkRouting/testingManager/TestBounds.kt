@@ -181,7 +181,7 @@ class BoundChapterItem(config: (BoundChapterItem) -> Unit = {}) {
     var scopeVars: MutableMap<String, String> = mutableMapOf()
 
     init {
-        config.invoke(this)
+        config(this)
     }
 }
 

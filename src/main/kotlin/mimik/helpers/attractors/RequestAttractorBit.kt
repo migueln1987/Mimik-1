@@ -37,12 +37,12 @@ class RequestAttractorBit {
         get() = hardValue.toRegex()
 
     constructor(builder: (RequestAttractorBit) -> Unit = {}) {
-        builder.invoke(this)
+        builder(this)
     }
 
     constructor(input: String, builder: (RequestAttractorBit) -> Unit = {}) {
         value = input.removePrefix("/")
-        builder.invoke(this)
+        builder(this)
     }
 
     fun clone() = RequestAttractorBit {

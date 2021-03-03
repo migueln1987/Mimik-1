@@ -95,7 +95,7 @@ class RandomHost(init: Int? = null) {
         val sb = StringBuilder()
 
         val vCheckList = mutableListOf<Pair<List<Char>, Int>>()
-        vCheck.invoke(vCheckList)
+        vCheck(vCheckList)
 
         return vCheckList.fold(StringBuilder()) { acc, (range, count) ->
             sb.clear()

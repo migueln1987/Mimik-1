@@ -52,11 +52,11 @@ class P4Action(config: (P4Action) -> Unit = {}) {
     val scopeVars: MutableMap<String, String> = mutableMapOf()
 
     init {
-        config.invoke(this)
+        config(this)
     }
 
     fun setup(config: (P4Action) -> Unit) {
-        config.invoke(this)
+        config(this)
     }
 
     fun processCommands(steps: List<P4Command>) {
@@ -727,7 +727,7 @@ class P4Action(config: (P4Action) -> Unit = {}) {
         1 -> chapBounds.scopeVars
         2 -> testBounds.scopeVars
         else -> mutableMapOf()
-    }.filter { filter.invoke(it) }
+    }.filter { filter(it) }
 
     /**
      * Returns the requested key or key's value

@@ -15,4 +15,4 @@ class BackgroundConfigs(private val attributeGroup: CommonAttributeGroupFacade) 
 }
 
 fun CommonAttributeGroupFacade.background(backgroundConfig: BackgroundConfigs.() -> Unit) =
-    backgroundConfig.invoke(BackgroundConfigs(this))
+    backgroundConfig(BackgroundConfigs(this))

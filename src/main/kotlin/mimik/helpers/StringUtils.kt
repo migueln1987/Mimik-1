@@ -51,7 +51,7 @@ inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = 
     return split('\n').asSequence()
         .mapNotNull {
             val items = it.split(delimiters = arrayOf(":"), limit = 2)
-            if (!allowFilter.invoke(items)) return@mapNotNull null
+            if (!allowFilter(items)) return@mapNotNull null
             when (items.size) {
                 1 -> (items[0].trim() to null)
                 2 -> items[0].trim() to items[1].trim()
@@ -79,7 +79,7 @@ fun ByteArray.toHexString(separator: String = ""): String {
  * Returned a hex string, 32 bytes per line with spacing between each byte
  */
 fun ByteArray.toChunkedHexString(separator: String = " "): String {
-    return toHexString("").chunked(32)
+    return toHexString().chunked(32)
         .map { it.chunked(2) }
         .joinToString(separator = "") {
             it.toString()

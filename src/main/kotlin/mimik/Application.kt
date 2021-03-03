@@ -15,8 +15,11 @@ import kotlinx.coroutines.runBlocking
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor
 import mimik.networkRouting.FetchResponder
+import mimik.networkRouting.MimikMock
 import mimik.networkRouting.editorPages.DataGen
 import mimik.networkRouting.editorPages.TapeRouting
+import mimik.networkRouting.help.HelpPages
+import mimik.networkRouting.testingManager.TestManager
 import mimik.tapeItems.TapeCatalog
 import org.slf4j.event.Level
 import java.io.File
@@ -25,6 +28,7 @@ import java.util.*
 object Ports {
     const val config = 4321
     const val mock = 2202
+    const val http = 8080
 
     val deployment: Int
         get() = ConfigFactory.load().getInt("ktor.deployment.port")
@@ -154,18 +158,18 @@ private fun Application.installFeatures() {
     val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)
     install(CallId) {
         var activeID = ""
-        fun printID(item: String, id: String, port: Int? = null) {
-            "Unique ID (via %s%s): %s".format(
-                item,
-                port?.let { "; port $it" }.orEmpty(),
-                id
-            ).also { println(it) }
+        fun ApplicationCall.printID(item: String, id: String) {
+            val port = if (request.port() == Ports.http)
+                "" else "; port ${request.port()}"
+            "Unique ID (via %s%s): %s".format(item, port, id)
+                .also { println(it) }
         }
 
         fun ApplicationCall.getID(): String {
             if (request.local.port == Ports.config) {
-                printID("config", "config", request.local.port)
-                return "Port.Config"
+                printID("config", "config")
+                activeID = "Port.Config"
+//                return activeID
             }
 
             val result = arrayOf(
@@ -175,16 +179,16 @@ private fun Application.installFeatures() {
 
             if (result == null) {
                 runBlocking {
-                    val body = tryGetBody()
-                    deviceIDReg.find(body.orEmpty())?.groups?.get(1)?.value
+                    val body = tryGetBody().orEmpty()
+                    deviceIDReg.find(body)?.groups?.get(1)?.value
                 }?.isNotEmpty {
                     activeID = it
-                    printID("body", it, request.local.port)
+                    printID("body", it)
                 }
             } else {
                 result.isNotEmpty {
                     activeID = it
-                    printID("header", it, request.local.port)
+                    printID("header", it)
                 }
             }
 
@@ -193,18 +197,22 @@ private fun Application.installFeatures() {
 
         retrieve {
             val useID = it.getID()
-            if (useID.isEmpty()) null else useID
+            if (useID.isEmpty() || activeID.isEmpty()) null else useID
         }
 
         generate {
-            if (it.callId == null) {
+            if (activeID.isEmpty()) {
                 activeID = UUID.randomUUID().toString()
-                printID("GenID", activeID, it.request.local.port)
+                it.printID("GenID", activeID)
             }
-            it.callId ?: activeID
+            activeID
         }
 
         verify { it == activeID }
+
+        reply { call, callId ->
+            call.response.headers.append("callId", callId)
+        }
     }
 
 //    install(ContentNegotiation) {

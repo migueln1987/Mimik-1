@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName", "LocalVariableName", "PropertyName")
+
 package mimik.helpers
 
 import kotlin.math.abs

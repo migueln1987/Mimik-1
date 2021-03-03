@@ -82,7 +82,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             }
 
         init {
-            config.invoke(this)
+            config(this)
         }
 
         /**
@@ -203,7 +203,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
         newTape.alwaysLive = alwaysLive
         newTape.chapters = chapters.map { it.clone() }.toMutableList()
         newTape.tapeMode = tapeMode
-    }.also { postClone.invoke(it) }
+    }.also { postClone(it) }
 
     override fun getName() = tapeName ?: RandomHost(hashCode()).valueAsChars()
 
@@ -278,10 +278,10 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
 
     var RecordedInteractions.uses
         @Synchronized
-        get() = useWatchers.peek().invoke(this, null)
+        get() = useWatchers.peek()(this, null)
         @Synchronized
         set(value) {
-            useWatchers.peek().invoke(this, value)
+            useWatchers.peek()(this, value)
         }
 
     /**
@@ -879,7 +879,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
      */
     fun createNewInteraction(interaction: (RecordedInteractions) -> Unit = {}) =
         RecordedInteractions { nChap ->
-            interaction.invoke(nChap)
+            interaction(nChap)
             // appendIfUnique(nChap)
             chapters.add(nChap)
         }
@@ -937,7 +937,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
     }
 
     init {
-        config.invoke(this)
+        config(this)
     }
 
     override fun toString(): String {

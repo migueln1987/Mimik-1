@@ -5,6 +5,7 @@
 package io.ktor.features
 
 import io.ktor.application.*
+import io.ktor.features.LocalDoubleReceive.*
 import io.ktor.request.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
@@ -55,24 +56,36 @@ class LocalDoubleReceive internal constructor(private val config: Configuration)
             pipeline.receivePipeline.intercept(ApplicationReceivePipeline.Before) { request ->
                 require(request.typeInfo.jvmErasure != CachedTransformationResult::class) { "CachedTransformationResult can't be received" }
 
+                println("doubleReceive start")
                 val type = request.typeInfo
+                println("type = $type")
                 val cachedResult = call.attributes.getOrNull(LastReceiveCachedResult)
                 when {
-                    cachedResult == null -> call.attributes.put(LastReceiveCachedResult, RequestAlreadyConsumedResult)
-                    cachedResult === RequestAlreadyConsumedResult -> throw RequestAlreadyConsumedException()
-                    cachedResult is CachedTransformationResult.Failure -> throw RequestReceiveAlreadyFailedException(
-                        cachedResult.cause
-                    )
+                    cachedResult == null -> {
+                        println("cachedResult == null")
+                        call.attributes.put(LastReceiveCachedResult, RequestAlreadyConsumedResult)
+                    }
+                    cachedResult === RequestAlreadyConsumedResult -> {
+                        println("cachedResult == RequestAlreadyConsumedResult")
+                        throw RequestAlreadyConsumedException()
+                    }
+                    cachedResult is CachedTransformationResult.Failure -> {
+                        println("cachedResult == Failure")
+                        throw RequestReceiveAlreadyFailedException(cachedResult.cause)
+                    }
                     cachedResult is CachedTransformationResult.Success<*> && cachedResult.type == type -> {
+                        println("cachedResult == Success && type")
                         proceedWith(ApplicationReceiveRequest(request.typeInfo, cachedResult.value))
                         return@intercept
                     }
                 }
 
+                println("prep cachedResult as ByteArray")
                 var byteArray = (cachedResult as? CachedTransformationResult.Success<*>)?.value as? ByteArray
                 val requestValue = request.value
 
                 if (byteArray == null && feature.config.receiveEntireContent && requestValue is ByteReadChannel) {
+                    println("byteArray == null & byteArray")
                     byteArray = requestValue.toByteArray()
                     @OptIn(ExperimentalStdlibApi::class)
                     call.attributes.put(
@@ -81,32 +94,46 @@ class LocalDoubleReceive internal constructor(private val config: Configuration)
                     )
                 }
 
+                println("prep incomingContent")
                 val incomingContent = byteArray?.let { ByteReadChannel(it) } ?: cachedResult ?: request.value
+                when (incomingContent) {
+                    request.value -> println("Using request.value")
+                    cachedResult -> println("using cachedResult")
+                    else -> println("Using readChannel")
+                }
                 val finishedRequest = try {
+                    println("finishedRequest try")
                     proceedWith(ApplicationReceiveRequest(type, incomingContent))
                 } catch (cause: Throwable) {
+                    println("finishedRequest fail: $cause")
                     call.attributes.put(LastReceiveCachedResult, CachedTransformationResult.Failure(type, cause))
                     throw cause
                 }
 
                 val transformed = finishedRequest.value
-
                 when {
-                    transformed is CachedTransformationResult.Success<*> -> throw RequestAlreadyConsumedException()
-                    !request.typeInfo.jvmErasure.isInstance(transformed) -> throw CannotTransformContentToTypeException(
-                        type
-                    )
+                    transformed is CachedTransformationResult.Success<*> -> {
+                        println("transformed == Success")
+                        throw RequestAlreadyConsumedException()
+                    }
+                    !request.typeInfo.jvmErasure.isInstance(transformed) -> {
+                        println("request.typeInfo == transformed")
+                        throw CannotTransformContentToTypeException(type)
+                    }
                 }
 
+                println("finishedRequest.reusableValue check")
                 if (finishedRequest.reusableValue &&
                     (cachedResult == null || cachedResult !is CachedTransformationResult.Success)
                 ) {
+                    println("LastReceiveCachedResult; save value")
                     @Suppress("UNCHECKED_CAST")
                     call.attributes.put(
                         LastReceiveCachedResult,
                         CachedTransformationResult.Success(type, finishedRequest.value)
                     )
                 }
+                println("doubleReceive finish")
             }
 
             return feature

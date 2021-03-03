@@ -328,13 +328,11 @@ abstract class EditorModule {
              * Returns a string containing all the values in [JS]
              */
             val all: String
-                get() {
-                    val result = StringBuilder()
+                get() = buildString {
                     values().asList().eachHasNext(
-                        { result.append(it.value) },
-                        { result.append('\n') }
+                        { append(it.value) },
+                        { append('\n') }
                     )
-                    return result.toString()
                 }
         }
 
@@ -1486,14 +1484,15 @@ abstract class EditorModule {
             chapter: String? = null,
             network: String? = null
         ): String {
-            val builder = StringBuilder().append("edit?")
-            if (tape != null)
-                builder.append("tape=%s".format(tape))
-            if (chapter != null)
-                builder.append("&chapter=%s".format(chapter))
-            if (network != null)
-                builder.append("&network=%s".format(network))
-            return builder.toString()
+            return buildString {
+                append("edit?")
+                if (tape != null)
+                    append("tape=%s".format(tape))
+                if (chapter != null)
+                    append("&chapter=%s".format(chapter))
+                if (network != null)
+                    append("&network=%s".format(network))
+            }
         }
 
         fun hrefEdit(

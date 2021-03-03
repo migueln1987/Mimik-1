@@ -64,7 +64,7 @@ fun String.ensureSuffix(suffix: String, value: String? = null) =
  * If no match is found, [(0..0)] is returned.
  */
 inline fun String.lastIndexRange(predicate: (String) -> String): IntRange {
-    val regex = predicate.invoke(this).toRegex()
+    val regex = predicate(this).toRegex()
     val matches = regex.findAll(this)
     if (matches.none()) return (0..0)
     return matches.last().range
@@ -216,3 +216,6 @@ fun String.limitLines(limit: Int): String {
             transform = { "$it\n" }) + "...[${lines.size - limit} lines]"
     else this
 }
+
+/** Prints the given [message] and the line separator to the standard output stream. */
+fun String.println() = println(this)

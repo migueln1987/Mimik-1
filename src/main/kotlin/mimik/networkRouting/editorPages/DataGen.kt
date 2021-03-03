@@ -55,8 +55,8 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                 val limitParams = call.parameters.limitKeys("ref", "item")
 
                 if (call.parameters != limitParams) {
-                    call.respondRedirect {
-                        //                        path(RoutePaths.Response.path)
+                    call.redirect() {
+                        // path(RoutePaths.Response.path)
                         parameters.clear()
                         parameters.appendAll(limitParams)
                     }

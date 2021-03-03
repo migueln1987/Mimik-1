@@ -14,8 +14,7 @@ fun StringBuilder.appendLines(vararg lines: String): StringBuilder {
  * then it will be appended and followed by a line separator.
  */
 fun StringBuilder.appendLine(value: String = "", valueAction: StringBuilder.(String) -> Any): StringBuilder {
-    valueAction.invoke(this, value)
-        .also { if (it is String) this.appendLine(it) }
+    valueAction(this, value).also { if (it is String) appendLine(it) }
     return this
 }
 
@@ -29,11 +28,10 @@ inline fun StringBuilder.append(
     postAppend: String = "",
     valueAction: StringBuilder.(String) -> Any
 ): StringBuilder {
-    return append(preAppend)
-        .also { sb ->
-            valueAction.invoke(sb, value)
-                .also { if (it is String) sb.append(it) }
-        }.append(postAppend)
+    append(preAppend)
+    valueAction(this, value).also { if (it is String) append(it) }
+    append(postAppend)
+    return this
 }
 
 /**
@@ -47,13 +45,13 @@ fun StringBuilder.appendObject(
     valueAction: StringBuilder.(objName: String) -> Any = {}
 ): StringBuilder {
     val useName = if (name.isEmpty()) "" else "\"$name\": "
-    return append("$useName{").also { sb ->
-        valueAction.invoke(sb, name)
-            .also {
-                if (it is String)
-                    sb.append(it.removeSurrounding("{", "}"))
-            }
-    }.append("}$postAppend")
+    append("$useName{")
+    valueAction(this, name).also {
+        if (it is String)
+            append(it.removeSurrounding("{", "}"))
+    }
+    append("}$postAppend")
+    return this
 }
 
 /**
@@ -66,10 +64,10 @@ fun StringBuilder.appendItem(
     postAppend: String = "",
     valueAction: StringBuilder.() -> Any = {}
 ): StringBuilder {
-    return append("\"$name\": ").also { sb ->
-        valueAction.invoke(sb)
-            .also { if (it is String) sb.append(it) }
-    }.append(postAppend)
+    append("\"$name\": ")
+    valueAction(this).also { if (it is String) append(it) }
+    append(postAppend)
+    return this
 }
 
 /**

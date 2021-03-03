@@ -700,7 +700,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
                     .filterNot { it.isBlank() }
                     .map { it.trim() }
                     .flatMap {
-                        (valueSplitter.invoke(it) ?: listOf(it)).asSequence()
+                        (valueSplitter(it) ?: listOf(it)).asSequence()
                     }
                     .map {
                         val postfix = header_key.takeLast(3)

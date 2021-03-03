@@ -6,6 +6,12 @@ import okhttp3.internal.http.HttpMethod
 import okreplay.content
 import java.nio.charset.Charset
 
+/**
+ * Open version of [Request] which has writable fields for:
+ * - method
+ * - headers
+ * - body
+ */
 class RequestData : NetworkData {
 
     constructor(request: okreplay.Request) {
@@ -28,7 +34,7 @@ class RequestData : NetworkData {
         it.url = url.toString()
         it.headers = headers.orDefault.newBuilder().build()
         it.body = body
-    }.also { postClone.invoke(it) }
+    }.also { postClone(it) }
 
     override fun toString() =
         "%s: %s".format(method, url)

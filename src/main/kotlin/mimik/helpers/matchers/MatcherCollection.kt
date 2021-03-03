@@ -54,7 +54,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
     }
 
     operator fun invoke(config: MatcherCollection.() -> Unit = {}): MatcherCollection {
-        config.invoke(this)
+        config(this)
         return this
     }
 
@@ -82,7 +82,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
                     it.hasMatch
                 else true
             }
-            .filter { findBy.invoke(it) }
+            .filter { findBy(it) }
             .toList()
     }
 
@@ -117,7 +117,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
         return matchBundles.asSequence()
             .flatMap { it.asSequence() }
             .filterNotNull()
-            .any { compare.invoke(it) }
+            .any { compare(it) }
     }
 
     /**
@@ -298,7 +298,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
                         it.hasMatch
                     else true
                 }
-                .filter { findBy.invoke(it) }
+                .filter { findBy(it) }
                 .toList()
         }
 

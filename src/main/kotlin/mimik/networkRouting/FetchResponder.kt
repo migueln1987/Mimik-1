@@ -42,7 +42,7 @@ class FetchResponder : RoutingContract(RoutePaths.rootPath) {
         var data: String = ""
 
         init {
-            build.invoke(this)
+            build(this)
         }
     }
 

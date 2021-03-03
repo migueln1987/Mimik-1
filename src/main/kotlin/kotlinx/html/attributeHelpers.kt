@@ -10,15 +10,14 @@ import kotlinUtils.isThrow
  * - If an item in [values] does not end with ";", one will be added
  */
 fun CommonAttributeGroupFacade.appendStyles(vararg values: String) {
-    val builder = StringBuilder()
-    values.forEach {
-        builder.append(it.trim().ensureSuffix(";"))
+    val styleResult = buildString {
+        values.forEach { append(it.trim().ensureSuffix(";")) }
     }
 
     if (isThrow { style })
-        style = builder.toString()
+        style = styleResult
     else
-        style += builder.toString()
+        style += styleResult
 }
 
 /**

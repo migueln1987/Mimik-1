@@ -170,7 +170,7 @@ class P4Command {
      * @param setup Optional lambda config of this object
      */
     constructor(setup: (P4Command) -> Unit = {}) {
-        setup.invoke(this)
+        setup(this)
     }
 
     /**

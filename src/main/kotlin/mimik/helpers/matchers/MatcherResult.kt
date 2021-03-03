@@ -39,7 +39,7 @@ open class MatcherResult {
         config: (ResultBuilder) -> Unit = {}
     ) {
         val configBuilder = pre_configs ?: ResultBuilder()
-        config.invoke(configBuilder)
+        config(configBuilder)
         groupName = configBuilder.groupName
         groupIndex = configBuilder.groupIndex
         value = configBuilder.value ?: matchGroup?.value ?: ""
@@ -50,7 +50,7 @@ open class MatcherResult {
 
     constructor(config: (ResultBuilder) -> Unit = {}) {
         val configBuilder = ResultBuilder()
-        config.invoke(configBuilder)
+        config(configBuilder)
         groupName = configBuilder.groupName
         groupIndex = configBuilder.groupIndex
         value = configBuilder.value ?: ""
@@ -68,7 +68,7 @@ open class MatcherResult {
             it.isLiteral = isLiteral
             it.litMatchCnt = litMatchCnt
         }
-        postClone.invoke(configBuilder)
+        postClone(configBuilder)
         return MatcherResult(pre_configs = configBuilder)
     }
 

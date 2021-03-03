@@ -15,7 +15,7 @@ class ResponseData : NetworkData {
     }
 
     constructor(builder: (ResponseData) -> Unit = {}) {
-        builder.invoke(this)
+        builder(this)
     }
 
     fun clone(postClone: (ResponseData) -> Unit = {}) = ResponseData {
@@ -23,7 +23,7 @@ class ResponseData : NetworkData {
         it.protocol = protocol
         it.headers = headers.orDefault.newBuilder().build()
         it.body = body
-    }.also { postClone.invoke(it) }
+    }.also { postClone(it) }
 
     override fun toString(): String {
         return "%s".format(code)

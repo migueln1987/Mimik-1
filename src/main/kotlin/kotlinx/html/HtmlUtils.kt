@@ -14,14 +14,16 @@ import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
-fun FlowOrMetaDataContent.unsafeStyle(type: String? = null, block: Unsafe.() -> Unit = {}) =
-    style(type) { unsafe(block) }
+fun FlowOrMetaDataContent.unsafeStyle(
+    type: String? = null,
+    block: Unsafe.() -> Unit = {}
+) = style(type) { unsafe(block) }
 
 fun FlowOrPhrasingOrMetaDataContent.unsafeScript(
     type: String? = null,
     src: String? = null,
     block: Unsafe.() -> Unit = {}
-) = script(type, src) { unsafe { block.invoke(this) } }
+) = script(type, src) { unsafe { block(this) } }
 
 /**
  * Creates a line (2 "<[br]>") for each [lines] count
@@ -87,7 +89,7 @@ fun FlowContent.toggleArea(
         if (!isExpanded)
             display = DisplayFlags.none
         (contentId ?: tryOrNull { id })?.also { id = it }
-        element.invoke(this)
+        element(this)
     }
 
     val rngName = "toggles_${RandomHost().value_abs}"
@@ -125,7 +127,7 @@ fun FlowOrPhrasingContent.infoText(
         .split('\n')
 
     val divConfig: DIV.() -> Unit = {
-        divArgs.invoke(this)
+        divArgs(this)
         displayLines.eachHasNext({ +it }, { br() })
     }
 
@@ -156,7 +158,7 @@ fun FlowOrPhrasingContent.tooltipText(
         .split('\n')
 
     val divConfig: DIV.() -> Unit = {
-        divArgs.invoke(this)
+        divArgs(this)
         splitLines.eachHasNext({ +it }, { br() })
         toolTip(infoProperty, position)
     }
@@ -192,11 +194,14 @@ fun FlowContent.toolTip(
 /**
  * [textArea] which is populated by an input of [Parameters]
  */
-fun FlowContent.paramTextArea(params: Parameters?, config: TEXTAREA.() -> Unit = {}) {
+fun FlowContent.paramTextArea(
+    params: Parameters?,
+    config: TEXTAREA.() -> Unit = {}
+) {
     val pairs = params?.run {
         toMap().asSequence()
-            .flatMap { kv ->
-                kv.value.asSequence().map { kv.key to it }
+            .flatMap { (key, value) ->
+                value.asSequence().map { key to it }
             }
     }
 
@@ -206,20 +211,25 @@ fun FlowContent.paramTextArea(params: Parameters?, config: TEXTAREA.() -> Unit =
 /**
  * [textArea] which is populated by an input of [Headers]
  */
-fun FlowContent.headerTextArea(headers: Headers?, config: TEXTAREA.() -> Unit = {}) {
+fun FlowContent.headerTextArea(
+    headers: Headers?,
+    config: TEXTAREA.() -> Unit = {}
+) {
     val pairs = headers?.run {
         toMultimap(true).asSequence()
-            .flatMap { kv ->
-                kv.value.asSequence()
-                    .map { kv.key to it }
+            .flatMap { (key, value) ->
+                value.asSequence().map { key to it }
             }
     }
     textAreaBuilder(pairs, config)
 }
 
-fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: TEXTAREA.() -> Unit = {}) {
+fun FlowContent.textAreaBuilder(
+    data: Sequence<Pair<String, String>>?,
+    config: TEXTAREA.() -> Unit = {}
+) {
     textArea {
-        config.invoke(this)
+        config(this)
         onKeyPress = "keypressNewlineEnter(this);"
         val builder = StringBuilder()
         var maxWd = 0
@@ -241,19 +251,19 @@ fun FlowContent.textAreaBuilder(data: Sequence<Pair<String, String>>?, config: T
 
 fun FlowContent.calloutWindow(
     calloutID: String = "",
-    windowDiv: DIV.() -> Unit = { },
-    headerDiv: DIV.() -> Unit = { },
+    windowDiv: DIV.() -> Unit = {},
+    headerDiv: DIV.() -> Unit = {},
     container: DIV.() -> Unit = {}
 ) {
     div(classes = "callout") {
         id = calloutID
-        windowDiv.invoke(this)
-        div(classes = "callout-header") { headerDiv.invoke(this) }
+        windowDiv(this)
+        div(classes = "callout-header") { headerDiv(this) }
         span(classes = "closebtn") {
             onClick = "parentElement.style.top = -parentElement.clientHeight + 'px';"
             +"x"
         }
-        div(classes = "callout-container") { container.invoke(this) }
+        div(classes = "callout-container") { container(this) }
     }
 }
 
@@ -310,12 +320,12 @@ fun FlowContent.refreshWatchWindow(
 
         unsafeScript {
             val ageID = "lastAge_$fileID"
-            val appender = StringBuilder().apply {
+            val appender = buildString {
                 extras.forEach { appendLine("formData.append('%s', '%s');".format(it.first, it.second)) }
 
-                if (!this.contains("append('age'"))
+                if (!contains("append('age'"))
                     appendLine("formData.append('age', '%s');".format(watchAge))
-                if (!this.contains("append('type'"))
+                if (!contains("append('type'"))
                     appendLine("formData.append('type', '%s');".format(watchType))
             }
 
@@ -379,4 +389,4 @@ fun FlowContent.refreshWatchWindow(
 /**
  * Groups a section of code, applies nothing to the result html code.
  */
-inline fun FlowContent.group(crossinline block: FlowContent.() -> Unit = {}) = block.invoke(this)
+inline fun FlowContent.group(crossinline block: FlowContent.() -> Unit = {}) = block(this)

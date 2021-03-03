@@ -25,12 +25,20 @@ class SeqActionObject(initNew: Boolean = false, config: (SeqActionObject) -> Uni
                 field = Random.nextInt().absoluteValue
             return field
         }
+        set(value) {
+            field = if (value == 0)
+                Random.nextInt().absoluteValue else value
+        }
 
     var Name = ""
         get() {
             if (field.isBlank())
                 field = "Sequence " + Random.nextInt().absoluteValue.toString()
             return field
+        }
+        set(value) {
+            field = if (value.isBlank())
+                "Sequence " + Random.nextInt().absoluteValue.toString() else value
         }
 
     var Commands: ArrayList<P4Command> = arrayListOf()
@@ -41,12 +49,12 @@ class SeqActionObject(initNew: Boolean = false, config: (SeqActionObject) -> Uni
 
     init {
         if (initNew) initNew()
-        config.invoke(this)
+        config(this)
     }
 
     fun initNew() {
-        ID
-        Name
+        ID = 0
+        Name = ""
     }
 
     val asJSObject: String
@@ -65,11 +73,11 @@ class SeqActionObject(initNew: Boolean = false, config: (SeqActionObject) -> Uni
         }
 
     fun modify(actions: ArrayList<P4Command>.() -> Unit = {}) {
-        actions.invoke(Commands)
+        actions(Commands)
     }
 
     operator fun invoke(config: (SeqActionObject) -> Unit): SeqActionObject {
-        config.invoke(this)
+        config(this)
         return this
     }
 

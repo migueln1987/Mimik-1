@@ -47,7 +47,7 @@ object TemplateBuilder {
                 }
 
             operator fun invoke(config: DataFormatItems.() -> Unit): DataFormatItems {
-                config.invoke(this)
+                config(this)
                 return this
             }
         }
@@ -152,126 +152,128 @@ object TemplateBuilder {
     }
 
     fun build(create: CreateTypes): String {
-        return StringBuilder().appendObject("") {
-            appendObject("Headers") {
-                if (create == CreateTypes.Chapter)
-                    appendItem("TapeName", ",") {
-                        TemplateItems.header_Item("Name", "Tape")
-                    }
-                appendItem("Name", ",") {
-                    TemplateItems.header_Item("Name") {
-                        Required = false
-                    }
-                }
-
-                if (create == CreateTypes.Tape)
-                    appendItem("Url", ",") {
-                        TemplateItems.header_Item("Url") {
+        return buildString {
+            appendObject("") {
+                appendObject("Headers") {
+                    if (create == CreateTypes.Chapter)
+                        appendItem("TapeName", ",") {
+                            TemplateItems.header_Item("Name", "Tape")
+                        }
+                    appendItem("Name", ",") {
+                        TemplateItems.header_Item("Name") {
                             Required = false
                         }
                     }
 
-                appendObject("Attractors", ",") {
-                    appendObject("Path", ",") { objName ->
-                        TemplateItems.header_attrItem(objName) {
-                            it.Count = TemplateItems.ItemCounts.One
-                            it.hasKeySuffix = false
-                            it.Data_Format {
-                                Regex = true
-                                Style = "String"
+                    if (create == CreateTypes.Tape)
+                        appendItem("Url", ",") {
+                            TemplateItems.header_Item("Url") {
+                                Required = false
+                            }
+                        }
+
+                    appendObject("Attractors", ",") {
+                        appendObject("Path", ",") { objName ->
+                            TemplateItems.header_attrItem(objName) {
+                                it.Count = TemplateItems.ItemCounts.One
+                                it.hasKeySuffix = false
+                                it.Data_Format {
+                                    Regex = true
+                                    Style = "String"
+                                }
+                            }
+                        }
+
+                        appendObject("Query", ",") { objName ->
+                            TemplateItems.header_attrItem(objName) {
+                                it.Required = false
+                                it.Data_Format {
+                                    Regex = true
+                                    Style_A = "Field=Value"
+                                    Style_B = "Field1=Value1&Field2=Value2"
+                                    hasAllowAny = true
+                                }
+                            }
+                        }
+
+                        appendObject("Header", ",") { objName ->
+                            TemplateItems.header_attrItem(objName) {
+                                it.Required = false
+                                it.Data_Format {
+                                    Regex = true
+                                    Style = "Key=Value"
+                                    hasAllowAny = true
+                                }
+                            }
+                        }
+
+                        appendObject("Body") { objName ->
+                            TemplateItems.header_attrItem(objName) {
+                                it.Required = false
+                                it.Data_Format {
+                                    Regex = true
+                                    Style = "String"
+                                    hasAllowAny = true
+                                }
                             }
                         }
                     }
 
-                    appendObject("Query", ",") { objName ->
-                        TemplateItems.header_attrItem(objName) {
-                            it.Required = false
-                            it.Data_Format {
-                                Regex = true
-                                Style_A = "Field=Value"
-                                Style_B = "Field1=Value1&Field2=Value2"
-                                hasAllowAny = true
-                            }
+                    appendObject("Flags") {
+                        appendItem("Save to File", ",") {
+                            TemplateItems.header_flags("SaveToFile")
                         }
-                    }
 
-                    appendObject("Header", ",") { objName ->
-                        TemplateItems.header_attrItem(objName) {
-                            it.Required = false
-                            it.Data_Format {
-                                Regex = true
-                                Style = "Key=Value"
-                                hasAllowAny = true
-                            }
+                        appendItem("Live", ",") {
+                            TemplateItems.header_flags("Live")
                         }
-                    }
 
-                    appendObject("Body") { objName ->
-                        TemplateItems.header_attrItem(objName) {
-                            it.Required = false
-                            it.Data_Format {
-                                Regex = true
-                                Style = "String"
-                                hasAllowAny = true
+                        when (create) {
+                            CreateTypes.Tape -> {
+                                appendItem("RecordByFilter") {
+                                    TemplateItems.header_flags("RecordNew")
+                                }
+                            }
+
+                            CreateTypes.Chapter -> {
+                                appendItem("Enabled", ",") {
+                                    TemplateItems.header_flags("Enabled")
+                                }
+
+                                appendItem("Usages", ",") {
+                                    TemplateItems.header_flags("Uses") {
+                                        it.Type = TemplateItems.FlagTypes.Int
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                appendObject("Flags") {
-                    appendItem("Save to File", ",") {
-                        TemplateItems.header_flags("SaveToFile")
-                    }
-
-                    appendItem("Live", ",") {
-                        TemplateItems.header_flags("Live")
-                    }
-
-                    when (create) {
-                        CreateTypes.Tape -> {
-                            appendItem("RecordByFilter") {
-                                TemplateItems.header_flags("RecordNew")
-                            }
+                if (create == CreateTypes.Chapter) {
+                    append(",")
+                    appendObject("Body") {
+                        appendObject("Standard", ",") {
+                            appendItem("Format") { "Any" }
                         }
-
-                        CreateTypes.Chapter -> {
-                            appendItem("Enabled", ",") {
-                                TemplateItems.header_flags("Enabled")
-                            }
-
-                            appendItem("Usages", ",") {
-                                TemplateItems.header_flags("Uses") {
-                                    it.Type = TemplateItems.FlagTypes.Int
+                        appendObject("Enhanced") {
+                            appendItem("Format", ",") { "Json" }
+                            appendObject("Data") {
+                                appendObject("Response", ",") {
+                                    appendItem("Key", ",") { "Response" }
+                                    appendItem("Data") { "String" }
+                                }
+                                appendObject("Sequence") {
+                                    appendObject("Output") {
+                                        appendItem("Key", ",") { "Sequences" }
+                                        appendItem("Data") { "Json" }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-
-            if (create == CreateTypes.Chapter) {
-                append(",")
-                appendObject("Body") {
-                    appendObject("Standard", ",") {
-                        appendItem("Format") { "Any" }
-                    }
-                    appendObject("Enhanced") {
-                        appendItem("Format", ",") { "Json" }
-                        appendObject("Data") {
-                            appendObject("Response", ",") {
-                                appendItem("Key", ",") { "Response" }
-                                appendItem("Data") { "String" }
-                            }
-                            appendObject("Sequence") {
-                                appendObject("Output") {
-                                    appendItem("Key", ",") { "Sequences" }
-                                    appendItem("Data") { "Json" }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }.toString()
+        }
     }
 }

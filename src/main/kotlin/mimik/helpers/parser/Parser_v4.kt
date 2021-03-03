@@ -5,10 +5,13 @@ import com.google.gson.internal.LinkedTreeMap
 import kolor.red
 import kotlinUtils.collections.toArrayList
 import kotlinUtils.isNotNull
+import kotlinUtils.println
 import kotlinUtils.tryCast
 import kotlinUtils.tryOrNull
 import mimik.helpers.firstNotNullResult
-import mimik.helpers.matchers.*
+import mimik.helpers.matchers.MatcherCollection
+import mimik.helpers.matchers.MatcherResult
+import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.SeqActionObject
 import mimik.networkRouting.testingManager.BoundChapterItem
 
@@ -292,7 +295,7 @@ object Parser_v4 {
                         if (mResult.groupName == "final")
                             temValue
                         else {
-                            vars.invoke(temValue, scope, searchUp)
+                            vars(temValue, scope, searchUp)
                                 ?.run { if (isEmpty()) null else this }
                         }
                     }
@@ -411,11 +414,11 @@ object Parser_v4 {
         val cmd = P4Command(parseToContents(input))
         val cmdStr = cmd.toString()
         if (cmdStr != input && cmdStr != "Invalid") {
-            val sb = StringBuilder()
-                .appendLine("== Parsed P4Command != input".red())
-                .appendLine("== Input:  $input".red())
-                .appendLine("== Parsed: $cmd".red())
-            println(sb.toString())
+            buildString {
+                appendLine("== Parsed P4Command != input".red())
+                appendLine("== Input:  $input".red())
+                appendLine("== Parsed: $cmd".red())
+            }.println()
         }
         return cmd
     }

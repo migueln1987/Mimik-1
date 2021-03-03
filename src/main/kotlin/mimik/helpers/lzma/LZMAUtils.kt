@@ -12,6 +12,7 @@ fun String.cleanJsonString(): String {
         .replace("\n *".toRegex(), "") // start of line spaces/ newlines
 }
 
+@OptIn(ExperimentalUnsignedTypes::class)
 fun uncompressedSize(inData: () -> Any): Int {
     val data = when (val input = inData.invoke()) {
         is ByteArray -> input
@@ -41,7 +42,7 @@ fun uncompressedSize(inData: () -> Any): Int {
  */
 fun LZMA_Encode(config: (LZMA2Options) -> Any): ByteArray {
     val options = LZMA2Options()
-    val streamData = when (val streamInput = config.invoke(options)) {
+    val streamData = when (val streamInput = config(options)) {
         is ByteArray -> streamInput
         is String -> streamInput.toByteArray()
         else -> byteArrayOf()
