@@ -1,10 +1,6 @@
-package helpers.attractors
+package mimik.helpers.attractors
 
 import io.ktor.http.*
-import mimik.helpers.attractors.AttractorMatches
-import mimik.helpers.attractors.MatchFilter
-import mimik.helpers.attractors.RequestAttractorBit
-import mimik.helpers.attractors.getMatches
 import mimik.mockHelpers.QueryResponse
 
 abstract class Attractor {

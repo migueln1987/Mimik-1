@@ -10,7 +10,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.*
-import kotlinUtils.isNotEmpty
+import kotlinx.isNotEmpty
 import kotlinx.coroutines.runBlocking
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor

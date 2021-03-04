@@ -1,6 +1,6 @@
 package mimik.networkRouting.testingManager
 
-import helpers.attractors.HookAttractor
+import mimik.helpers.attractors.HookAttractor
 import mimik.mockHelpers.SeqActionObject
 
 /**

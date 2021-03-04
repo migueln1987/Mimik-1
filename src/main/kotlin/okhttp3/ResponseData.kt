@@ -1,7 +1,7 @@
 package okhttp3
 
 import io.ktor.http.*
-import kotlinUtils.isValidJSON
+import kotlinx.isValidJSON
 import okreplay.tryGetBody
 import java.nio.charset.Charset
 import java.util.*

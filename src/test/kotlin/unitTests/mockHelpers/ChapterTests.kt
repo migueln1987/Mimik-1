@@ -1,7 +1,7 @@
 package unitTests.mockHelpers
 
 import com.google.gson.GsonBuilder
-import kotlinUtils.collections.toArrayList
+import kotlinx.collections.toArrayList
 import mimik.helpers.parser.Parser_v4
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.SeqActionObject

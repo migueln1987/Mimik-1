@@ -1,8 +1,8 @@
 package mimik.networkRouting.help
 
-import kotlinUtils.beautifyJson
-import kotlinUtils.isNotNull
-import kotlinUtils.toBase64
+import kotlinx.beautifyJson
+import kotlinx.isNotNull
+import kotlinx.toBase64
 import mimik.helpers.RandomHost
 import mimik.helpers.parser.P4Command
 import kotlin.math.absoluteValue

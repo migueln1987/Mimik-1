@@ -1,7 +1,7 @@
-package javaUtils.io
+package javax.io
 
 import com.google.gson.JsonElement
-import kotlinUtils.tryOrNull
+import kotlinx.tryOrNull
 import java.io.File
 import kotlin.math.log
 import kotlin.math.pow

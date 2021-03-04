@@ -1,7 +1,7 @@
 package kotlinx.html
 
-import kotlinUtils.ensureSuffix
-import kotlinUtils.isThrow
+import kotlinx.ensureSuffix
+import kotlinx.isThrow
 
 /**
  * Appends the data in [values] to the current [style].

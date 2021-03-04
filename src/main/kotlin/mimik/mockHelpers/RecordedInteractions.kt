@@ -2,7 +2,7 @@
 
 package mimik.mockHelpers
 
-import kotlinUtils.isTrue
+import kotlinx.isTrue
 import mimik.helpers.*
 import mimik.helpers.attractors.AttractorMatches
 import mimik.helpers.attractors.RequestAttractors

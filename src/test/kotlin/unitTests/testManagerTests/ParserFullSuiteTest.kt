@@ -7,14 +7,13 @@ import kolor.blue
 import kolor.cyan
 import kolor.green
 import kolor.yellow
-import kotlinUtils.ensurePrefix
-import kotlinUtils.isNotNull
+import kotlinx.ensurePrefix
+import kotlinx.isNotNull
 import mimik.helpers.parser.P4Action
 import mimik.helpers.parser.Parser_v4
 import mimik.helpers.toJson
 import mimik.networkRouting.testingManager.BoundChapterItem
 import org.junit.Assert
-import org.junit.Test
 
 class ParserFullSuiteTest {
 

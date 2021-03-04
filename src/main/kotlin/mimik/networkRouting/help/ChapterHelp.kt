@@ -5,7 +5,7 @@ import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
-import kotlinUtils.beautifyJson
+import kotlinx.beautifyJson
 
 object ChapterHelp : HelperContract {
     override val subPath get() = "chapter"

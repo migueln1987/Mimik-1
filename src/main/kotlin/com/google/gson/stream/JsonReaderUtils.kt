@@ -1,6 +1,6 @@
 package com.google.gson.stream
 
-import kotlinUtils.tryOrNull
+import kotlinx.tryOrNull
 import kotlin.reflect.full.superclasses
 
 /**

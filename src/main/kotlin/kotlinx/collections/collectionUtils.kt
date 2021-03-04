@@ -1,6 +1,6 @@
-package kotlinUtils.collections
+package kotlinx.collections
 
-import kotlinUtils.tryOrNull
+import kotlinx.tryOrNull
 
 /**
  * Loops through the [Iterable] doing [action] on each item.

@@ -1,4 +1,4 @@
-package kotlinUtils
+package kotlinx
 
 /**
  * Returns true only if [value] equals true. [null] returns false.

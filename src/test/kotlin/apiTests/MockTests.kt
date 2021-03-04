@@ -3,10 +3,10 @@ package apiTests
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
-import kotlinUtils.collections.firstNotNullResult
-import kotlinUtils.isTrue
-import kotlinUtils.isValidJSON
-import kotlinUtils.orFalse
+import kotlinx.collections.firstNotNullResult
+import kotlinx.isTrue
+import kotlinx.isValidJSON
+import kotlinx.orFalse
 import mimik.Ports
 import mimik.mockHelpers.MockUseStates
 import mimik.tapeItems.MimikContainer

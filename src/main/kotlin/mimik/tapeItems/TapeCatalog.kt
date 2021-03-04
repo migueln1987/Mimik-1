@@ -1,11 +1,11 @@
 package mimik.tapeItems
 
 import com.google.gson.GsonBuilder
-import helpers.attractors.Attractor
+import mimik.helpers.attractors.Attractor
 import io.ktor.http.*
-import javaUtils.io.jsonFiles
-import kotlinUtils.collections.firstMatchNotNull
-import kotlinUtils.isTrue
+import javax.io.jsonFiles
+import kotlinx.collections.firstMatchNotNull
+import kotlinx.isTrue
 import mimik.helpers.*
 import mimik.mockHelpers.*
 import okhttp3.content

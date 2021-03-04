@@ -1,4 +1,4 @@
-package kotlinUtils.text
+package kotlinx.text
 
 /**
  * Appends multiple [lines] to this [StringBuilder]

@@ -1,10 +1,9 @@
 package mimik.helpers.attractors
 
-import helpers.attractors.Attractor
 import io.ktor.http.*
-import kotlinUtils.allTrue
-import kotlinUtils.anyTrue
-import kotlinUtils.isTrue
+import kotlinx.allTrue
+import kotlinx.anyTrue
+import kotlinx.isTrue
 import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.QueryResponse
 import okhttp3.RequestData

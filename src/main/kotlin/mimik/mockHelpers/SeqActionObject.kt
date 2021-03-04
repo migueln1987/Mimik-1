@@ -5,7 +5,7 @@ import com.google.gson.TypeAdapter
 import com.google.gson.TypeAdapterFactory
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.*
-import kotlinUtils.tryCast
+import kotlinx.tryCast
 import mimik.helpers.lzma.LZMA_Encode
 import mimik.helpers.lzma.cleanJsonString
 import mimik.helpers.parser.P4Command

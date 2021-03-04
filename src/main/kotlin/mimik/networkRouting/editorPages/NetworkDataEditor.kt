@@ -2,10 +2,10 @@ package mimik.networkRouting.editorPages
 
 import R
 import io.ktor.http.*
-import kotlinUtils.appendLines
-import kotlinUtils.isTrue
-import kotlinUtils.isValidJSON
-import kotlinUtils.uppercaseFirstLetter
+import kotlinx.appendLines
+import kotlinx.isTrue
+import kotlinx.isValidJSON
+import kotlinx.uppercaseFirstLetter
 import kotlinx.html.*
 import networkRouting.JsUtils
 import networkRouting.JsUtils.disableEnterKey

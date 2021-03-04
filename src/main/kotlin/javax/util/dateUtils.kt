@@ -1,4 +1,4 @@
-package javaUtils.util
+package javax.util
 
 import java.time.Duration
 import java.util.*

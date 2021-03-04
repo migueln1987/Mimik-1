@@ -1,7 +1,7 @@
 package mimik.networkRouting.help
 
-import kotlinUtils.text.appendItem
-import kotlinUtils.text.appendObject
+import kotlinx.text.appendItem
+import kotlinx.text.appendObject
 import mimik.helpers.toJson
 
 enum class CreateTypes {

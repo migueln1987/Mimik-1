@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package kotlinUtils
+package kotlinx
 
 inline fun <reified T : Enum<T>> enumContains(name: String?) =
     enumValues<T>().any { it.name == name }

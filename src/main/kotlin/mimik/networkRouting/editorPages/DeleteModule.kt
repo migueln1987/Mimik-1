@@ -3,7 +3,7 @@ package mimik.networkRouting.editorPages
 import io.ktor.application.*
 import io.ktor.response.*
 import io.ktor.util.pipeline.*
-import kotlinUtils.isTrue
+import kotlinx.isTrue
 
 object DeleteModule : EditorModule() {
     suspend fun PipelineContext<*, ApplicationCall>.deleteActions() {

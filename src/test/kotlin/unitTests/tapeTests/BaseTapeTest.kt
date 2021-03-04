@@ -3,7 +3,7 @@ package unitTests.tapeTests
 import apiTests.assertContains
 import io.mockk.every
 import io.mockk.mockk
-import kotlinUtils.asHttpUrl
+import kotlinx.asHttpUrl
 import mimik.helpers.attractors.RequestAttractorBit
 import mimik.helpers.attractors.RequestAttractors
 import mimik.helpers.attractors.UniqueBit

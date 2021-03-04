@@ -1,10 +1,10 @@
 package mimik.networkRouting.routers
 
 import R
-import kotlinUtils.appendLines
-import kotlinUtils.isNotTrue
-import kotlinUtils.isTrue
-import kotlinUtils.orFalse
+import kotlinx.appendLines
+import kotlinx.isNotTrue
+import kotlinx.isTrue
+import kotlinx.orFalse
 import kotlinx.html.*
 import mimik.helpers.attractors.RequestAttractorBit
 import networkRouting.JsUtils

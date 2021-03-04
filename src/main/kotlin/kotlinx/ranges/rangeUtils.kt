@@ -1,4 +1,4 @@
-package kotlinUtils.ranges
+package kotlinx.ranges
 
 /**
  * Returns the sum of this range. Returns 0 if empty

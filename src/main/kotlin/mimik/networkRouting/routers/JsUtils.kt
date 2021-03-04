@@ -1,6 +1,6 @@
 package networkRouting
 
-import kotlinUtils.collections.eachHasNext
+import kotlinx.collections.eachHasNext
 import kotlinx.html.CommonAttributeGroupFacade
 import kotlinx.html.onKeyDown
 

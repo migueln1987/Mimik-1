@@ -1,7 +1,7 @@
 package okhttp3
 
-import kotlinUtils.isBase64
-import kotlinUtils.tryOrNull
+import kotlinx.isBase64
+import kotlinx.tryOrNull
 import okhttp3.ResponseBody.Companion.asResponseBody
 import javax.xml.bind.DatatypeConverter
 

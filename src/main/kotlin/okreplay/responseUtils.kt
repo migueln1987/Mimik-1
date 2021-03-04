@@ -1,6 +1,6 @@
 package okreplay
 
-import kotlinUtils.isBase64
+import kotlinx.isBase64
 import okhttp3.ResponseData
 import javax.xml.bind.DatatypeConverter
 

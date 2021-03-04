@@ -3,9 +3,9 @@ package kotlinx.html
 import R
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinUtils.collections.eachHasNext
-import kotlinUtils.ensureSuffix
-import kotlinUtils.tryOrNull
+import kotlinx.collections.eachHasNext
+import kotlinx.ensureSuffix
+import kotlinx.tryOrNull
 import mimik.helpers.RandomHost
 import okhttp3.Headers
 import okhttp3.toMultimap

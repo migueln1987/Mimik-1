@@ -1,6 +1,6 @@
 package mimik.helpers.attractors
 
-import kotlinUtils.allTrue
+import kotlinx.allTrue
 
 data class AttractorMatches(
     var Required: Int = -1,

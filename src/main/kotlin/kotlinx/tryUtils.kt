@@ -1,4 +1,4 @@
-package kotlinUtils
+package kotlinx
 
 /**
  * Tests if the following [action] would throw an [Exception].

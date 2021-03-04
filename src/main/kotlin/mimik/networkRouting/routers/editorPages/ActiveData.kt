@@ -1,7 +1,7 @@
 package networkRouting.editorPages
 
 import io.ktor.http.*
-import kotlinUtils.collections.toArrayList
+import kotlinx.collections.toArrayList
 import mimik.helpers.RandomHost
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.SeqActionObject

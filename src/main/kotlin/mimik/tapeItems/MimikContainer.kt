@@ -2,7 +2,7 @@ package mimik.tapeItems
 
 import R
 import VCRConfig
-import helpers.attractors.HookAttractor
+import mimik.helpers.attractors.HookAttractor
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*

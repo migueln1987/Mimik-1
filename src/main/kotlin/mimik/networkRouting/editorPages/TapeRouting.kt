@@ -5,8 +5,8 @@ import io.ktor.html.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinUtils.ensureHttpPrefix
-import kotlinUtils.uppercaseFirstLetter
+import kotlinx.ensureHttpPrefix
+import kotlinx.uppercaseFirstLetter
 import mimik.helpers.*
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.toAttractors

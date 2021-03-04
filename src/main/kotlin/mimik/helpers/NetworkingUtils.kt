@@ -5,13 +5,13 @@ package mimik.helpers
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
-import helpers.attractors.Attractor
+import mimik.helpers.attractors.Attractor
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
-import kotlinUtils.isFalse
-import kotlinUtils.isValidJSON
-import kotlinUtils.tryOrNull
+import kotlinx.isFalse
+import kotlinx.isValidJSON
+import kotlinx.tryOrNull
 import mimik.localhost
 import mimik.tapeItems.TapeCatalog
 import okhttp3.*

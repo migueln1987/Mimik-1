@@ -5,7 +5,7 @@ object Versions {
     const val ktor = "1.5.1"
     const val fuel = "2.3.0"
     const val okReply = "1.6.0"
-    const val kotlin_css = "1.0.0-pre.146-kotlin-1.4.30"
+    const val kotlin_css = "1.0.0-pre.148-kotlin-1.4.21"
     const val objectbox = "2.8.1"
 }
 

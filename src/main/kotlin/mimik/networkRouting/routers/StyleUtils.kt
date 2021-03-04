@@ -1,7 +1,7 @@
 package mimik.networkRouting.routers
 
-import kotlinUtils.appendLines
 import kotlinx.css.*
+import kotlinx.appendLines
 import kotlinx.html.FlowOrMetaDataContent
 import kotlinx.html.unsafeStyle
 
