@@ -1,48 +1,50 @@
 package unitTests.helperTests
 
 import com.google.gson.Gson
-import helpers.*
-import helpers.matchers.matchResults
+import kotlinUtils.ensurePrefix
+import kotlinUtils.isStrTrue
+import kotlinUtils.isValidJSON
+import mimik.helpers.matchers.matchResults
 import org.junit.Assert
+import org.junit.Test
 
 class StringTests {
 
-    // @Test
+    @Test
     fun removePrefix_Empty() {
         val input = ""
         val test = input.removePrefix("-")
         Assert.assertEquals(test, "")
     }
 
-    // @Test
+    @Test
     fun removePrefix_Remove() {
         val input = "-test"
         val test = input.removePrefix("-")
         Assert.assertEquals(test, "test")
     }
 
-    // @Test
+    @Test
     fun ensurePrefix_Empty() {
         val input = ""
         val test = input.ensurePrefix("+")
         Assert.assertEquals(test, "+")
     }
 
-    // @Test
+    @Test
     fun ensurePrefix_Remove() {
         val input = "test"
         val test = input.ensurePrefix("+")
         Assert.assertEquals(test, "+test")
     }
 
-    // @Test
+    @Test
     fun nullableTrueString_Null() {
         val input: String? = null
-
         Assert.assertFalse(input.isStrTrue())
     }
 
-    // @Test
+    @Test
     fun nullableTrueString_True() {
         val inputs = arrayOf(
             "true",
@@ -55,22 +57,23 @@ class StringTests {
         }
     }
 
-    // @Test
+    @Test
     fun isJson_EmptyString() {
         val test = ""
         Assert.assertTrue(test.isValidJSON)
     }
 
-    // @Test
+    @Test
     fun isJson_NullString() {
         val test: String? = null
         Assert.assertTrue(test.isValidJSON)
     }
 
-    // @Test
+    @Test
     fun isJson_FromClass() {
         @Suppress("unused")
         class TestClass(val string: String = "a", val int: Int = 0)
+
         val testClassVal = TestClass()
         val test = Gson().toJson(testClassVal)
 
@@ -78,14 +81,14 @@ class StringTests {
         Assert.assertTrue(test.isValidJSON)
     }
 
-    // @Test
+    @Test
     fun isJson_FromString_newlines() {
         val test = "{\\n    \"Data\": false\\n}"
 
         Assert.assertTrue(test.isValidJSON)
     }
 
-    // @Test
+    @Test
     fun isJson_FromString_arrays() {
         val test = """
             {
@@ -100,7 +103,7 @@ class StringTests {
         Assert.assertTrue(test.isValidJSON)
     }
 
-    // @Test
+    @Test
     fun matches_RegMixedHard() {
         val input = "test 123 end"
         val regIn = """.+ \d+"""
@@ -147,7 +150,7 @@ class StringTests {
         Assert.assertTrue(outHard.first().isLiteral)
     }
 
-    // @Test
+    @Test
     fun matches_RegMatchEmptyIn() {
         val input = ""
         val regFilter = ".*" // we are expecting a string of any (or no) length
@@ -160,7 +163,7 @@ class StringTests {
         }
     }
 
-    // @Test
+    @Test
     fun matches_spaces() {
         val input = " "
         val regFilter = " "
@@ -173,7 +176,7 @@ class StringTests {
         }
     }
 
-    // @Test
+    @Test
     fun matches_blankSpaces() {
         val input = listOf(
             "insert",
@@ -190,7 +193,7 @@ class StringTests {
         }
     }
 
-    // @Test
+    @Test
     fun matches_GroupAndIndex() {
         val input = "test 123 end"
         val regIn = "(none)?(?<group0>\\d+)(.+)"
@@ -225,7 +228,7 @@ class StringTests {
         Assert.assertTrue(index4.isEmpty())
     }
 
-    // @Test
+    @Test
     fun matches_ManyGroupsSameName() {
         val variableMatch = """@\{(?<content>\w+)\}"""
         val input = """@{1}bbb@{2}"""

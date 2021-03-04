@@ -1,18 +1,17 @@
 package unitTests.testManagerTests
 
-import helpers.matchers.MatcherResult
-import helpers.parser.P4Action
-import helpers.parser.P4Command
-import helpers.parser.Parser_v4
+import mimik.helpers.matchers.MatcherResult
+import mimik.helpers.parser.P4Action
+import mimik.helpers.parser.P4Command
+import mimik.helpers.parser.Parser_v4
+import mimik.networkRouting.testingManager.TestManager
 import org.junit.Assert
-
-import testingManager.TestManager
+import org.junit.Test
 
 @Suppress("KDocUnresolvedReference", "PropertyName", "PrivatePropertyName")
 class ParserTests {
     val testObject by lazy { TestManager() }
 
-    //    @Test
     fun parse_v3_ManyChaps() {
 //        val body = """
 //            {
@@ -27,7 +26,6 @@ class ParserTests {
 //        Assert.assertTrue(result.containsKey("chap_2"))
     }
 
-    //    @Test
     fun parse_v3_ModifyAndSeq() {
 //        val body = """
 //            {
@@ -62,7 +60,6 @@ class ParserTests {
 //        Assert.assertEquals(1, chapResult.seqSteps_old.size)
     }
 
-    //    @Test
     fun parse_v3_SeqAct_forMats() {
         /*
             == testing items
@@ -105,7 +102,6 @@ class ParserTests {
 //        Assert.assertEquals(8, seqStepItems.step_Do.size)
     }
 
-    //    @Test
     fun parse_v3_SeqAct_manyActs() {
         /*
             == testing items
@@ -555,7 +551,7 @@ class ParserTests {
         val isValidSyx = isValid_Syntax(parsed)
         if (isValidSyx != expectAsValid) {
             val failStr = "Failed the syntax validity test.\n" +
-                    "Parsed items: ${parsedAsStr()}"
+                "Parsed items: ${parsedAsStr()}"
             Assert.fail(failStr)
         }
 
@@ -567,10 +563,10 @@ class ParserTests {
 
         if (!isValid_Request(parsed)) {
             val condErrorStr = "Input is missing an action or conditional\n" +
-                    "Parsed: ${parsed.joinToString { it.groupName }}\n" +
-                    "Actions:\n" +
-                    "  1. Prepend '?'. '?$input'\n" +
-                    "  2. Add an action. '$input->...' or '$input->{...}'"
+                "Parsed: ${parsed.joinToString { it.groupName }}\n" +
+                "Actions:\n" +
+                "  1. Prepend '?'. '?$input'\n" +
+                "  2. Add an action. '$input->...' or '$input->{...}'"
             Assert.fail(condErrorStr)
         }
 
@@ -579,28 +575,30 @@ class ParserTests {
             .map { it.groupName }
             .firstOrNull()?.also { groupName ->
                 val expStr = "Parsed contains: $groupName\n" +
-                        "Expected only: ${expected.joinToString()}\n" +
-                        "Full parsed: ${parsed.joinToString { it.groupName }}\n" +
-                        "Did you forget to add '$groupName'?"
+                    "Expected only: ${expected.joinToString()}\n" +
+                    "Full parsed: ${parsed.joinToString { it.groupName }}\n" +
+                    "Did you forget to add '$groupName'?"
 
                 Assert.fail(expStr)
             }
 
         expected.forEach { eName ->
             val expStr = "Expecting to contain: $eName\n" +
-                    "Parsed contains: ${parsedAsStr()}\n" +
-                    "Did you forget to remove '$eName'?"
+                "Parsed contains: ${parsedAsStr()}\n" +
+                "Did you forget to remove '$eName'?"
             Assert.assertTrue(expStr,
                 parsed.any { it.groupName == eName }
             )
         }
     }
 
+    // todo; wip fix
     // @Test
     fun parse_v4_expectPattern() {
         Assert.assertEquals(regexPattern, Parser_v4.toString())
     }
 
+    // todo; wip fix
     // @Test
     fun parse_v4_ValidCombos() {
         validInputCombos.toResultMap()
@@ -609,7 +607,8 @@ class ParserTests {
             }
     }
 
-    //    @Test
+    // todo; wip fix
+    // @Test
     fun parse_v4_InvalidCombos() {
         invalidInputCombos.toResultMap()
             .forEach { (input, parsed, expected) ->
@@ -617,7 +616,7 @@ class ParserTests {
             }
     }
 
-    // @Test // If the input has no action, the it MUST be a conditional
+    @Test // If the input has no action, the it MUST be a conditional
     fun parse_v4_expectAsCondOrAct() {
         inputRequireCond.toResultMap()
             .forEach { (_, parsed, _) ->
@@ -625,7 +624,7 @@ class ParserTests {
             }
     }
 
-    // @Test
+    @Test
     fun deTemplate_passthroughTest() {
         val cleanInput = "any(group)Text"
 
@@ -637,7 +636,7 @@ class ParserTests {
         )
     }
 
-    // @Test
+    @Test
     fun deTemplate_FinalOpt() {
         val input = "input_@{'item'}_test"
         val expectOut = "input_item_test"
@@ -650,7 +649,7 @@ class ParserTests {
         )
     }
 
-    // @Test
+    @Test
     fun deTemplate_VarOpt() {
         val input = "input_@{user}_test"
         val expectOut = "input_pass_test"
@@ -668,7 +667,7 @@ class ParserTests {
         )
     }
 
-    // @Test
+    @Test
     fun deTemplate_IndexOpt() {
         val input = "input_@{2}_test"
         val expectOut = "input_pass_test"
@@ -686,7 +685,7 @@ class ParserTests {
         )
     }
 
-    // @Test
+    @Test
     fun deTemplate_DefaultFinal() {
         val input = "input_@{none|'other'}_test"
         val expectOut = "input_other_test"
@@ -704,7 +703,7 @@ class ParserTests {
         )
     }
 
-    // @Test
+    @Test
     fun deTemplate_Scoped() {
         val input = "input_@{aaa}-@{&aaa}_test"
         val expectOut = "input_bb-cc_test"
@@ -725,7 +724,7 @@ class ParserTests {
         )
     }
 
-    // @Test
+    @Test
     fun parse_v4_bodyIgnoreInvalid() {
         val body = """
             { 
@@ -777,7 +776,7 @@ class ParserTests {
         }
     }
 
-    // @Test
+    @Test
     fun p4_numberCmdTest() {
         val tObj = P4Action()
 

@@ -1,10 +1,5 @@
 package unitTests.testManagerTests
 
-import helpers.ensurePrefix
-import helpers.isNotNull
-import helpers.parser.P4Action
-import helpers.parser.Parser_v4
-import helpers.toJson
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -12,8 +7,14 @@ import kolor.blue
 import kolor.cyan
 import kolor.green
 import kolor.yellow
-import testingManager.BoundChapterItem
+import kotlinUtils.ensurePrefix
+import kotlinUtils.isNotNull
+import mimik.helpers.parser.P4Action
+import mimik.helpers.parser.Parser_v4
+import mimik.helpers.toJson
+import mimik.networkRouting.testingManager.BoundChapterItem
 import org.junit.Assert
+import org.junit.Test
 
 class ParserFullSuiteTest {
 
@@ -714,6 +715,7 @@ class ParserFullSuiteTest {
             return runTests
         }
 
+    // todo; wip fix
     // @Test
     fun subTestSuite() {
         val tests = mockSuiteCommands.filter {
@@ -722,6 +724,7 @@ class ParserFullSuiteTest {
         suiteRunner(tests)
     }
 
+    // todo; wip fix
     // @Test
     fun fullTestSuite() {
         suiteRunner(mockSuiteCommands)
@@ -794,8 +797,8 @@ class ParserFullSuiteTest {
                 .map { it to Parser_v4.parseToCommand(it) }
                 .onEach { (input, parsed) ->
                     fun errorMsg() = "$testStr\nProcessed command does not match input" +
-                            "\nInput: $input" +
-                            "\nParsed: $parsed\n"
+                        "\nInput: $input" +
+                        "\nParsed: $parsed\n"
 
                     if (parsed.toString() != "Invalid")
                         Assert.assertEquals(
@@ -819,8 +822,8 @@ class ParserFullSuiteTest {
             variableTests.forEach { (name, expect, actual) ->
                 expect.forEach { (key, value) ->
                     fun errorMsg_1() = ("%s\n== %s\n" +
-                            "Missing:\n [%s] = %s" +
-                            "\n\nResult Vars:\n%s\n").format(
+                        "Missing:\n [%s] = %s" +
+                        "\n\nResult Vars:\n%s\n").format(
                         testStr,
                         name,
                         key, value,
@@ -832,9 +835,9 @@ class ParserFullSuiteTest {
                         actual.containsKey(key)
                     )
                     fun errorMsg_2() = "$testStr\nResult's $name Variables don't match" +
-                            "\nExpected: [$key] = $value" +
-                            "\nFound: [$key] = ${actual[key]}" +
-                            "\n\nResult vars:\n${actual.toJson}\n\n"
+                        "\nExpected: [$key] = $value" +
+                        "\nFound: [$key] = ${actual[key]}" +
+                        "\n\nResult vars:\n${actual.toJson}\n\n"
 
                     Assert.assertEquals(
                         errorMsg_2(),
@@ -868,7 +871,7 @@ class ParserFullSuiteTest {
 
                     val rHeadVals = resultHeaders[t] ?: listOf()
                     fun errorMsg(expKey: String) = "$testStr\nMissing header value: {$t : $expKey}" +
-                            "\n\n${resultHeaders.toJson}"
+                        "\n\n${resultHeaders.toJson}"
 
                     u.forEach {
                         Assert.assertTrue(

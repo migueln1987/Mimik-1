@@ -1,10 +1,11 @@
 package unitTests.helperTests
 
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import helpers.attractors.getMatches
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
+import mimik.helpers.attractors.getMatches
 import org.junit.Assert
 import org.junit.Before
+import org.junit.Test
 
 class RequestAttractorsTests {
     lateinit var textObject: RequestAttractors
@@ -14,7 +15,7 @@ class RequestAttractorsTests {
         textObject = RequestAttractors()
     }
 
-    // @Test
+    @Test
     fun matchCountReqRatio() {
         val bitA = RequestAttractorBit("matchevery.*")
         val bitB = RequestAttractorBit("match.*")
@@ -34,7 +35,7 @@ class RequestAttractorsTests {
         Assert.assertEquals(5, responseB.reqLiterals)
     }
 
-    // @Test
+    @Test
     fun matchCountOptRatio() {
         // Add a dummy "Req", as "optionals" are skipped if "Req" fails
         val dummyReq = RequestAttractorBit(".*")

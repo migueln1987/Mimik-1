@@ -1,21 +1,21 @@
 package unitTests.tapeTests
 
 import apiTests.assertContains
-import helpers.asHttpUrl
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import helpers.attractors.UniqueBit
-import helpers.attractors.UniqueTypes
 import io.mockk.every
 import io.mockk.mockk
-import mimikMockHelpers.MockUseStates
-import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.RequestData
+import kotlinUtils.asHttpUrl
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
+import mimik.helpers.attractors.UniqueBit
+import mimik.helpers.attractors.UniqueTypes
+import mimik.mockHelpers.MockUseStates
+import mimik.mockHelpers.RecordedInteractions
+import mimik.tapeItems.BaseTape
+import okhttp3.RequestData
 import okreplay.TapeMode
 import org.junit.Assert
 import org.junit.Before
-
-import tapeItems.BaseTape
+import org.junit.Test
 
 class BaseTapeTest {
 
@@ -26,7 +26,7 @@ class BaseTapeTest {
         testObject = BaseTape.Builder().build()
     }
 
-    // @Test
+    @Test
     fun testBuilder() {
         Assert.assertTrue(testObject.name.isNotEmpty())
         Assert.assertFalse(testObject.hasNameSet)
@@ -42,7 +42,7 @@ class BaseTapeTest {
         Assert.assertEquals(testObject.file?.extension, "json")
     }
 
-    // @Test
+    @Test
     fun testBuilderValues() {
         val name = "name123"
         val url = "http://none.com"
@@ -75,7 +75,7 @@ class BaseTapeTest {
         Assert.assertEquals("json", testObject.file?.extension)
     }
 
-    // @Test
+    @Test
     fun uppercaseJsonName() {
         val name = "/name"
         testObject = BaseTape.Builder {
@@ -85,7 +85,7 @@ class BaseTapeTest {
         Assert.assertEquals("Name", testObject.file?.nameWithoutExtension)
     }
 
-    // @Test
+    @Test
     fun updateNameByURL() {
         val url = "/testing"
         testObject.updateNameByURL(url)
@@ -94,7 +94,7 @@ class BaseTapeTest {
         Assert.assertTrue(testObject.hasNameSet)
     }
 
-    // @Test
+    @Test
     fun appendChapters() {
         val chapter = RecordedInteractions()
 
@@ -104,16 +104,14 @@ class BaseTapeTest {
         Assert.assertTrue(testObject.size() > 0)
     }
 
-    // @Test
+    @Test
     fun rehostRequestToChain() {
         val oldUrl = "http://replace.me"
         val validUrl = "http://Host.url"
         val request = okhttp3.Request.Builder()
-            .also {
-                it.url(oldUrl)
-                it.method("GET", null)
-                it.header("key", "value")
-            }.build()
+            .addHeader("key", "value")
+            .get().url(oldUrl)
+            .build()
 
         testObject.routingUrl = validUrl
         Assert.assertTrue(testObject.isValidURL)
@@ -136,7 +134,7 @@ class BaseTapeTest {
         Assert.assertEquals(testRequest.url.host, routeUrl.host)
     }
 
-    // @Test
+    @Test
     fun createInteractionTest() {
         Assert.assertEquals(testObject.size(), 0)
         val data = testObject.createNewInteraction {
@@ -147,6 +145,7 @@ class BaseTapeTest {
         Assert.assertEquals(data.mockUses, testObject.chapters.first().mockUses)
     }
 
+    // todo; pending `appendIfUnique` updates
     // @Test
     fun appendUniqueAttractors() {
         val reqBody = """

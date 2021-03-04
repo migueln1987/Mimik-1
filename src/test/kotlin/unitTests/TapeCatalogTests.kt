@@ -1,19 +1,19 @@
 package unitTests
 
-import TapeCatalog
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import helpers.createResponse
 import io.ktor.http.HttpStatusCode
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import mimikMockHelpers.MockUseStates
-import mimikMockHelpers.RecordedInteractions
+import mimik.tapeItems.TapeCatalog
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
+import mimik.mockHelpers.MockUseStates
+import mimik.mockHelpers.RecordedInteractions
 import org.junit.Assert
 import org.junit.Before
-
-import tapeItems.BaseTape
+import org.junit.Test
+import mimik.tapeItems.BaseTape
+import okhttp3.createResponse
 
 class TapeCatalogTests {
 
@@ -24,7 +24,7 @@ class TapeCatalogTests {
         testObject = TapeCatalog()
     }
 
-    // @Test
+    @Test
     fun findResponseByQuery_Empty() {
         val request = mockk<okhttp3.Request>()
         val response = testObject.findResponseByQuery(request).first
@@ -33,7 +33,7 @@ class TapeCatalogTests {
         Assert.assertEquals(response.status, HttpStatusCode.NoContent)
     }
 
-    // @Test
+    @Test
     fun findResponseByQuery_Found() {
         val mockChapter = mockk<RecordedInteractions> {
             every { mockUses } returns MockUseStates.ALWAYS.state
@@ -57,7 +57,7 @@ class TapeCatalogTests {
         Assert.assertEquals(response.status, HttpStatusCode.Found)
     }
 
-    // @Test
+    @Test
     fun findResponseByQuery_NotFound() {
         val mockChapter = mockk<RecordedInteractions> {
             every { mockUses } returns MockUseStates.ALWAYS.state
@@ -81,7 +81,7 @@ class TapeCatalogTests {
         Assert.assertEquals(response.status, HttpStatusCode.NotFound)
     }
 
-    // @Test
+    @Test
     fun makeCatchResponseTest() {
         val request = mockk<okhttp3.Request>()
         val testCode = HttpStatusCode.OK

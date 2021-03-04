@@ -1,20 +1,20 @@
 package unitTests.tapeTests
 
-import helpers.attractors.RequestAttractorBit
-import helpers.attractors.RequestAttractors
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
+import mimik.helpers.attractors.RequestAttractorBit
+import mimik.helpers.attractors.RequestAttractors
 import io.mockk.every
 import io.mockk.mockk
-import mimikMockHelpers.MockUseStates
-import mimikMockHelpers.RecordedInteractions
+import mimik.mockHelpers.MockUseStates
+import mimik.mockHelpers.RecordedInteractions
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.Protocol
 import okreplay.Request
 import org.junit.Assert
 import org.junit.Before
-
-import tapeItems.BaseTape
+import org.junit.Test
+import mimik.tapeItems.BaseTape
+import okhttp3.Protocol
 
 class ReplayTapeTests {
     lateinit var testObject: BaseTape
@@ -24,7 +24,7 @@ class ReplayTapeTests {
         testObject = BaseTape.Builder().build()
     }
 
-    // @Test
+    @Test
     fun seekTest_NotFound() {
         val request = mockk<Request> {
             every { url() } returns "http://valid.url/path".toHttpUrl()
@@ -37,7 +37,7 @@ class ReplayTapeTests {
         Assert.assertFalse(foundData)
     }
 
-    // @Test
+    @Test
     fun seekTest() {
         val chapter = RecordedInteractions {
             it.mockUses = MockUseStates.SINGLEMOCK.state
@@ -59,7 +59,7 @@ class ReplayTapeTests {
         Assert.assertTrue(foundData)
     }
 
-    // @Test
+    @Test
     fun playMockChapter() {
         val mockBodyMessage = "body_Mock"
         val chapterMock = RecordedInteractions {
@@ -93,7 +93,7 @@ class ReplayTapeTests {
         Assert.assertEquals(mockBodyMessage, response.bodyAsText())
     }
 
-    // @Test
+    @Test
     fun playMockThenLive() {
         val mockBodyMessage = "body_Mock"
         val chapterMock = RecordedInteractions {

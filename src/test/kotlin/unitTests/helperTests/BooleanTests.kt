@@ -1,58 +1,61 @@
 package unitTests.helperTests
 
-import helpers.allTrue
-import helpers.anyTrue
-import helpers.isFalse
-import helpers.isTrue
+import kotlinUtils.allTrue
+import kotlinUtils.anyTrue
+import kotlinUtils.isFalse
+import kotlinUtils.isTrue
 import org.junit.Assert
+import org.junit.Test
 
 class BooleanTests {
-    // @Test
+    @Suppress("RedundantNullableReturnType")
+    @Test
     fun nullableIsTrue() {
         val testTrue: Boolean? = true
         Assert.assertTrue(testTrue.isTrue)
     }
 
-    // @Test
+    @Test
     fun nullableNulltIsTrue() {
         val testTrue: Boolean? = null
         Assert.assertFalse(testTrue.isTrue)
     }
 
-    // @Test
+    @Suppress("RedundantNullableReturnType")
+    @Test
     fun nullableIsFalse() {
         val testFalse: Boolean? = true
         Assert.assertFalse(testFalse.isFalse)
     }
 
-    // @Test
+    @Test
     fun nullableNulltIsFalse() {
         val testFalse: Boolean? = null
         Assert.assertFalse(testFalse.isFalse)
     }
 
-    // @Test
+    @Test
     fun anyTrueTest_One() {
         val testValues = booleanArrayOf(true, false)
         val result = anyTrue(*testValues)
         Assert.assertTrue(result)
     }
 
-    // @Test
+    @Test
     fun anyTrueTest_None() {
         val testValues = booleanArrayOf(false, false)
         val result = anyTrue(*testValues)
         Assert.assertFalse(result)
     }
 
-    // @Test
+    @Test
     fun allTrueTest_All() {
         val testValues = booleanArrayOf(true, true)
         val result = allTrue(*testValues)
         Assert.assertTrue(result)
     }
 
-    // @Test
+    @Test
     fun allTrueTest_None() {
         val testValues = booleanArrayOf(false, false)
         val result = allTrue(*testValues)

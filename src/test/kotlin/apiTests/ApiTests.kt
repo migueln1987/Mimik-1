@@ -1,6 +1,6 @@
 package apiTests
 
-import MimikContainer
+import mimik.tapeItems.MimikContainer
 import org.junit.After
 import org.junit.Before
 

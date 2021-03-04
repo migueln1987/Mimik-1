@@ -59,6 +59,7 @@ class TestBoundTests : ApiTests {
         }
     }
 
+    // todo; pending new API changes
     // @Test
     fun emptyVarReturnsEmptyString() {
         TestApp {
@@ -85,7 +86,7 @@ class TestBoundTests : ApiTests {
                 )
             }
 
-            handleRequest(HttpMethod.Post, "/test", Ports.live) {
+            handleRequest(HttpMethod.Post, "/test", Ports.mock) {
                 uniqueIDHeader()
                 setBody("")
             }.apply {
@@ -101,6 +102,7 @@ class TestBoundTests : ApiTests {
         }
     }
 
+    // todo; pending new API changes
     // @Test
     fun emptyVarReturnsFirstDefault() {
         TestApp {
@@ -127,7 +129,7 @@ class TestBoundTests : ApiTests {
                 )
             }
 
-            handleRequest(HttpMethod.Post, "/test", Ports.live) {
+            handleRequest(HttpMethod.Post, "/test", Ports.mock) {
                 uniqueIDHeader()
                 setBody("")
             }.apply {
@@ -143,6 +145,7 @@ class TestBoundTests : ApiTests {
         }
     }
 
+    // todo; pending new API changes
     // @Test
     fun setVarAfterCall() {
         TestApp {
@@ -182,7 +185,7 @@ class TestBoundTests : ApiTests {
             }
 
             // Do the tests!
-            handleRequest(HttpMethod.Post, "/test", Ports.live) {
+            handleRequest(HttpMethod.Post, "/test", Ports.mock) {
                 uniqueIDHeader()
                 setBody("")
             }.apply {
@@ -197,7 +200,7 @@ class TestBoundTests : ApiTests {
                 }
             }
 
-            handleRequest(HttpMethod.Post, "/activate", Ports.live) {
+            handleRequest(HttpMethod.Post, "/activate", Ports.mock) {
                 uniqueIDHeader()
                 setBody("")
             }.apply {
@@ -212,7 +215,7 @@ class TestBoundTests : ApiTests {
                 }
             }
 
-            handleRequest(HttpMethod.Post, "/test", Ports.live) {
+            handleRequest(HttpMethod.Post, "/test", Ports.mock) {
                 uniqueIDHeader()
                 setBody("")
             }.apply {

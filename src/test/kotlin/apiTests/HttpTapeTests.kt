@@ -1,6 +1,6 @@
 package apiTests
 
-import MimikContainer
+import mimik.tapeItems.MimikContainer
 import mimik.Ports
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -8,6 +8,7 @@ import io.ktor.server.testing.handleRequest
 import org.junit.Assert
 
 class HttpTapeTests {
+    // todo; pending update on new delete tape api
     // @Test
     fun deleteTape() {
         val tapeName = "DeleteTapeTest"

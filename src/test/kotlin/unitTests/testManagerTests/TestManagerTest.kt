@@ -2,26 +2,26 @@
 
 package unitTests.testManagerTests
 
-import helpers.content
-import helpers.parser.Parser_v4
+import mimik.helpers.parser.Parser_v4
 import io.mockk.*
-import mimikMockHelpers.RecordedInteractions
-import mimikMockHelpers.SeqActionObject
+import mimik.mockHelpers.RecordedInteractions
+import mimik.mockHelpers.SeqActionObject
+import mimik.networkRouting.testingManager.BoundChapterItem
+import mimik.networkRouting.testingManager.TestBounds
+import mimik.networkRouting.testingManager.boundActions
+import mimik.networkRouting.testingManager.observe
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okio.BufferedSink
 import org.junit.Assert
-import tapeItems.BaseTape
-import testingManager.BoundChapterItem
-import testingManager.TestBounds
-import testingManager.boundActions
-import testingManager.observe
+import mimik.tapeItems.BaseTape
+import org.junit.Test
 import java.nio.charset.Charset
 import kotlin.test.fail
 
 class TestManagerTest {
 
-//    @Test
+    @Test
     fun observerScope() {
         val tape = BaseTape.Builder().build()
         val chap = RecordedInteractions {
@@ -48,7 +48,7 @@ class TestManagerTest {
         Assert.assertEquals("New data in 'Observe' applies", inPost, newVal)
     }
 
-//    @Test
+    @Test
     fun observerUsesOriginalData() {
         val tape = BaseTape.Builder().build()
         val chap = RecordedInteractions {
@@ -67,7 +67,8 @@ class TestManagerTest {
         Assert.assertNotEquals(chap.mockUses, obsData)
     }
 
-//    @Test
+    // todo; wip fix
+    // @Test
     fun boundActions_test() {
         val chapName = "chapName"
         val bodyStr = "this is a 123 test"
@@ -157,7 +158,7 @@ class TestManagerTest {
                 }
 
                 "body" -> {
-                    val rBody = resultBody.captured.content()
+                    val rBody = resultBody.captured.contents()
 
                     Assert.assertEquals(
                         xVal,

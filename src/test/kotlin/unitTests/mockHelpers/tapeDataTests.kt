@@ -1,28 +1,29 @@
 package unitTests.mockHelpers
 
-import io.ktor.http.HttpHeaders
+import io.ktor.http.*
 import io.mockk.every
 import io.mockk.spyk
-import mimikMockHelpers.RequestData
-import mimikMockHelpers.Responsedata
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.RequestData
+import okhttp3.ResponseData
 import org.junit.Assert
+import org.junit.Test
 
 class tapeDataTests {
 
-    // @Test
+    @Test
     fun requestReplayConversion() {
         val urlData = "http://valid.url/"
         val methodData = "POST"
-        val headerValue = "value"
+        val headerValue = ContentType.Any.toString()
         val headerData = headersOf(HttpHeaders.ContentType, headerValue)
         val bodyData = "testBody"
 
         val host = spyk(RequestData()) {
             every { httpUrl } returns urlData.toHttpUrlOrNull()
             every { method } returns methodData
-            every { tapeHeaders } returns headerData
+            every { headers } returns headerData
             every { body } returns bodyData
         }
 
@@ -40,16 +41,16 @@ class tapeDataTests {
         Assert.assertTrue(test.body().isNotEmpty())
     }
 
-    // @Test
+    @Test
     fun responseReplayConversion() {
         val codeData = 200
-        val headerValue = "value"
+        val headerValue = ContentType.Any.toString()
         val headerData = headersOf(HttpHeaders.ContentType, headerValue)
         val bodyData = "testBody"
 
-        val host = spyk(Responsedata()) {
+        val host = spyk(ResponseData()) {
             every { code } returns codeData
-            every { tapeHeaders } returns headerData
+            every { headers } returns headerData
             every { body } returns bodyData
         }
 

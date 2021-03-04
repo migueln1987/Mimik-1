@@ -1,6 +1,6 @@
 package com.google.gson.stream
 
-import helpers.tryOrNull
+import kotlinUtils.tryOrNull
 import kotlin.reflect.full.superclasses
 
 /**
@@ -32,7 +32,7 @@ fun JsonReader.readArray(actions: (String?) -> Unit) {
 
     beginArray()
     while (peek() != JsonToken.END_ARRAY)
-        actions.invoke(varName)
+        actions(varName)
     endArray()
 }
 
@@ -69,7 +69,7 @@ inline fun <reified T : Any> JsonReader.readData(
         }
     } as? T
 
-    loadData.invoke(dataName, data)
+    loadData(dataName, data)
 }
 
 /**

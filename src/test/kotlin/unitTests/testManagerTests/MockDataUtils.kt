@@ -1,15 +1,14 @@
 package unitTests.testManagerTests
 
-import helpers.toHeaders_dupKeys
 import okhttp3.Headers
+import okhttp3.toHeaders_dupKeys
 
 /**
  * Class which holds all the input/ output variables of the testing bounds
  */
 class P4MockData(config: (P4MockData) -> Unit = {}) {
     class DataScope {
-        operator fun invoke(setup: DataScope.() -> Unit = {}) =
-            setup.invoke(this)
+        operator fun invoke(setup: DataScope.() -> Unit = {}) = setup(this)
 
         var useChapters: MutableMap<String, Int> = mutableMapOf()
 
@@ -95,7 +94,7 @@ class P4MockData(config: (P4MockData) -> Unit = {}) {
     val expectedData = DataScope()
 
     init {
-        config.invoke(this)
+        config(this)
     }
 }
 
@@ -140,6 +139,6 @@ class MockSet(
                 .apply { add(MockDataUtils.p4CondChk) }
             mockData.expectedData.testVars["confirm"] = "true"
         }
-        mockDataConfig.invoke(mockData)
+        mockDataConfig(mockData)
     }
 }
