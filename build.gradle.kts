@@ -75,7 +75,7 @@ dependencies {
     implementation("io.ktor:ktor-gson", Versions.ktor)
     implementation("io.ktor:ktor-html-builder", Versions.ktor)
     implementation("io.ktor:ktor-locations", Versions.ktor)
-    implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
+    // implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
 
     implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
     implementation("com.airbnb.okreplay:okreplay", Versions.okReply)

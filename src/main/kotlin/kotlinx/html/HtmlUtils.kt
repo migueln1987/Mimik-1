@@ -7,6 +7,7 @@ import kotlinx.collections.eachHasNext
 import kotlinx.ensureSuffix
 import kotlinx.tryOrNull
 import mimik.helpers.RandomHost
+import mimik.networkRouting.routers.ExportStyles
 import okhttp3.Headers
 import okhttp3.toMultimap
 import java.io.File
@@ -388,3 +389,18 @@ fun FlowContent.refreshWatchWindow(
  * Groups a section of code, applies nothing to the result html code.
  */
 inline fun FlowContent.group(crossinline block: FlowContent.() -> Unit = {}) = block(this)
+
+@HtmlTagMarker
+inline fun FlowOrPhrasingOrMetaDataContent.linkCSS(
+    asset: ExportStyles,
+    type: String? = null,
+    crossinline block: LINK.(ExportStyles) -> Unit = {}
+): Unit =
+    LINK(attributesMapOf("href", asset.asset, "rel", "stylesheet", "type", type), consumer).visit { block(asset) }
+
+@HtmlTagMarker
+inline fun FlowOrPhrasingOrMetaDataContent.linkCSS(
+    vararg assets: ExportStyles,
+    type: String? = null,
+    crossinline block: LINK.(ExportStyles) -> Unit = {}
+) = assets.forEach { asset -> linkCSS(asset, type, block) }

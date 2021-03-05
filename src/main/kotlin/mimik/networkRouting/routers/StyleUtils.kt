@@ -1,15 +1,47 @@
 package mimik.networkRouting.routers
 
+import io.ktor.*
+import io.ktor.routing.*
 import kotlinx.css.*
-import kotlinx.appendLines
-import kotlinx.html.FlowOrMetaDataContent
-import kotlinx.html.unsafeStyle
+import kotlinx.html.*
+import java.util.*
 
-object StyleUtils {
-    fun FlowOrMetaDataContent.setupStyle() {
-        unsafeStyle {
-            +"""
-                table {
+enum class ExportStyles {
+    Common, Breadcrumb, Collapsible_div,
+    Tooltip, Callout_div;
+
+    override fun toString(): String = "${name.toLowerCase(Locale.ROOT)}.css"
+
+    val asset: String get() = "../assets/css/$this"
+}
+
+interface ExportStyle {
+    val exportName: ExportStyles
+    val data: String
+
+    /**
+     * Exposes the [data] to [filename] as a `Text/CSS`
+     */
+    fun expose(route: Route) = route.cssData(exportName.toString()) { data }
+}
+
+fun exposeDeclaredStyles(route: Route) {
+    route.apply {
+        CommonStyles.expose(this)
+        BreadcrumbStyle.expose(this)
+        CollapsibleDiv.expose(this)
+        TooltipStyle.expose(this)
+        CalloutStyle.expose(this)
+    }
+}
+
+object CommonStyles : ExportStyle {
+    override val exportName: ExportStyles
+        get() = ExportStyles.Common
+
+    override val data: String
+        get() = """
+            table {
                     font: 1em Arial;
                     border: 1px solid black;
                     width: 100%;
@@ -62,134 +94,154 @@ object StyleUtils {
                 .hoverExpand:hover {
                     width: -webkit-fill-available;
                 }
-                """.trimIndent()
-                .appendLines(
-                    breadcrumbStyle,
-                    collapsibleStyle,
-                    tooltipStyle,
-                    calloutStyle
-                )
-        }
-    }
+        """.trimIndent()
+}
 
-    // https://ktor.io/docs/css-dsl.html#use_css
-    fun aaa() {
-//       val aa =  CSSBuilder().apply {
-//            rule("breadcrumb") {
-//                padding = "10px"
-//                position = Position.sticky
-//                top = LinearDimension("10px")
-//                width = LinearDimension("calc(100% - 22px)")
-//                backgroundColor = Color("#eee")
-//                overflow = Overflow.hidden
-//                border = "1px solid black"
-//                borderRadius = LinearDimension("5px")
-//                zIndex = 1
-//            }
-//        }
-//        val bb = aa.toString()
+object BreadcrumbStyle : ExportStyle {
+    override val exportName: ExportStyles
+        get() = ExportStyles.Breadcrumb
 
-        val aa = CSSBuilder().apply {
-            position = Position.relative
-            display = Display.inlineBlock
-//            borderBottom
-        }
-    }
-
-    val breadcrumbStyle: String
+    override val data: String
         get() = """
-            .breadcrumb {
-                padding: 10px;
-                position: sticky;
-                top: 10px;
-                width: calc(100% - 22px);
-                background-color: #eee;
-                overflow: hidden;
-                border: 1px solid black;
-                border-radius: 5px;
-                z-index: 1;
-            }
-            
-            .breadcrumb div {
-                font-size: 18px;
-            }
-            
-            .breadcrumb .subnav+.subnav:before {
-                content: "/";
-            }
-            
-            .subnav {
-                float: left;
-                overflow: hidden;
-            }
-            
-            .navHeader {
-                color: #0275d8;
-                text-decoration: none;
-            }
-            
-            .navHeader:hover {
-                color: white;
-                cursor: pointer;
-                text-decoration: underline;
-            }
-            
-            .caret-down:after {
-                content: "\25be";
-                line-height: 1;
-                font-style: normal;
-                text-rendering: auto;
-            }
-            
-            .subnav .navHeader {
-                font-size: 16px;  
-                border: none;
-                outline: none;
-                background-color: inherit;
-                font-family: inherit;
-                margin: 0;
-                padding: 4px;
-            }
-            
-            .navHeader:hover, .subnav-content *:hover {
-                background-color: darkslategray;
-            }
-            
-            .subnav-content {
-                position: fixed;
-                left: 5em;
-                top: 42px;
-                width: auto;
-                background-color: slategray;
-                z-index: 1;
-                line-height: 1em;
-                max-height: 10.5em;
-                overflow-y: auto;
-                background-color: transparent;
-                border-top: 12px solid transparent;
-                display: none;
-            }
-            
-            .subnav-content * {
-                cursor: pointer;
-                float: left;
-                color: white;
-                padding: 8px;
-                padding-right: 10em;
-                text-decoration: none;
-                display: inline-flex;
-                background-color: slategrey;
-                border-bottom: 1px solid;
-            }
-            
-            .subnav:hover .subnav-content {
-                display: grid;
-            }
+        .breadcrumb {
+            padding: 10px;
+            position: sticky;
+            top: 10px;
+            width: calc(100% - 22px);
+            background-color: #eee;
+            overflow: hidden;
+            border: 1px solid black;
+            border-radius: 5px;
+            z-index: 1;
+        }
+        
+        .breadcrumb div {
+            font-size: 18px;
+        }
+        
+        .breadcrumb .subnav+.subnav:before {
+            content: "/";
+        }
+        
+        .subnav {
+            float: left;
+            overflow: hidden;
+        }
+        
+        .caret-down:after {
+            content: "\25be";
+            line-height: 1;
+            font-style: normal;
+            text-rendering: auto;
+        }
+        
+        .navHeader {
+            color: #0275d8;
+            text-decoration: none;
+        }
+        
+        .navHeader:hover {
+            color: white;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .subnav .navHeader {
+            font-size: 16px;  
+            border: none;
+            outline: none;
+            background-color: inherit;
+            font-family: inherit;
+            margin: 0;
+            padding: 4px;
+        }
+        
+        .navHeader:hover, .subnav-content *:hover {
+            background-color: darkslategray;
+        }
+        
+        .subnav-content {
+            position: fixed;
+            left: 5em;
+            top: 42px;
+            width: auto;
+            background-color: slategray;
+            z-index: 1;
+            line-height: 1em;
+            max-height: 10.5em;
+            overflow-y: auto;
+            background-color: transparent;
+            border-top: 12px solid transparent;
+            display: none;
+        }
+        
+        .subnav-content * {
+            cursor: pointer;
+            float: left;
+            color: white;
+            padding: 8px;
+            padding-right: 10em;
+            text-decoration: none;
+            display: inline-flex;
+            background-color: slategrey;
+            border-bottom: 1px solid;
+        }
+        
+        .subnav:hover .subnav-content {
+            display: grid;
+        }
         """.trimIndent()
 
-    val collapsibleStyle: String
+    // https://ktor.io/docs/css-dsl.html#use_css
+    val g_BreadcrumbStyle: String
+        get() {
+//            val aa = CSSBuilder {
+//                classRule("breadcrumb") {
+//                    padding = 10.px.toString()
+//                    position = Position.sticky
+//                    top = 10.px
+//                    width = 100.pct - 22.px
+//                    backgroundColor = Color("#eee")
+//                    overflow = Overflow.hidden
+//                    border = "1px solid black"
+//                    borderRadius = 5.px
+//                    zIndex = 1
+//
+//                    div {
+//                        fontSize = 10.px
+//                    }
+//
+//                    classDescendant("subnav") {
+//                        this.parent
+//                        float = Float.left
+//                        overflow = Overflow.hidden
+//
+//                        classAdjacentSibling("subnav:before") {
+//                            content = "/".quoted
+//                        }
+//                    }
+//                }
+//
+//                classRule("caret-down") {
+//                    after {
+//                        content = "\\25be".quoted
+//                        lineHeight = 1.px.lh
+//                        fontStyle = FontStyle.normal
+//                    }
+//                }
+//            }.toString(true)
+
+            return ""
+        }
+}
+
+object CollapsibleDiv : ExportStyle {
+    override val exportName: ExportStyles
+        get() = ExportStyles.Collapsible_div
+
+    override val data: String
         get() = """
-             /* Button style that is used to open and close the collapsible content */
+            /* Button style that is used to open and close the collapsible content */
             .collapsible {
                 background-color: #999;
                 color: white;
@@ -227,9 +279,14 @@ object StyleUtils {
                 background-color: #f4f4f4;
                 transition: max-height 0.4s ease-out;
             }
-            """.trimIndent()
+        """.trimIndent()
+}
 
-    val tooltipStyle: String
+object TooltipStyle : ExportStyle {
+    override val exportName: ExportStyles
+        get() = ExportStyles.Tooltip
+
+    override val data: String
         get() = """
             .tooltip {
                 position: relative;
@@ -325,9 +382,14 @@ object StyleUtils {
                 border-style: solid;
                 border-color: transparent transparent transparent #555;
             }
-            """.trimIndent()
+        """.trimIndent()
+}
 
-    val calloutStyle: String
+object CalloutStyle : ExportStyle {
+    override val exportName: ExportStyles
+        get() = ExportStyles.Callout_div
+
+    override val data: String
         get() = """
             .callout {
                 position: fixed;
@@ -368,4 +430,19 @@ object StyleUtils {
                 color: lightgrey;
             }
         """.trimIndent()
+}
+
+object StyleUtils {
+    @Deprecated("Migrate to css files")
+    fun FlowOrMetaDataContent.setupStyle() {
+        unsafeStyle {
+            +arrayOf(
+                CommonStyles.data,
+                BreadcrumbStyle.data,
+                CollapsibleDiv.data,
+                TooltipStyle.data,
+                CalloutStyle.data
+            ).joinToString(separator = "\n")
+        }
+    }
 }

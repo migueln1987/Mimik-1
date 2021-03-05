@@ -12,7 +12,7 @@ import io.ktor.request.*
 import kotlinx.isFalse
 import kotlinx.isValidJSON
 import kotlinx.tryOrNull
-import mimik.localhost
+import mimik.Localhost
 import mimik.tapeItems.TapeCatalog
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -176,7 +176,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         }
 
         // resolve what host would be taking to
-        if (localhost.All.any { headerCache["host"].orEmpty().startsWith(it) })
+        if (Localhost.All.any { headerCache["host"].orEmpty().startsWith(it) })
             headerCache["host"] = outboundHost
 
         build.headers(headerCache.build())

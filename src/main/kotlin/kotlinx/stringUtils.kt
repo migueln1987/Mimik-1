@@ -2,6 +2,7 @@ package kotlinx
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import io.ktor.utils.io.*
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.*
@@ -219,3 +220,5 @@ fun String.limitLines(limit: Int): String {
 
 /** Prints the given [message] and the line separator to the standard output stream. */
 fun String.println() = println(this)
+
+fun String.toByteReadChannel() = ByteReadChannel(toByteArray())

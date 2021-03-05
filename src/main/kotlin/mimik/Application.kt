@@ -10,8 +10,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.*
-import kotlinx.isNotEmpty
 import kotlinx.coroutines.runBlocking
+import kotlinx.isNotEmpty
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor
 import mimik.networkRouting.FetchResponder
@@ -26,6 +26,14 @@ import org.slf4j.event.Level
 import java.io.File
 import java.util.*
 
+/* TODO wishlist
+- kotlin-css (creates SCSS)
+-- convert SCSS to CSS (http://github.com/vaadin/sass-compiler)
+- add https://vuejs.org/
+- try converting js to kotlin-js
+- CSS-in-JS?? https://blog.codecarrot.net/all-you-need-to-know-about-css-in-js/
+ */
+
 object Ports {
     const val config = 4321
     const val mock = 2202
@@ -35,7 +43,7 @@ object Ports {
         get() = ConfigFactory.load().getInt("ktor.deployment.port")
 }
 
-object localhost {
+object Localhost {
     const val android = "10.0.2.2"
     const val local = "0.0.0.0"
     val All = listOf(android, local)
@@ -106,6 +114,9 @@ private fun Route.ConfigPaths() {
     static("assets") {
         staticRootFolder = File("src/main/resources")
         static("libs") { files("libs") }
+        static("css") {
+            // exposeDeclaredStyles(this)
+        }
     }
 }
 

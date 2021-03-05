@@ -3,16 +3,16 @@ package mimik.networkRouting.editorPages
 import R
 import com.google.gson.Gson
 import io.ktor.http.*
-import javax.io.fileSize
+import kotlinx.html.*
 import kotlinx.isFalse
 import kotlinx.isTrue
-import kotlinx.html.*
 import mimik.helpers.hasNetworkAccess
 import mimik.mockHelpers.MockUseStates
 import mimik.networkRouting.routers.AttractorHtmlUtils.addMatcherRow
+import mimik.networkRouting.routers.StyleUtils.setupStyle
 import networkRouting.JsUtils
 import networkRouting.JsUtils.disableEnterKey
-import mimik.networkRouting.routers.StyleUtils.setupStyle
+import javax.io.fileSize
 import kotlin.math.max
 
 object ChapterEditor : EditorModule() {
@@ -26,6 +26,7 @@ object ChapterEditor : EditorModule() {
             unsafeScript { +JsUtils.Functions.all }
             script(src = "../assets/libs/Sortable.js") {}
             script(src = "../assets/libs/htmlUtils.js") {}
+//            linkCSS(ExportStyles.Breadcrumb)
         }
 
         body {

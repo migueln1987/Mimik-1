@@ -11,3 +11,5 @@ val ClosedRange<Int>.size: Int
  */
 val ClosedRange<Long>.size: Long
     get() = if (isEmpty()) 0 else endInclusive - start
+
+fun LongRange.toIntRange() = IntRange(start.toInt(), endInclusive.toInt())
