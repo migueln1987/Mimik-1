@@ -10,23 +10,31 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.*
-import kotlinUtils.isNotEmpty
 import kotlinx.coroutines.runBlocking
+import kotlinx.isNotEmpty
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor
 import mimik.networkRouting.FetchResponder
-import mimik.networkRouting.MimikMock
-import mimik.networkRouting.editorPages.DataGen
-import mimik.networkRouting.editorPages.TapeRouting
-import mimik.networkRouting.help.HelpPages
+import mimik.networkRouting.GUIPages.DataGen
+import mimik.networkRouting.GUIPages.TapeRouting
+import mimik.networkRouting.HelpPages.HelpPages
+import mimik.networkRouting.routers.loaders.MimikMock
 import mimik.networkRouting.testingManager.TestManager
+import mimik.tapeItems.MimikContainer
 import mimik.tapeItems.TapeCatalog
 import org.slf4j.event.Level
 import java.io.File
 import java.util.*
 
+/* TODO wishlist
+- Convert hard-coded CSS to kotlin-css (`StyleUtils.kt`)
+- research adding https://vuejs.org/ ??
+- try converting js to kotlin-js
+- CSS-in-JS?? https://blog.codecarrot.net/all-you-need-to-know-about-css-in-js/
+ */
+
 object Ports {
-    const val config = 4321
+    const val gui = 4321
     const val mock = 2202
     const val http = 8080
 
@@ -34,13 +42,20 @@ object Ports {
         get() = ConfigFactory.load().getInt("ktor.deployment.port")
 }
 
+object Localhost {
+    const val android = "10.0.2.2"
+    const val local = "0.0.0.0"
+    val All = listOf(android, local)
+}
+
 @Suppress("UNUSED_PARAMETER")
 fun main(args: Array<String> = arrayOf()) {
     val env = applicationEngineEnvironment {
         module { MimikModule() }
-        connector { port = Ports.config }
+        connector { port = Ports.gui }
         connector { port = Ports.mock }
         // https://ktor.io/docs/auto-reload.html
+        developmentMode = false
     }
 
     embeddedServer(Jetty, env).start(true)
@@ -53,8 +68,9 @@ fun main_(args: Array<String> = arrayOf()) = EngineMain.main(args)
 fun Application.MimikModule(testing: Boolean = false) {
     installFeatures()
 
+    MimikContainer.init()
     TapeCatalog.isTestRunning = testing
-    TapeCatalog.Instance // +loads the tape data
+//    TapeCatalog.Instance // +loads the tape data
     println("RootPath: ${environment.rootPath}")
 
     routing {
@@ -66,15 +82,15 @@ fun Application.MimikModule(testing: Boolean = false) {
             println("Adding rootPath items")
             route("/") {
                 route("mock") { MockPaths() }
-                ConfigPaths()
-
-                get { call.redirect(TapeRouting.RoutePaths.ALL.asSubPath) }
                 post { call.redirect("mock") }
+
+                GUIPaths()
+                get { call.redirect(TapeRouting.RoutePaths.ALL.asSubPath) }
             }
         } else {
             port(Ports.mock) { MockPaths() }
-            port(Ports.config) {
-                ConfigPaths()
+            port(Ports.gui) {
+                GUIPaths()
                 get { call.redirect(TapeRouting.RoutePaths.ALL.asSubPath) }
             }
         }
@@ -87,7 +103,7 @@ private fun Route.MockPaths() {
     CallProcessor().init(this)
 }
 
-private fun Route.ConfigPaths() {
+private fun Route.GUIPaths() {
     MimikMock().init(this)
     HelpPages().init(this)
     TapeRouting().init(this)
@@ -98,6 +114,9 @@ private fun Route.ConfigPaths() {
     static("assets") {
         staticRootFolder = File("src/main/resources")
         static("libs") { files("libs") }
+        static("css") {
+            // exposeDeclaredStyles(this)
+        }
     }
 }
 
@@ -151,9 +170,8 @@ private fun Application.installFeatures() {
 //    }
 
     // https://ktor.io/servers/features/double-receive.html
-    @Suppress("EXPERIMENTAL_API_USAGE")
-    // install(DoubleReceive) { receiveEntireContent = true }
-    install(LocalDoubleReceive) { receiveEntireContent = true }
+    install(DoubleReceive) { receiveEntireContent = true }
+    // install(LocalDoubleReceive) { receiveEntireContent = true }
 
     val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)
     install(CallId) {
@@ -166,7 +184,7 @@ private fun Application.installFeatures() {
         }
 
         fun ApplicationCall.getID(): String {
-            if (request.local.port == Ports.config) {
+            if (request.local.port == Ports.gui) {
                 printID("config", "config")
                 activeID = "Port.Config"
 //                return activeID

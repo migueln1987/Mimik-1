@@ -1,7 +1,7 @@
 package mimik.helpers.attractors
 
-import kotlinUtils.collections.appendNotNull
-import kotlinUtils.collections.firstNotNullResult
+import kotlinx.collections.appendNotNull
+import kotlinx.collections.firstNotNullResult
 import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.RecordedInteractions
 import okhttp3.queryItems

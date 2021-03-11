@@ -1,22 +1,21 @@
 package unitTests.tapeTests
 
 import apiTests.assertContains
-import io.ktor.http.*
 import io.mockk.every
+import io.mockk.mockk
+import kotlinx.asHttpUrl
 import mimik.helpers.attractors.RequestAttractorBit
 import mimik.helpers.attractors.RequestAttractors
 import mimik.helpers.attractors.UniqueBit
 import mimik.helpers.attractors.UniqueTypes
-import io.mockk.mockk
-import kotlinUtils.asHttpUrl
 import mimik.mockHelpers.MockUseStates
 import mimik.mockHelpers.RecordedInteractions
+import mimik.tapeItems.BaseTape
 import okhttp3.RequestData
 import okreplay.TapeMode
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import mimik.tapeItems.BaseTape
 
 class BaseTapeTest {
 

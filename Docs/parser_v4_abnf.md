@@ -1,5 +1,7 @@
 ; Syntax Spec:   https://tools.ietf.org/html/rfc5234
 ; Parser tester: https://tools.ietf.org/tools/bap/
+; https://mdkrajnak.github.io/ebnftest/
+; https://www.bottlecaps.de/rr/ui
 
 action = cond source [act]
 

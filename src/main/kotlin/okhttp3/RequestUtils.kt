@@ -1,7 +1,7 @@
 package okhttp3
 
 import io.ktor.http.*
-import kotlinUtils.tryOrNull
+import kotlinx.tryOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okio.Buffer
 import java.nio.charset.Charset

@@ -1,9 +1,9 @@
 package mimik.helpers.parser
 
-import kotlinUtils.collections.firstNotNullResult
-import kotlinUtils.collections.hasIndex
-import kotlinUtils.collections.lastNotNullResult
-import kotlinUtils.collections.putIfAbsent
+import kotlinx.collections.firstNotNullResult
+import kotlinx.collections.hasIndex
+import kotlinx.collections.lastNotNullResult
+import kotlinx.collections.putIfAbsent
 import mimik.helpers.matchers.MatcherCollection
 import mimik.helpers.matchers.MatcherResult
 import mimik.helpers.matchers.matchResults

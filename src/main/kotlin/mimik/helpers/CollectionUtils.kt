@@ -2,7 +2,7 @@
 
 package mimik.helpers
 
-import kotlinUtils.collections.firstNotNullResult
+import kotlinx.collections.firstNotNullResult
 
 /**
  * Returns the elements yielding the largest value of the given function.

@@ -1,6 +1,6 @@
 package mimik.mockHelpers
 
-import kotlinUtils.anyTrue
+import kotlinx.anyTrue
 
 class MockUseStates(val state: Int) {
     companion object {

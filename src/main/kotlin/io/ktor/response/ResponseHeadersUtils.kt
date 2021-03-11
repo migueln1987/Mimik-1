@@ -1,7 +1,7 @@
 package io.ktor.response
 
 import io.ktor.http.*
-import kotlinUtils.isThrow
+import kotlinx.isThrow
 
 /**
  * Append HTTP response header

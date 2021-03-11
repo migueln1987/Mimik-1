@@ -4,6 +4,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class LzmaTests {
+    // todo; convert from a string, to a class converted to a json string
     val input = """
             {
               "ID": 278286289,

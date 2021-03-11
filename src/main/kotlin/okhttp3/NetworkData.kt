@@ -1,7 +1,7 @@
 package okhttp3
 
 import io.ktor.http.*
-import kotlinUtils.isTrue
+import kotlinx.isTrue
 import okhttp3.Headers.Companion.headersOf
 
 abstract class NetworkData {

@@ -5,13 +5,14 @@ package mimik.helpers
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.github.kittinunf.fuel.httpGet
+import mimik.helpers.attractors.Attractor
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
-import kotlinUtils.isFalse
-import kotlinUtils.isValidJSON
-import kotlinUtils.tryOrNull
-import mimik.helpers.attractors.RequestAttractors
+import kotlinx.isFalse
+import kotlinx.isValidJSON
+import kotlinx.tryOrNull
+import mimik.Localhost
 import mimik.tapeItems.TapeCatalog
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -78,7 +79,7 @@ val okhttp3.Response.toReplayResponse: okreplay.Response
         val newResponse = newBuilder().build()
         val contentCharset = newResponse.body?.contentType()?.charset()
             ?: Charset.forName("UTF-8")
-        val bodyData = newResponse.body?.content()
+        val bodyData = newResponse.body?.contents()
 
         return object : okreplay.Response {
             override fun code() = newResponse.code
@@ -137,7 +138,7 @@ inline fun OkHttpClient.newCallRequest(builder: (Request.Builder) -> Unit): okht
 val okhttp3.Request.contentHash: Int
     get() {
         val filterHeaders = headers.asIterable()
-            .filterNot { h -> RequestAttractors.skipHeaders.any { h.first == it } }
+            .filterNot { h -> Attractor.skipHeaders.any { h.first == it } }
             .joinToString(separator = "\n") { it.first + ": " + it.second }
 
         return "%s%s%s%s".format(
@@ -175,8 +176,7 @@ suspend fun ApplicationCall.toOkRequest(outboundHost: String = "local.host"): ok
         }
 
         // resolve what host would be taking to
-        val localHosts = listOf("0.0.0.0", "10.0.2.2")
-        if (localHosts.any { headerCache["host"].orEmpty().startsWith(it) })
+        if (Localhost.All.any { headerCache["host"].orEmpty().startsWith(it) })
             headerCache["host"] = outboundHost
 
         build.headers(headerCache.build())

@@ -1,6 +1,6 @@
 package okhttp3
 
-import kotlinUtils.asHttpUrl
+import kotlinx.asHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.internal.http.HttpMethod
 import okreplay.content

@@ -1,6 +1,6 @@
 package mimik.helpers.matchers
 
-import kotlinUtils.isTrue
+import kotlinx.isTrue
 import kotlin.math.min
 
 /**

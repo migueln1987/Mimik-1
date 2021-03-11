@@ -1,7 +1,7 @@
 package okhttp3
 
 import io.ktor.http.*
-import kotlinUtils.ensureHttpPrefix
+import kotlinx.ensureHttpPrefix
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**

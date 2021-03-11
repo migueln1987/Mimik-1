@@ -1,20 +1,16 @@
 package mimik.helpers.attractors
 
 import io.ktor.http.*
-import kotlinUtils.allTrue
-import kotlinUtils.anyTrue
-import kotlinUtils.isTrue
+import kotlinx.allTrue
+import kotlinx.anyTrue
+import kotlinx.isTrue
 import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.QueryResponse
 import okhttp3.RequestData
 import okhttp3.internal.http.HttpMethod
 import okhttp3.toStringPairs
 
-class RequestAttractors {
-    var routingPath: RequestAttractorBit? = null
-    var queryMatchers: List<RequestAttractorBit>? = null
-    var headerMatchers: List<RequestAttractorBit>? = null
-    var bodyMatchers: List<RequestAttractorBit>? = null
+class RequestAttractors : Attractor {
 
     constructor(config: (RequestAttractors) -> Unit = {}) {
         config(this)
@@ -269,27 +265,6 @@ class RequestAttractors {
                     }
             }
         }.to
-    }
-
-    private fun matchesPath(source: String?): AttractorMatches {
-        return routingPath?.let { listOf(it) }.orEmpty()
-            .getMatches(source?.removePrefix("/"))
-    }
-
-    private fun getQueryMatches(source: String?): AttractorMatches {
-        val inputs = source?.split('&')
-        return queryMatchers.getMatches(inputs)
-    }
-
-    private fun getHeaderMatches(source: List<String>?): AttractorMatches {
-        val inputs = source?.filterNot {
-            skipHeaders.any { hHeaders -> it.startsWith(hHeaders, true) }
-        }
-        return headerMatchers.getMatches(inputs)
-    }
-
-    private fun getBodyMatches(source: String?): AttractorMatches {
-        return bodyMatchers.getMatches(source)
     }
 }
 

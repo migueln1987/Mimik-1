@@ -3,6 +3,7 @@ package io.ktor.application
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.request.*
+import io.ktor.response.*
 import io.ktor.util.*
 import okhttp3.internal.http.HttpMethod
 
@@ -51,3 +52,5 @@ suspend fun ApplicationCall.anyParameters(): Parameters {
             .forEach { append(it.name!!, it.value) }
     }
 }
+
+suspend inline fun <reified R : Any> ApplicationCall.respond(data: ApplicationCall.() -> R) = respond(data(this))

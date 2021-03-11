@@ -5,10 +5,18 @@ object Versions {
     const val ktor = "1.5.1"
     const val fuel = "2.3.0"
     const val okReply = "1.6.0"
+    const val kotlin_css = "1.0.0-pre.148-kotlin-1.4.21"
+    const val objectbox = "2.8.1"
 }
 
 group = "mimik"
 version = "0.8.0"
+
+buildscript {
+    dependencies {
+//        classpath("io.objectbox:objectbox-gradle-plugin:2.8.1")
+    }
+}
 
 plugins {
     application
@@ -17,6 +25,10 @@ plugins {
     kotlin("jvm") version "1.4.30"
     id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
     id("org.gretty") version "3.0.3"
+}
+
+apply {
+//    plugin("io.objectbox")
 }
 
 application {
@@ -63,11 +75,19 @@ dependencies {
     implementation("io.ktor:ktor-gson", Versions.ktor)
     implementation("io.ktor:ktor-html-builder", Versions.ktor)
     implementation("io.ktor:ktor-locations", Versions.ktor)
+    implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
+//    implementation("io.bit3:jsass:5.10.4")
+    implementation("org.lesscss:lesscss:1.7.0.1.1")
 
     implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
     implementation("com.airbnb.okreplay:okreplay", Versions.okReply)
     implementation("com.beust:klaxon:5.4")
     implementation("org.tukaani:xz:1.8")
+
+//    implementation("io.objectbox:objectbox-kotlin", Versions.objectbox)
+//    implementation("io.objectbox:objectbox-linux", Versions.objectbox)
+//    implementation("io.objectbox:objectbox-macos", Versions.objectbox)
+//    implementation("io.objectbox:objectbox-windows", Versions.objectbox)
 
     testImplementation("io.ktor:ktor-server-tests:${Versions.ktor}")
     testImplementation("io.mockk:mockk:1.10.0")

@@ -2,20 +2,20 @@
 
 package mimik.tapeItems
 
+import R
 import com.google.gson.*
 import com.google.gson.stream.JsonWriter
+import mimik.helpers.attractors.Attractor
 import io.ktor.http.*
-import kotlinUtils.*
-import kotlinUtils.collections.firstNotNullResult
-import kotlinUtils.text.append
-import kotlinUtils.text.appendLine
-import kotlinUtils.text.appendLines
+import kotlinx.*
+import kotlinx.collections.firstNotNullResult
+import kotlinx.text.append
+import kotlinx.text.appendLine
+import kotlinx.text.appendLines
 import kotlinx.coroutines.*
 import mimik.helpers.*
 import mimik.helpers.attractors.*
 import mimik.mockHelpers.*
-import mimik.networkRouting.editorPages.EditorModule.Companion.isBlank
-import mimik.networkRouting.editorPages.EditorModule.Companion.noData
 import okhttp3.*
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -155,7 +155,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
     @Transient
     var file: File? = null
         get() = field ?: File(
-            TapeCatalog.Instance.config.tapeRoot.get(),
+            MimikContainer.config.tapeRoot.get(),
             name.toJsonName
         ).also { field = it }
 
@@ -339,9 +339,9 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 )
             }
             .append("-Body:\n%s") {
-                var bodyStr = body.content(noData).tryAsPrettyJson ?: noData
+                var bodyStr = body.content(R["noData", ""]).tryAsPrettyJson ?: R["noData", ""]
                 if (bodyStr.isBlank())
-                    bodyStr = isBlank
+                    bodyStr = R["blankData", ""]
                 it.format(
                     bodyStr.limitLines(20).ensurePrefix(" ")
                 )
@@ -382,13 +382,13 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                         Data.headers?.toStringPairs()
                             ?.joinToString(separator = "", transform = { " $it\n" })
                             ?.trimEnd('\n')
-                            ?: noData
+                            ?: R["noData", ""]
                     )
                 }
                 .append("-Body:\n%s") {
                     val bodyStr = if (Data.isImage)
-                        " { image data }" else
-                        Data.body.tryAsPrettyJson ?: noData
+                        R["imageData", ""] else
+                        Data.body.tryAsPrettyJson ?: R["noData", ""]
                     it.format(bodyStr.limitLines(20).ensurePrefix(" "))
                 }
                 .appendLine(extras)
@@ -762,7 +762,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 QueryResponse(listOf(cachedCall!!))
             filteredChapters.isEmpty() ->
                 QueryResponse { status = HttpStatusCode.NotFound }
-            else -> RequestAttractors.findBest_many(
+            else -> Attractor.findBest_many(
                 filteredChapters,
                 request.url.encodedPath,
                 request.url.query,

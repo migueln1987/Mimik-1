@@ -10,7 +10,6 @@ import kolor.yellow
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Test
 
 class TestBoundTests : ApiTests {
 
@@ -23,7 +22,7 @@ class TestBoundTests : ApiTests {
     @Before
     fun boundStart() {
         TestApp {
-            handleRequest(HttpMethod.Post, "/tests/start", Ports.config) {
+            handleRequest(HttpMethod.Post, "/tests/start", Ports.gui) {
                 addHeader("tape", "##All")
                 addHeader("time", "10m")
             }.apply {
@@ -39,7 +38,7 @@ class TestBoundTests : ApiTests {
     @After
     fun boundEnd() {
         TestApp {
-            handleRequest(HttpMethod.Post, "/tests/stop", Ports.config) {
+            handleRequest(HttpMethod.Post, "/tests/stop", Ports.gui) {
                 addHeader("handle", currentTestID)
             }.apply {
                 response {
@@ -50,7 +49,7 @@ class TestBoundTests : ApiTests {
                 }
             }
 
-            handleRequest(HttpMethod.Post, "/tests/stop", Ports.config) {
+            handleRequest(HttpMethod.Post, "/tests/stop", Ports.gui) {
                 addHeader("handle", "$currentTestID, ##Finalize")
             }.apply {
                 response {
@@ -64,7 +63,7 @@ class TestBoundTests : ApiTests {
     // @Test
     fun emptyVarReturnsEmptyString() {
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
+            handleRequest(HttpMethod.Put, "/mock", Ports.gui) {
                 addHeader("mockTape_Name", "tape_use")
                 addHeader("mock_Name", "chap_use")
                 addHeader("mockFilter_Path", "test")
@@ -72,7 +71,7 @@ class TestBoundTests : ApiTests {
                 setBody("Activation code: [test]")
             }
 
-            handleRequest(HttpMethod.Post, "/tests/modify", Ports.config) {
+            handleRequest(HttpMethod.Post, "/tests/modify", Ports.gui) {
                 addHeader("handle", currentTestID)
                 setBody(
                     """
@@ -107,7 +106,7 @@ class TestBoundTests : ApiTests {
     // @Test
     fun emptyVarReturnsFirstDefault() {
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
+            handleRequest(HttpMethod.Put, "/mock", Ports.gui) {
                 addHeader("mockTape_Name", "tape_use")
                 addHeader("mock_Name", "chap_use")
                 addHeader("mockFilter_Path", "test")
@@ -115,7 +114,7 @@ class TestBoundTests : ApiTests {
                 setBody("Activation code: [test]")
             }
 
-            handleRequest(HttpMethod.Post, "/tests/modify", Ports.config) {
+            handleRequest(HttpMethod.Post, "/tests/modify", Ports.gui) {
                 addHeader("handle", currentTestID)
                 setBody(
                     """
@@ -150,14 +149,14 @@ class TestBoundTests : ApiTests {
     // @Test
     fun setVarAfterCall() {
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
+            handleRequest(HttpMethod.Put, "/mock", Ports.gui) {
                 addHeader("mockTape_Name", "tape_activate")
                 addHeader("mock_Name", "chap_activate")
                 addHeader("mockFilter_Path", "activate")
                 addHeader("mockFilter_Body", ".*")
                 setBody("code: 12345")
             }
-            handleRequest(HttpMethod.Put, "/mock", Ports.config) {
+            handleRequest(HttpMethod.Put, "/mock", Ports.gui) {
                 addHeader("mockTape_Name", "tape_use")
                 addHeader("mock_Name", "chap_use")
                 addHeader("mockFilter_Path", "test")
@@ -165,7 +164,7 @@ class TestBoundTests : ApiTests {
                 setBody("Activation code: [test]")
             }
 
-            handleRequest(HttpMethod.Post, "/tests/modify", Ports.config) {
+            handleRequest(HttpMethod.Post, "/tests/modify", Ports.gui) {
                 addHeader("handle", currentTestID)
                 setBody(
                     """

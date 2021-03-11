@@ -1,7 +1,7 @@
 package okhttp3
 
-import kotlinUtils.isBase64
-import kotlinUtils.tryOrNull
+import kotlinx.isBase64
+import kotlinx.tryOrNull
 import okhttp3.ResponseBody.Companion.asResponseBody
 import javax.xml.bind.DatatypeConverter
 
@@ -12,7 +12,7 @@ import javax.xml.bind.DatatypeConverter
  *
  * !! This action clears the original data's body !!
  */
-fun ResponseBody?.content(default: String = ""): String {
+fun ResponseBody?.contents(default: String = ""): String {
     return if (this == null) default
     else tryOrNull {
         val data = tryOrNull { use { bytes() } } ?: return ""

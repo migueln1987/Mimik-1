@@ -1,6 +1,6 @@
 package mimik.networkRouting.testingManager
 
-import javaUtils.util.plus
+import javax.util.plus
 import kolor.red
 import kolor.yellow
 import mimik.helpers.parser.P4Action
@@ -8,9 +8,10 @@ import mimik.helpers.printlnF
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.SeqActionObject
 import mimik.tapeItems.BaseTape
-import mimik.tapeItems.TapeCatalog
+import mimik.tapeItems.MimikContainer
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.content
+import okhttp3.contents
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -84,7 +85,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
      */
     val enabledTableList by lazy {
         if (tapes.contains("##All"))
-            TapeCatalog.Instance.tapes.map { it.name }
+            MimikContainer.tapeCatalog.tapes.map { it.name }
         else tapes
     }
 
@@ -92,7 +93,7 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
         if (tapes.contains("##All")) {
             // for unit tests only, lazy adds ALL the known tapes
             tapes.clear()
-            tapes.addAll(TapeCatalog.Instance.tapes.map { it.name })
+            tapes.addAll(MimikContainer.tapeCatalog.tapes.map { it.name })
         }
         isEnabled.set(true)
         expireTimer?.cancel()
@@ -240,7 +241,7 @@ fun okhttp3.Response.boundActions(
         setup.in_headers = request.headers
         setup.in_body = request.body?.content().orEmpty()
         setup.out_headers = headers
-        setup.out_body = body?.content().orEmpty()
+        setup.out_body = body?.contents().orEmpty()
     }
 
     /* Process actions

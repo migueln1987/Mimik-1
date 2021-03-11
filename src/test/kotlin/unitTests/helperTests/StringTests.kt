@@ -1,9 +1,9 @@
 package unitTests.helperTests
 
 import com.google.gson.Gson
-import kotlinUtils.ensurePrefix
-import kotlinUtils.isStrTrue
-import kotlinUtils.isValidJSON
+import kotlinx.ensurePrefix
+import kotlinx.isStrTrue
+import kotlinx.isValidJSON
 import mimik.helpers.matchers.matchResults
 import org.junit.Assert
 import org.junit.Test
@@ -41,7 +41,6 @@ class StringTests {
     @Test
     fun nullableTrueString_Null() {
         val input: String? = null
-
         Assert.assertFalse(input.isStrTrue())
     }
 
@@ -74,6 +73,7 @@ class StringTests {
     fun isJson_FromClass() {
         @Suppress("unused")
         class TestClass(val string: String = "a", val int: Int = 0)
+
         val testClassVal = TestClass()
         val test = Gson().toJson(testClassVal)
 

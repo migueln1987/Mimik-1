@@ -3,11 +3,11 @@ package mimik.helpers.parser
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
 import kolor.red
-import kotlinUtils.collections.toArrayList
-import kotlinUtils.isNotNull
-import kotlinUtils.println
-import kotlinUtils.tryCast
-import kotlinUtils.tryOrNull
+import kotlinx.collections.toArrayList
+import kotlinx.isNotNull
+import kotlinx.println
+import kotlinx.tryCast
+import kotlinx.tryOrNull
 import mimik.helpers.firstNotNullResult
 import mimik.helpers.matchers.MatcherCollection
 import mimik.helpers.matchers.MatcherResult
@@ -64,7 +64,7 @@ object Parser_v4 {
 
         // continue searching till we hit the end of the line or action
         private val toEOM
-            get() = """(?=->|\s|$)"""
+            get() = """(?=->|$)"""
 
         private val toEOA
             get() = """(?=\s|$)"""
@@ -120,15 +120,47 @@ object Parser_v4 {
             get() = """
                 (?<vType>
                   (?:
-                    (?=[&%\^])
-                    (?<vbound>
-                      (?:(?<vC>&)|(?<vB>%))?
-                      (?<vU>\^)?
-                    )|(?:)
+                    $bounds
                   )
                   var
                   (?:\[(?<vN>$varName)\])?
                   (?::\{(?<vM>.+?)\}$toEOM)?
+                )
+            """
+
+        // replace with
+        // $vBound|$vBounds|(?:)
+        private val bounds
+            get() = """
+                (?=[&%\^])
+                (?<vbound>
+                  (?:(?<vC>&)|(?<vB>%))?
+                  (?<vU>\^)?
+                )|(?:)
+            """.trimIndent()
+
+        // search specific scope, optionally search up too
+        private val vBound
+            get() = """
+                (?<vBound>
+                  (?=.+\.)
+                  (?<vS>[cthb])?
+                  (?<vU>\^)?
+                  \.
+                )
+            """
+
+        /**
+         * Search specific scopes in the requested order
+         * - can not search up
+         * - self-scope is assigned to 'x'
+         */
+        private val vBounds
+            get() = """
+                (?<vbounds>
+                  \[
+                  (?<vSG>[xcthb]+)
+                  \]\.
                 )
             """
 
@@ -154,30 +186,57 @@ object Parser_v4 {
                 (?<act>->
                   (?:$act_match|$act_var)
                 )?
-                """
-
-        private val act_match
-            get() = """
-                (?:\{(?<aM>.*?)\}(?=\s|$))
             """
 
-        private val act_var
+        /**
+         * Regex-like template to update the source
+         * - everything within "{" & "}$" will be sub-parsed in a futher step
+         */
+        private val act_match
             get() = """
+                (?:\{(?<aM>.*?)\}$)
+            """
+
+        private val act_var: String
+            get() {
+                return """
                 (?<aV>
-                (?<aSVL>
-                  (?<aSC>&)|(?<aSB>%)
-                )?
-                (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
-                (?:
-                  (?<aVT>
-                    (?<aVE>\?)?
-                    (?<aVC>\#)?
-                    (?<aVR>@)?
-                    (?<aVS>_(?:(?<aVSA>\#(?<aVSI>\d+)?)|(?<aVSL>\?)))?
+                  (?<aSVL>
+                    (?<aSC>&)|(?<aSB>%)
+                  )?
+                  (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
+                  (?:
+                    (?<aVT>
+                      (?<aVE>\?)?
+                      (?<aVC>\#)?
+                      (?<aVR>@)?
+                      (?<aVS>_(?:(?<aVSA>\#(?<aVSI>\d+)?)|(?<aVSL>\?)))?
+                    )
                   )
                 )
-              )
-        """
+                """.trimIndent()
+                // todo; below is new WIP container work
+                """
+                        (?<aV>
+                          (?<aSVL>[cthb]\.)?
+                          (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
+                          (?:
+                            (?<aVT>
+                              (?<aVE>\?)?
+                              (?<aVC>\#)?
+                              (?<aVR>@)?
+                              (?<aVS>_
+                               (?:
+                                (?<aVSI>\#\d+)|
+                                (?<aVSA>\#)|
+                                (?<aVSL>\?)
+                               )
+                              )?
+                            )
+                          )
+                        )
+                        """
+            }
     }
 
     override fun toString() = Groups.makeScript()
@@ -366,7 +425,7 @@ object Parser_v4 {
                 chapName to value.tryCast<LinkedTreeMap<String, *>>().orEmpty()
             }
             .map { (chap, values) ->
-                chap to BoundChapterItem().also { bounds ->
+                chap to BoundChapterItem { bounds ->
                     values.forEach { (key, data) ->
                         when (key) {
                             "stateUse" -> bounds.stateUse = (data as Double).toInt()

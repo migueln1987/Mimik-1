@@ -1,7 +1,7 @@
 package mimik.helpers.attractors
 
-import kotlinUtils.isNotTrue
-import kotlinUtils.isTrue
+import kotlinx.isNotTrue
+import kotlinx.isTrue
 
 /**
  * A request attractor which could be optional

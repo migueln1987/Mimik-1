@@ -1,13 +1,14 @@
 package unitTests.helperTests
 
-import kotlinUtils.allTrue
-import kotlinUtils.anyTrue
-import kotlinUtils.isFalse
-import kotlinUtils.isTrue
+import kotlinx.allTrue
+import kotlinx.anyTrue
+import kotlinx.isFalse
+import kotlinx.isTrue
 import org.junit.Assert
 import org.junit.Test
 
 class BooleanTests {
+    @Suppress("RedundantNullableReturnType")
     @Test
     fun nullableIsTrue() {
         val testTrue: Boolean? = true
@@ -20,6 +21,7 @@ class BooleanTests {
         Assert.assertFalse(testTrue.isTrue)
     }
 
+    @Suppress("RedundantNullableReturnType")
     @Test
     fun nullableIsFalse() {
         val testFalse: Boolean? = true
