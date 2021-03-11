@@ -1,4 +1,4 @@
-package mimik.networkRouting.editorPages
+package mimik.networkRouting.GUIPages
 
 import io.ktor.application.*
 import io.ktor.html.*
@@ -11,11 +11,11 @@ import mimik.helpers.*
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.toAttractors
 import mimik.networkRouting.RoutingContract
-import mimik.networkRouting.editorPages.ChapterEditor.getChapterPage
-import mimik.networkRouting.editorPages.DeleteModule.deleteActions
-import mimik.networkRouting.editorPages.NetworkDataEditor.dataEditor
-import mimik.networkRouting.editorPages.TapeEditor.getAllTapesPage
-import mimik.networkRouting.editorPages.TapeEditor.getTapePage
+import mimik.networkRouting.GUIPages.ChapterEditor.getChapterPage
+import mimik.networkRouting.GUIPages.DeleteModule.deleteActions
+import mimik.networkRouting.GUIPages.NetworkDataEditor.dataEditor
+import mimik.networkRouting.GUIPages.TapeEditor.getAllTapesPage
+import mimik.networkRouting.GUIPages.TapeEditor.getTapePage
 import mimik.tapeItems.BaseTape
 import okhttp3.RequestData
 import okhttp3.ResponseData

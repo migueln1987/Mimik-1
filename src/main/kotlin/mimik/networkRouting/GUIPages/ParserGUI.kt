@@ -1,4 +1,4 @@
-package mimik.networkRouting.editorPages
+package mimik.networkRouting.GUIPages
 
 import kotlinx.html.*
 import mimik.mockHelpers.SeqActionObject

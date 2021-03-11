@@ -1,4 +1,4 @@
-package mimik.networkRouting.help
+package mimik.networkRouting.HelpPages
 
 import kotlinx.beautifyJson
 import kotlinx.isNotNull

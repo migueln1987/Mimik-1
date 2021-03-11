@@ -13,13 +13,13 @@ class HttpTapeTests {
     fun deleteTape() {
         val tapeName = "DeleteTapeTest"
         TestApp {
-            handleRequest(HttpMethod.Put, "/mock/tape", Ports.config) {
+            handleRequest(HttpMethod.Put, "/mock/tape", Ports.gui) {
                 addHeader("mockName", tapeName)
             }.response {
                 Assert.assertEquals(HttpStatusCode.Created, it.status())
             }
 
-            handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName", Ports.config)
+            handleRequest(HttpMethod.Get, "/tapes/delete?tape=$tapeName", Ports.gui)
                 .response {
                     val hasTape = MimikContainer.tapeCatalog.tapes
                         .any { it.name == tapeName }

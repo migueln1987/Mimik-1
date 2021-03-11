@@ -59,12 +59,12 @@ object MimikContainer {
     suspend fun processCall(call: ApplicationCall): okhttp3.Response {
         val callRequest: okhttp3.Request = call.toOkRequest()
 
-        if (containers.isEmpty()) {
-            return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
-                "Missing holding containers"
-                    .also { println(it.red()) }
-            }
-        }
+//        if (containers.isEmpty()) {
+//            return callRequest.createResponse(HttpStatusCode.PreconditionFailed) {
+//                "Missing holding containers"
+//                    .also { println(it.red()) }
+//            }
+//        }
 
         val callUrl = callRequest.url.toString()
 

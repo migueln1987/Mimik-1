@@ -120,13 +120,24 @@ object Parser_v4 {
             get() = """
                 (?<vType>
                   (?:
-                    $vBound|$vBounds|(?:)
+                    $bounds
                   )
                   var
                   (?:\[(?<vN>$varName)\])?
                   (?::\{(?<vM>.+?)\}$toEOM)?
                 )
             """
+
+        // replace with
+        // $vBound|$vBounds|(?:)
+        private val bounds
+            get() = """
+                (?=[&%\^])
+                (?<vbound>
+                  (?:(?<vC>&)|(?<vB>%))?
+                  (?<vU>\^)?
+                )|(?:)
+            """.trimIndent()
 
         // search specific scope, optionally search up too
         private val vBound
@@ -186,27 +197,46 @@ object Parser_v4 {
                 (?:\{(?<aM>.*?)\}$)
             """
 
-        private val act_var
-            get() = """
+        private val act_var: String
+            get() {
+                return """
                 (?<aV>
-                  (?<aSVL>[cthb]\.)?
+                  (?<aSVL>
+                    (?<aSC>&)|(?<aSB>%)
+                  )?
                   (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
                   (?:
                     (?<aVT>
                       (?<aVE>\?)?
                       (?<aVC>\#)?
                       (?<aVR>@)?
-                      (?<aVS>_
-                       (?:
-                        (?<aVSI>\#\d+)|
-                        (?<aVSA>\#)|
-                        (?<aVSL>\?)
-                       )
-                      )?
+                      (?<aVS>_(?:(?<aVSA>\#(?<aVSI>\d+)?)|(?<aVSL>\?)))?
                     )
                   )
                 )
-            """
+                """.trimIndent()
+                // todo; below is new WIP container work
+                """
+                        (?<aV>
+                          (?<aSVL>[cthb]\.)?
+                          (?<aVN>[a-zA-Z]\w*[a-zA-Z0-9])
+                          (?:
+                            (?<aVT>
+                              (?<aVE>\?)?
+                              (?<aVC>\#)?
+                              (?<aVR>@)?
+                              (?<aVS>_
+                               (?:
+                                (?<aVSI>\#\d+)|
+                                (?<aVSA>\#)|
+                                (?<aVSL>\?)
+                               )
+                              )?
+                            )
+                          )
+                        )
+                        """
+            }
     }
 
     override fun toString() = Groups.makeScript()

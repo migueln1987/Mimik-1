@@ -15,9 +15,9 @@ import kotlinx.isNotEmpty
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor
 import mimik.networkRouting.FetchResponder
-import mimik.networkRouting.editorPages.DataGen
-import mimik.networkRouting.editorPages.TapeRouting
-import mimik.networkRouting.help.HelpPages
+import mimik.networkRouting.GUIPages.DataGen
+import mimik.networkRouting.GUIPages.TapeRouting
+import mimik.networkRouting.HelpPages.HelpPages
 import mimik.networkRouting.routers.loaders.MimikMock
 import mimik.networkRouting.testingManager.TestManager
 import mimik.tapeItems.MimikContainer
@@ -27,15 +27,14 @@ import java.io.File
 import java.util.*
 
 /* TODO wishlist
-- kotlin-css (creates SCSS)
--- convert SCSS to CSS (http://github.com/vaadin/sass-compiler)
-- add https://vuejs.org/
+- Convert hard-coded CSS to kotlin-css (`StyleUtils.kt`)
+- research adding https://vuejs.org/ ??
 - try converting js to kotlin-js
 - CSS-in-JS?? https://blog.codecarrot.net/all-you-need-to-know-about-css-in-js/
  */
 
 object Ports {
-    const val config = 4321
+    const val gui = 4321
     const val mock = 2202
     const val http = 8080
 
@@ -53,9 +52,10 @@ object Localhost {
 fun main(args: Array<String> = arrayOf()) {
     val env = applicationEngineEnvironment {
         module { MimikModule() }
-        connector { port = Ports.config }
+        connector { port = Ports.gui }
         connector { port = Ports.mock }
         // https://ktor.io/docs/auto-reload.html
+        developmentMode = false
     }
 
     embeddedServer(Jetty, env).start(true)
@@ -82,15 +82,15 @@ fun Application.MimikModule(testing: Boolean = false) {
             println("Adding rootPath items")
             route("/") {
                 route("mock") { MockPaths() }
-                ConfigPaths()
-
-                get { call.redirect(TapeRouting.RoutePaths.ALL.asSubPath) }
                 post { call.redirect("mock") }
+
+                GUIPaths()
+                get { call.redirect(TapeRouting.RoutePaths.ALL.asSubPath) }
             }
         } else {
             port(Ports.mock) { MockPaths() }
-            port(Ports.config) {
-                ConfigPaths()
+            port(Ports.gui) {
+                GUIPaths()
                 get { call.redirect(TapeRouting.RoutePaths.ALL.asSubPath) }
             }
         }
@@ -103,7 +103,7 @@ private fun Route.MockPaths() {
     CallProcessor().init(this)
 }
 
-private fun Route.ConfigPaths() {
+private fun Route.GUIPaths() {
     MimikMock().init(this)
     HelpPages().init(this)
     TapeRouting().init(this)
@@ -184,7 +184,7 @@ private fun Application.installFeatures() {
         }
 
         fun ApplicationCall.getID(): String {
-            if (request.local.port == Ports.config) {
+            if (request.local.port == Ports.gui) {
                 printID("config", "config")
                 activeID = "Port.Config"
 //                return activeID

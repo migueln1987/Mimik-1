@@ -13,6 +13,7 @@ import javax.xml.bind.DatatypeConverter
 /**
  * Interaction which testing devices will use to retrieve mocked data
  *
+ * @see <a href="{host}.com/{rootpath}/mock">Live</a>
  * @see <a href="0.0.0.0:2202">Live</a>
  */
 class CallProcessor : RoutingContract("{...}") {

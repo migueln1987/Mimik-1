@@ -1,6 +1,6 @@
 @file:Suppress("ClassName", "KDocUnresolvedReference", "SpellCheckingInspection", "PropertyName", "FunctionName")
 
-package mimik.networkRouting.editorPages
+package mimik.networkRouting.GUIPages
 
 import R
 import mimik.tapeItems.MimikContainer
@@ -25,6 +25,11 @@ import okhttp3.RequestData
 import okhttp3.ResponseData
 import java.util.*
 
+/**
+ * Abstract class which editing pages are built from.
+ *
+ * Contains helper functions/ properties for an editor page
+ */
 abstract class EditorModule {
     val tapeCatalog get() = MimikContainer.tapeCatalog
 

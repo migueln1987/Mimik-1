@@ -1,4 +1,4 @@
-package mimik.networkRouting.help
+package mimik.networkRouting.HelpPages
 
 import kotlinx.text.appendItem
 import kotlinx.text.appendObject

@@ -3,9 +3,16 @@ package mimik.networkRouting.routers
 import io.ktor.*
 import io.ktor.routing.*
 import kotlinx.css.*
+import kotlinx.css.Float
+import kotlinx.css.properties.TextDecoration
+import kotlinx.css.properties.TextDecorationLine
+import kotlinx.css.properties.lh
+import kotlinx.css.properties.textDecoration
 import kotlinx.html.*
+import org.lesscss.toCSS
 import java.util.*
 
+// http://w3.org/TR/CSS21/selector.html#pattern-matching
 enum class ExportStyles {
     Common, Breadcrumb, Collapsible_div,
     Tooltip, Callout_div;
@@ -195,43 +202,105 @@ object BreadcrumbStyle : ExportStyle {
     // https://ktor.io/docs/css-dsl.html#use_css
     val g_BreadcrumbStyle: String
         get() {
-//            val aa = CSSBuilder {
-//                classRule("breadcrumb") {
-//                    padding = 10.px.toString()
-//                    position = Position.sticky
-//                    top = 10.px
-//                    width = 100.pct - 22.px
-//                    backgroundColor = Color("#eee")
-//                    overflow = Overflow.hidden
-//                    border = "1px solid black"
-//                    borderRadius = 5.px
-//                    zIndex = 1
-//
-//                    div {
-//                        fontSize = 10.px
-//                    }
-//
-//                    classDescendant("subnav") {
-//                        this.parent
-//                        float = Float.left
-//                        overflow = Overflow.hidden
-//
-//                        classAdjacentSibling("subnav:before") {
-//                            content = "/".quoted
-//                        }
-//                    }
-//                }
-//
-//                classRule("caret-down") {
-//                    after {
-//                        content = "\\25be".quoted
-//                        lineHeight = 1.px.lh
-//                        fontStyle = FontStyle.normal
-//                    }
-//                }
-//            }.toString(true)
+            return CSSBuilder {
+                classRule("breadcrumb") {
+                    padding = 10.px.toString()
+                    position = Position.sticky
+                    top = 10.px
+                    width = 100.pct - 22.px
+                    backgroundColor = Color("#eee")
+                    overflow = Overflow.hidden
+                    border = "1px solid black"
+                    borderRadius = 5.px
+                    zIndex = 1
 
-            return ""
+                    div {
+                        fontSize = 10.px
+                    }
+
+                    classDescendant("subnav") {
+                        this.parent
+                        float = Float.left
+                        overflow = Overflow.hidden
+
+                        // subnav:before
+                        classAdjacentSibling("subnav") {
+                            before { content = "/".quoted }
+                        }
+                    }
+                }
+
+                classRule("subnav") {
+                    float = Float.left
+                    overflow = Overflow.hidden
+
+                    hover {
+                        classDescendant("subnav-content") {
+                            display = Display.grid
+                        }
+                    }
+
+                    classDescendant("navHeader") {
+                        fontSize = 16.px
+                        border = ""
+                        outline = Outline.none
+                        backgroundColor = Color.inherit
+                        fontFamily = FontStyle.inherit.value
+                        margin = 0.px.toString()
+                        padding = 4.px.toString()
+                    }
+                }
+
+                classRule("navHeader") {
+                    color = Color("#0275d8")
+                    textDecoration = TextDecoration.none
+
+                    hover {
+                        backgroundColor = Color.darkSlateGray
+                        color = Color.white
+                        cursor = Cursor.pointer
+                        textDecoration(TextDecorationLine.underline)
+                    }
+                }
+
+                classRule("subnav-content") {
+                    position = Position.fixed
+                    left = 5.em
+                    top = 42.px
+                    width = LinearDimension.auto
+                    backgroundColor = Color.darkSlateGray
+                    zIndex = 1
+                    lineHeight = 1.em.lh
+                    maxHeight = 10.5.em
+                    overflowY = Overflow.auto
+                    borderTop = "12px solid transparent"
+                    display = Display.none
+
+                    universal {
+                        cursor = Cursor.pointer
+                        float = Float.left
+                        color = Color.white
+                        padding = 8.px.toString()
+                        paddingRight = 10.em
+                        textDecoration = TextDecoration.none
+                        display = Display.inlineFlex
+                        backgroundColor = Color.slateGray
+                        borderBottom = "1px solid"
+
+                        hover {
+                            backgroundColor = Color.darkSlateGray
+                        }
+                    }
+                }
+
+                classRule("caret-down") {
+                    after {
+                        content = "\\25be".quoted
+                        lineHeight = 1.px.lh
+                        fontStyle = FontStyle.normal
+                    }
+                }
+            }.toCSS()
         }
 }
 

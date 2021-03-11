@@ -1,4 +1,4 @@
-package mimik.networkRouting.editorPages
+package mimik.networkRouting.GUIPages
 
 import R
 import kotlinx.html.*

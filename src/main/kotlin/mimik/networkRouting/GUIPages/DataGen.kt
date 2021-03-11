@@ -1,4 +1,4 @@
-package mimik.networkRouting.editorPages
+package mimik.networkRouting.GUIPages
 
 import R
 import com.github.kittinunf.fuel.core.ResponseResultOf
@@ -18,7 +18,7 @@ import mimik.Ports
 import mimik.helpers.*
 import mimik.mockHelpers.toAttractors
 import mimik.networkRouting.RoutingContract
-import mimik.networkRouting.editorPages.DataGen.RoutePaths.Response
+import mimik.networkRouting.GUIPages.DataGen.RoutePaths.Response
 import networkRouting.JsUtils
 import mimik.networkRouting.routers.StyleUtils.setupStyle
 import okhttp3.*

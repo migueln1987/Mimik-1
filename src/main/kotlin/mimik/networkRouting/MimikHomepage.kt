@@ -1,7 +1,7 @@
 package mimik.networkRouting
 
 import io.ktor.routing.*
-import mimik.networkRouting.editorPages.TapeRouting
+import mimik.networkRouting.GUIPages.TapeRouting
 
 class MimikHomepage : RoutingContract(TapeRouting.RoutePaths.rootPath) {
 
