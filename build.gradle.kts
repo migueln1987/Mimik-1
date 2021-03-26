@@ -10,7 +10,7 @@ object Versions {
 }
 
 group = "mimik"
-version = "0.8.0"
+version = "2.x_0321"
 
 buildscript {
     dependencies {
@@ -24,7 +24,6 @@ plugins {
     war
     kotlin("jvm") version "1.4.30"
     id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
-    id("org.gretty") version "3.0.3"
 }
 
 apply {
@@ -43,11 +42,6 @@ application {
 
 war {
     webAppDirName = "src/main/webapp"
-}
-
-gretty {
-    contextPath = "/"
-    logbackConfigFile = "resources/logback.xml"
 }
 
 repositories {
@@ -94,6 +88,11 @@ dependencies {
 }
 
 tasks {
+    withType<Jar> {
+        manifest { attributes["Main-Class"] = "mimik.ApplicationKt" }
+        from(configurations.compileClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+    }
+
     withType<KotlinCompile> {
         kotlinOptions {
             jvmTarget = "1.8"
