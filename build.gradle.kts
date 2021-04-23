@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 
 object Versions {
     const val kotlin = "1.4.30"
@@ -19,10 +19,10 @@ buildscript {
 }
 
 plugins {
+    kotlin("multiplatform") version "1.4.30"
     application
     idea
     war
-    kotlin("jvm") version "1.4.30"
     id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
 }
 
@@ -41,80 +41,100 @@ application {
 }
 
 war {
-    webAppDirName = "src/main/webapp"
+    webAppDirName = "src/jvmMain/webapp"
 }
 
 repositories {
-    maven("https://jcenter.bintray.com")
+    jcenter()
     maven("https://kotlin.bintray.com/ktor")
+    maven("https://dl.bintray.com/kotlin/kotlin-eap")
+    maven("https://kotlin.bintray.com/kotlin-js-wrappers/")
     mavenCentral()
 }
 
-dependencies {
-    implementation(kotlin("stdlib-jdk8", Versions.kotlin))
-
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("io.github.microutils:kotlin-logging:1.7.6")
-
-    implementation("io.ktor:ktor-server-core", Versions.ktor)
-//    implementation("io.ktor:ktor-server-netty", Versions.ktor)
-    implementation("io.ktor:ktor-server-jetty", Versions.ktor)
-    implementation("io.ktor:ktor-server-servlet", Versions.ktor)
-
-    implementation("io.ktor:ktor-client-core", Versions.ktor)
-    implementation("io.ktor:ktor-client-core-jvm", Versions.ktor)
-    implementation("io.ktor:ktor-client-cio", Versions.ktor)
-    implementation("io.ktor:ktor-client-okhttp", Versions.ktor)
-
-    implementation("io.ktor:ktor-gson", Versions.ktor)
-    implementation("io.ktor:ktor-html-builder", Versions.ktor)
-    implementation("io.ktor:ktor-locations", Versions.ktor)
-    implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
-//    implementation("io.bit3:jsass:5.10.4")
-    implementation("org.lesscss:lesscss:1.7.0.1.1")
-
-    implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
-    implementation("com.airbnb.okreplay:okreplay", Versions.okReply)
-    implementation("com.beust:klaxon:5.4")
-    implementation("org.tukaani:xz:1.8")
-
-//    implementation("io.objectbox:objectbox-kotlin", Versions.objectbox)
-//    implementation("io.objectbox:objectbox-linux", Versions.objectbox)
-//    implementation("io.objectbox:objectbox-macos", Versions.objectbox)
-//    implementation("io.objectbox:objectbox-windows", Versions.objectbox)
-
-    testImplementation("io.ktor:ktor-server-tests:${Versions.ktor}")
-    testImplementation("io.mockk:mockk:1.10.0")
-}
-
-tasks {
-    withType<Jar> {
-        manifest { attributes["Main-Class"] = "mimik.ApplicationKt" }
-        from(configurations.compileClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+kotlin {
+    jvm {
+        withJava()
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "1.8"
+                freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
+            }
+        }
+        tasks.withType<Jar> {
+            doFirst {
+                manifest { attributes["Main-Class"] = "mimik.ApplicationKt" }
+                from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+            }
+        }
     }
 
-    withType<KotlinCompile> {
-        kotlinOptions {
-            jvmTarget = "1.8"
-            freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
+    js {
+        browser {
+            binaries.executable()
+        }
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(kotlin("stdlib-common"))
+                implementation("io.ktor:ktor-client-core", Versions.ktor)
+            }
+        }
+
+        val commonTest by getting
+
+        val jvmMain by getting {
+            dependencies {
+                implementation(kotlin("stdlib-jdk8", Versions.kotlin))
+
+//                implementation("ch.qos.logback:logback-classic:1.2.3")
+//                implementation("io.github.microutils:kotlin-logging:1.7.6")
+
+                implementation("io.ktor:ktor-server-core", Versions.ktor)
+                //    implementation("io.ktor:ktor-server-netty", Versions.ktor)
+                implementation("io.ktor:ktor-server-jetty", Versions.ktor)
+                implementation("io.ktor:ktor-server-servlet", Versions.ktor)
+
+                implementation("io.ktor:ktor-client-core-jvm", Versions.ktor)
+                implementation("io.ktor:ktor-client-cio", Versions.ktor)
+                implementation("io.ktor:ktor-client-okhttp", Versions.ktor)
+
+                implementation("io.ktor:ktor-gson", Versions.ktor)
+                implementation("io.ktor:ktor-html-builder", Versions.ktor)
+                implementation("io.ktor:ktor-locations", Versions.ktor)
+                implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
+                //    implementation("io.bit3:jsass:5.10.4")
+                implementation("org.lesscss:lesscss:1.7.0.1.1")
+
+                implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
+                implementation("com.airbnb.okreplay:okreplay", Versions.okReply)
+                implementation("com.beust:klaxon:5.4")
+                implementation("org.tukaani:xz:1.8")
+
+                //    implementation("io.objectbox:objectbox-kotlin", Versions.objectbox)
+                //    implementation("io.objectbox:objectbox-linux", Versions.objectbox)
+                //    implementation("io.objectbox:objectbox-macos", Versions.objectbox)
+                //    implementation("io.objectbox:objectbox-windows", Versions.objectbox)
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation("io.ktor:ktor-server-tests:${Versions.ktor}")
+                implementation("io.mockk:mockk:1.10.0")
+            }
+        }
+
+        val jsMain by getting
+        val jsTest by getting {
+            dependencies {
+                implementation(kotlin("test-js"))
+            }
         }
     }
 }
 
-kotlin {
-    experimental {
-//        coroutines = Coroutines.ENABLE
-    }
-    sourceSets {
-        main { kotlin.srcDirs("src/main/kotlin") }
-        test { kotlin.srcDirs("src/test/kotlin") }
-    }
-}
-
-sourceSets {
-    main { resources.srcDirs("src/main/resources") }
-    test { resources.srcDirs("src/test/resources") }
-}
-
-fun DependencyHandler.implementation(dependencyNotation: String, version: String): Dependency? =
+fun KotlinDependencyHandler.implementation(dependencyNotation: String, version: String): Dependency? =
     implementation("$dependencyNotation:$version")
