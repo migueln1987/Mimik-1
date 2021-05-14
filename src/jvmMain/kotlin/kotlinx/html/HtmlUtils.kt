@@ -20,7 +20,7 @@ fun FlowOrMetaDataContent.unsafeStyle(
     block: Unsafe.() -> Unit = {}
 ) = style(type) { unsafe(block) }
 
-fun FlowOrPhrasingOrMetaDataContent.unsafeScript(
+fun FlowOrMetaDataOrPhrasingContent.unsafeScript(
     type: String? = null,
     src: String? = null,
     block: Unsafe.() -> Unit = {}
@@ -391,7 +391,7 @@ fun FlowContent.refreshWatchWindow(
 inline fun FlowContent.group(crossinline block: FlowContent.() -> Unit = {}) = block(this)
 
 @HtmlTagMarker
-inline fun FlowOrPhrasingOrMetaDataContent.linkCSS(
+inline fun FlowOrMetaDataOrPhrasingContent.linkCSS(
     asset: ExportStyles,
     type: String? = null,
     crossinline block: LINK.(ExportStyles) -> Unit = {}
@@ -399,7 +399,7 @@ inline fun FlowOrPhrasingOrMetaDataContent.linkCSS(
     LINK(attributesMapOf("href", asset.asset, "rel", "stylesheet", "type", type), consumer).visit { block(asset) }
 
 @HtmlTagMarker
-inline fun FlowOrPhrasingOrMetaDataContent.linkCSS(
+inline fun FlowOrMetaDataOrPhrasingContent.linkCSS(
     vararg assets: ExportStyles,
     type: String? = null,
     crossinline block: LINK.(ExportStyles) -> Unit = {}

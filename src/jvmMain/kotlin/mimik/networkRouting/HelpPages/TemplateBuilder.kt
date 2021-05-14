@@ -81,7 +81,7 @@ object TemplateBuilder {
                 return this
             }
 
-            override fun toString() = this.toJson
+            override fun toString() = toJson
         }
 
         class FlagBuilder(config: FlagBuilder.() -> Unit = {}) : TemplateItem {

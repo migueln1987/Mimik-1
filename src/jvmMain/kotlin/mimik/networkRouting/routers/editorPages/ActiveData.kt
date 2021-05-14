@@ -1,4 +1,4 @@
-package networkRouting.editorPages
+package mimik.networkRouting.routers.editorPages
 
 import io.ktor.http.*
 import kotlinx.collections.toArrayList

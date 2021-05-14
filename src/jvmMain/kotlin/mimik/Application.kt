@@ -23,7 +23,6 @@ import mimik.networkRouting.testingManager.TestManager
 import mimik.tapeItems.MimikContainer
 import mimik.tapeItems.TapeCatalog
 import org.slf4j.event.Level
-import java.io.File
 import java.util.*
 
 /* TODO wishlist
@@ -112,8 +111,7 @@ private fun Route.GUIPaths() {
     TestManager().init(this)
 
     static("assets") {
-        staticRootFolder = File("src/main/resources")
-        static("libs") { files("libs") }
+        static("libs") { resources("libs") }
         static("css") {
             // exposeDeclaredStyles(this)
         }

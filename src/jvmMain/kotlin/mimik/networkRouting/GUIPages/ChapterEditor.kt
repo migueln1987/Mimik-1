@@ -10,8 +10,8 @@ import mimik.helpers.hasNetworkAccess
 import mimik.mockHelpers.MockUseStates
 import mimik.networkRouting.routers.AttractorHtmlUtils.addMatcherRow
 import mimik.networkRouting.routers.StyleUtils.setupStyle
-import networkRouting.JsUtils
-import networkRouting.JsUtils.disableEnterKey
+import mimik.networkRouting.routers.JsUtils
+import mimik.networkRouting.routers.JsUtils.disableEnterKey
 import javax.io.fileSize
 import kotlin.math.max
 

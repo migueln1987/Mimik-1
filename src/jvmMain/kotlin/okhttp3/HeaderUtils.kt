@@ -15,7 +15,7 @@ val Headers?.orDefault: Headers
  * toMultiMap function which can preserve the case of header keys
  */
 fun Headers.toMultimap(caseSensitive: Boolean): Map<String, List<String>> {
-    if (!caseSensitive) return this.toMultimap()
+    if (!caseSensitive) return toMultimap()
 
     val result = TreeMap<String, ArrayList<String>>()
     (0 until size).forEach { i ->

@@ -219,7 +219,6 @@ object BreadcrumbStyle : ExportStyle {
                     }
 
                     classDescendant("subnav") {
-                        this.parent
                         float = Float.left
                         overflow = Overflow.hidden
 

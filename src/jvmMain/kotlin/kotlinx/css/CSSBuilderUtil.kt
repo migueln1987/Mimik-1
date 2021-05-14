@@ -31,7 +31,7 @@ fun CSSBuilder.classAdjacentSibling(selector: String, block: RuleSet) =
     "+ .${selector.asClassStr}"(block)
 
 fun CSSBuilder.toString(asIndented: Boolean = true): String {
-    if (!asIndented) return this.toString()
+    if (!asIndented) return toString()
 
     return buildString {
         declarations.forEach {

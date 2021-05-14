@@ -7,8 +7,7 @@ import kotlinx.isTrue
 import kotlinx.orFalse
 import kotlinx.html.*
 import mimik.helpers.attractors.RequestAttractorBit
-import networkRouting.JsUtils
-import networkRouting.JsUtils.disableEnterKey
+import mimik.networkRouting.routers.JsUtils.disableEnterKey
 
 data class TableQueryMatcher(
     /**

@@ -58,8 +58,8 @@ inline fun <T> T?.isNotNull(action: (T) -> Unit = {}): Boolean {
  * @return if [this] is not empty
  */
 inline fun String.isNotEmpty(action: (String) -> Unit): Boolean {
-    if (this.isNotEmpty()) action(this)
-    return this.isNotEmpty()
+    if (isNotEmpty()) action(this)
+    return isNotEmpty()
 }
 
 /**

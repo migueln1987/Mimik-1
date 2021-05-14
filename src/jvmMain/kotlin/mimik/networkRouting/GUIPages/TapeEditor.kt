@@ -9,15 +9,14 @@ import kotlinx.*
 import kotlinx.html.*
 import mimik.tapeItems.MimikContainer
 import mimik.networkRouting.routers.AttractorHtmlUtils.addMatcherRow
-import networkRouting.JsUtils
-import networkRouting.JsUtils.disableEnterKey
+import mimik.networkRouting.routers.JsUtils
+import mimik.networkRouting.routers.JsUtils.disableEnterKey
 import mimik.networkRouting.routers.StyleUtils.setupStyle
-import mimik.helpers.*
 import mimik.helpers.attractors.RequestAttractors
 import mimik.mockHelpers.MockUseStates
 import mimik.mockHelpers.RecordedInteractions
 import mimik.tapeItems.BaseTape
-import networkRouting.editorPages.ActiveData
+import mimik.networkRouting.routers.editorPages.ActiveData
 import kotlin.math.absoluteValue
 import kotlin.math.max
 

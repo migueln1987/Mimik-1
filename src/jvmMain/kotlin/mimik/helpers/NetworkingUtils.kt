@@ -72,7 +72,7 @@ val okhttp3.Request.toReplayRequest: okreplay.Request
  * Converts a [okhttp3.Request] to [RequestData]
  */
 val okhttp3.Request.toTapeData: RequestData
-    get() = this.toReplayRequest.toTapeData
+    get() = toReplayRequest.toTapeData
 
 val okhttp3.Response.toReplayResponse: okreplay.Response
     get() {
@@ -150,7 +150,7 @@ val okhttp3.Request.contentHash: Int
     }
 
 val String.asMediaType: MediaType?
-    get() = this.toMediaTypeOrNull()
+    get() = toMediaTypeOrNull()
 
 val okhttp3.Response.toTapeData: ResponseData
     get() = toReplayResponse.toTapeData

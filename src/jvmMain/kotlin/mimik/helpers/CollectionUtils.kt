@@ -27,4 +27,4 @@ inline fun <T, R : Comparable<R>> Sequence<T>.filterByMax(crossinline selector: 
  * The operation is _terminal_.
  */
 inline fun <T, R : Any> Sequence<T>.firstNotNullResult(predicate: (T) -> R?): R? =
-    this.iterator().firstNotNullResult(predicate)
+    iterator().firstNotNullResult(predicate)

@@ -16,9 +16,9 @@ import mimik.helpers.parser.P4Command
 import mimik.helpers.parser.Parser_v4
 import mimik.mockHelpers.*
 import mimik.tapeItems.BaseTape
-import networkRouting.JsUtils.disableEnterKey
+import mimik.networkRouting.routers.JsUtils.disableEnterKey
 import mimik.networkRouting.routers.TableQueryMatcher
-import networkRouting.editorPages.ActiveData
+import mimik.networkRouting.routers.editorPages.ActiveData
 import okhttp3.Headers
 import okhttp3.NetworkData
 import okhttp3.RequestData

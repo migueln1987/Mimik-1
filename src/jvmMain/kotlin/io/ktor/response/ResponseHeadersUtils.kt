@@ -8,7 +8,7 @@ import kotlinx.isThrow
  * @param safeOnly `true` by default, prevents from setting unsafe headers
  */
 fun ResponseHeaders.append(name: String, value: ContentType, safeOnly: Boolean = true) =
-    this.append(name, value.toString(), safeOnly)
+    append(name, value.toString(), safeOnly)
 
 /**
  * Appends the data from [headers] to this [ResponseHeaders]

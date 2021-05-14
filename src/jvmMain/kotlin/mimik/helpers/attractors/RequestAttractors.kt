@@ -289,7 +289,7 @@ fun List<RequestAttractorBit>?.getMatches(input: String?): AttractorMatches =
  */
 fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatches {
     when {
-        this.isNullOrEmpty() -> AttractorMatches().also {
+        isNullOrEmpty() -> AttractorMatches().also {
             if (!inputs.isNullOrEmpty()) it.Required = 1 // mark as a failed match
         }
 

@@ -19,7 +19,7 @@ import mimik.helpers.*
 import mimik.mockHelpers.toAttractors
 import mimik.networkRouting.RoutingContract
 import mimik.networkRouting.GUIPages.DataGen.RoutePaths.Response
-import networkRouting.JsUtils
+import mimik.networkRouting.routers.JsUtils
 import mimik.networkRouting.routers.StyleUtils.setupStyle
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull

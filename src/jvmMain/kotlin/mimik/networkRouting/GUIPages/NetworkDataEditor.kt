@@ -7,8 +7,8 @@ import kotlinx.isTrue
 import kotlinx.isValidJSON
 import kotlinx.uppercaseFirstLetter
 import kotlinx.html.*
-import networkRouting.JsUtils
-import networkRouting.JsUtils.disableEnterKey
+import mimik.networkRouting.routers.JsUtils
+import mimik.networkRouting.routers.JsUtils.disableEnterKey
 import mimik.networkRouting.routers.StyleUtils.setupStyle
 import okhttp3.RequestData
 import okhttp3.ResponseData

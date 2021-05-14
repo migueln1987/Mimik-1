@@ -150,8 +150,8 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         val value: String get() = _value.valueOrNull ?: name.toLowerCase()
     }
 
-    operator fun Map<String, String>.get(tag: HeaderTags) = this[tag.value]
-    fun Map<String, String>.containsKey(tag: HeaderTags) = this.containsKey(tag.value)
+    operator fun Map<String, String>.get(tag: HeaderTags) = get(tag.value)
+    fun Map<String, String>.containsKey(tag: HeaderTags) = containsKey(tag.value)
 
     val arrayReg = """"(?<!\\),""".toRegex()
 

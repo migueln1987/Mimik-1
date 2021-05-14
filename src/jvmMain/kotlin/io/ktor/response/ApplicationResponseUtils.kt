@@ -22,7 +22,7 @@ suspend fun ApplicationCall.redirectInternally(path: String) {
         override val request: ApplicationRequest = req
     }
 
-    this.application.execute(call, Unit)
+    application.execute(call, Unit)
 }
 
 enum class Redirect {

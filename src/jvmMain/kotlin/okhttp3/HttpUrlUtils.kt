@@ -34,12 +34,8 @@ fun HttpUrl?.reHost(newHost: String): HttpUrl? {
 /**
  * Replaces/ appends [newPort] to this [HttpUrl]
  */
-fun HttpUrl?.rePort(newPort: Int): HttpUrl? {
-    return this?.let {
-        newBuilder().also {
-            it.port(newPort)
-        }.build()
-    }
+fun HttpUrl?.rePort(newPort: Int): HttpUrl? = this?.let {
+    newBuilder().apply { port(newPort) }.build()
 }
 
 /**
@@ -60,10 +56,11 @@ fun HttpUrl?.queryItems(): List<String> {
 val HttpUrl?.toParameters: Parameters?
     get() {
         if (this == null) return null
-        val pairs = this.queryParameterNames.asSequence()
+
+        val pairs = queryParameterNames.asSequence()
             .filterNotNull().flatMap { name ->
                 if (name.isBlank()) return@flatMap emptySequence<Pair<String, String>>()
-                this.queryParameterValues(name).asSequence()
+                queryParameterValues(name).asSequence()
                     .map { name to it.orEmpty() }
             }
 

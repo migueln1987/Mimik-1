@@ -144,13 +144,13 @@ val String.toJsonName: String
  * Returns true if this [String] is a valid Url
  */
 val String?.isValidURL: Boolean
-    get() = this.orEmpty().toHttpUrlOrNull() != null
+    get() = orEmpty().toHttpUrlOrNull() != null
 
 /**
  * Attempts to convert the [String] into a [HttpUrl]
  */
 val String?.asHttpUrl: HttpUrl?
-    get() = this.orEmpty().ensureHttpPrefix.toHttpUrlOrNull()
+    get() = orEmpty().ensureHttpPrefix.toHttpUrlOrNull()
 
 /**
  * Converts the source [String] into a indent-formatted string

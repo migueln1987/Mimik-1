@@ -20,7 +20,7 @@ object DeleteModule : EditorModule() {
                             tape.saveIfExists()
 
                         call.redirect(TapeRouting.RoutePaths.EDIT.path) {
-                            val pathStart = this.encodedPath.substringBeforeLast('/')
+                            val pathStart = encodedPath.substringBeforeLast('/')
                                 .removePrefix("/")
 //                            path(pathStart, TapeRouting.RoutePaths.EDIT.path)
                             parameters.clear()

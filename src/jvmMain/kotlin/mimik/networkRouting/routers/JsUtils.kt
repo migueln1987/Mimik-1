@@ -1,4 +1,4 @@
-package networkRouting
+package mimik.networkRouting.routers
 
 import kotlinx.collections.eachHasNext
 import kotlinx.html.CommonAttributeGroupFacade

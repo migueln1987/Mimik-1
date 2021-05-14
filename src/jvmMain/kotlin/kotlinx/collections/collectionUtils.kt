@@ -40,7 +40,7 @@ inline fun <T, V, oV, R> Map<T, V>.subtractMap(
  * Returns the first element matching the given [predicate], or `null` if element was not found.
  */
 inline fun <T, R : Any> Iterable<T>.firstNotNullResult(predicate: (T) -> R?): R? =
-    this.iterator().firstNotNullResult(predicate)
+    iterator().firstNotNullResult(predicate)
 
 /**
  * Returns the first element matching the given [predicate], or `null` if element was not found.
@@ -76,7 +76,7 @@ fun <T> Iterable<T>.firstMatchNotNull(vararg predicates: (T) -> Boolean): T? {
  * Appends each list in [lists] that isn't null
  */
 fun <T> Iterable<T>.appendNotNull(vararg lists: List<T>?): List<T> =
-    this.toList() + lists.filterNotNull().flatten()
+    toList() + lists.filterNotNull().flatten()
 
 /**
  * Returns a new [ArrayList] filled with all elements of this collection.

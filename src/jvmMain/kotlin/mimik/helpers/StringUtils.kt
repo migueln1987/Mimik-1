@@ -5,7 +5,6 @@ package mimik.helpers
 import com.beust.klaxon.Klaxon
 import com.google.gson.*
 import java.io.StringReader
-import java.util.*
 
 /**
  * Converts the input object into a json string
@@ -67,7 +66,7 @@ inline fun String?.toPairs(crossinline allowFilter: (List<String>) -> Boolean = 
  * Converts a [ByteArray] to a int-aligned hex string
  */
 fun ByteArray.toHexString(separator: String = ""): String {
-    return this.asSequence()
+    return asSequence()
         .map { it.toInt() }
         .map { if (it < 0) it + 256 else it }
         .map { Integer.toHexString(it) }
