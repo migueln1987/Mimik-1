@@ -14,8 +14,8 @@ import java.util.*
 
 // http://w3.org/TR/CSS21/selector.html#pattern-matching
 enum class ExportStyles {
-    Common, Breadcrumb, Collapsible_div,
-    Tooltip, Callout_div;
+    Common, Breadcrumb, Collapsible,
+    Tooltip, Callout;
 
     override fun toString(): String = "${name.toLowerCase(Locale.ROOT)}.css"
 
@@ -305,7 +305,7 @@ object BreadcrumbStyle : ExportStyle {
 
 object CollapsibleDiv : ExportStyle {
     override val exportName: ExportStyles
-        get() = ExportStyles.Collapsible_div
+        get() = ExportStyles.Collapsible
 
     override val data: String
         get() = """
@@ -455,7 +455,7 @@ object TooltipStyle : ExportStyle {
 
 object CalloutStyle : ExportStyle {
     override val exportName: ExportStyles
-        get() = ExportStyles.Callout_div
+        get() = ExportStyles.Callout
 
     override val data: String
         get() = """

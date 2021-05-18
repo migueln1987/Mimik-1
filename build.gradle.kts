@@ -152,15 +152,20 @@ tasks {
 
         var taskName = if (project.hasProperty("isProduction"))
             "jsBrowserProductionWebpack" else "jsBrowserDevelopmentWebpack"
-        taskName = "jsBrowserProductionWebpack"
+//        taskName = "jsBrowserProductionWebpack"
 
+        println("Webpack: $taskName")
         val webpackTask = getByName<KotlinWebpack>(taskName)
         dependsOn(webpackTask) // make sure JS gets compiled first
 
         val copyTask: CopySpec.() -> Unit = {
-            from(File(webpackTask.destinationDirectory, webpackTask.outputFileName)) {
+            val baseConventions = project.convention.plugins["base"] as BasePluginConvention?
+            val distributionDir = project.buildDir.resolve(baseConventions?.distsDirName.orEmpty())
+
+            // from(File(webpackTask.destinationDirectory, webpackTask.outputFileName)) {
+            from(distributionDir) {
                 // copy compiled js to libs folder
-                include("*.js")
+                include("*.js", "*.js.map")
                 if (isWar) into("classes/libs")
                 else into("libs")
             }
