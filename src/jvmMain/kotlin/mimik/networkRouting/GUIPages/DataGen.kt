@@ -12,6 +12,7 @@ import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.routing.Route
+import io.ktor.util.*
 import kotlinx.*
 import kotlinx.html.*
 import mimik.Ports
@@ -19,11 +20,13 @@ import mimik.helpers.*
 import mimik.mockHelpers.toAttractors
 import mimik.networkRouting.RoutingContract
 import mimik.networkRouting.GUIPages.DataGen.RoutePaths.Response
+import mimik.networkRouting.routers.ExportStyles
 import mimik.networkRouting.routers.JsUtils
 import mimik.networkRouting.routers.StyleUtils.setupStyle
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.*
+import kotlin.math.absoluteValue
 
 class DataGen : RoutingContract(RoutePaths.rootPath) {
 
@@ -56,9 +59,9 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
             get {
                 val limitParams = call.parameters.limitKeys("ref", "item")
 
-                if (call.parameters != limitParams) {
-                    call.redirect() {
-                        // path(RoutePaths.Response.path)
+                val chkParams = call.parameters.filter { s, _ -> !s.startsWith("$") }
+                if (chkParams != limitParams) {
+                    call.redirect {
                         parameters.clear()
                         parameters.appendAll(limitParams)
                     }
@@ -190,14 +193,16 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
         val actChap = tapeCatalog.tapes.asSequence()
             .flatMap { tape ->
                 tape.chapters
-                    .map { "%s%s".format(tape.name, it.name).hashCode().toString() to it }
+                    .map { "%s%s".format(tape.name, it.name).hashCode().absoluteValue.toString() to it }
                     .asSequence()
             }
             .filter { it.first == refName }
             .firstOrNull()?.second
 
         head {
-            setupStyle()
+            linkCSS(
+                ExportStyles.Common, ExportStyles.Collapsible, ExportStyles.Tooltip
+            )
             unsafeScript { +JsUtils.Functions.all }
         }
 

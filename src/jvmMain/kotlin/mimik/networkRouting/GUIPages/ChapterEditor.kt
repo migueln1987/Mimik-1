@@ -9,10 +9,11 @@ import kotlinx.isTrue
 import mimik.helpers.hasNetworkAccess
 import mimik.mockHelpers.MockUseStates
 import mimik.networkRouting.routers.AttractorHtmlUtils.addMatcherRow
-import mimik.networkRouting.routers.StyleUtils.setupStyle
+import mimik.networkRouting.routers.ExportStyles
 import mimik.networkRouting.routers.JsUtils
 import mimik.networkRouting.routers.JsUtils.disableEnterKey
 import javax.io.fileSize
+import kotlin.math.absoluteValue
 import kotlin.math.max
 
 object ChapterEditor : EditorModule() {
@@ -26,14 +27,13 @@ object ChapterEditor : EditorModule() {
             unsafeScript { +JsUtils.Functions.all }
             script(src = "../assets/libs/Sortable.js") {}
             script(src = "../assets/libs/htmlUtils.js") {}
-//            linkCSS(ExportStyles.Breadcrumb)
+            linkCSS(
+                ExportStyles.Common, ExportStyles.Breadcrumb, ExportStyles.Sortable,
+                ExportStyles.Tooltip, ExportStyles.Collapsible, ExportStyles.Callout
+            )
         }
 
         body {
-            setupStyle()
-            unsafeStyle {
-                +Libs_CSS.Sortable.value
-            }
             BreadcrumbNav(pData)
 
             if (!pData.newChapter) {
@@ -399,7 +399,7 @@ object ChapterEditor : EditorModule() {
                                                     value = "%s%s".format(
                                                         pData.hardTapeName(),
                                                         pData.hardChapName()
-                                                    ).hashCode().toString()
+                                                    ).hashCode().absoluteValue.toString()
                                                 }
                                                 getButton {
                                                     formAction = "../" + DataGen.RoutePaths.Response.asSubPath

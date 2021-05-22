@@ -1,4 +1,4 @@
-@file:Suppress("unused", "RemoveRedundantQualifierName", "KDocUnresolvedReference")
+@file:Suppress("unused", "RemoveRedundantQualifierName", "KDocUnresolvedReference", "FunctionName")
 
 package mimik.tapeItems
 
@@ -334,7 +334,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
             .appendLine("-Headers:\n%s") {
                 it.format(
                     headers.toStringPairs()
-                        .joinToString(separator = "", limit = 20, transform = { " $it\n" })
+                        .joinToString(separator = "", limit = 20, transform = { t -> " $t\n" })
                         .trimEnd('\n')
                 )
             }
@@ -377,8 +377,8 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 .appendLine("-Code (%d) from $url") {
                     it.format(Data.code ?: 0)
                 }
-                .appendLine("-Headers:\n%s") {
-                    it.format(
+                .appendLine("-Headers:\n%s") { text ->
+                    text.format(
                         Data.headers?.toStringPairs()
                             ?.joinToString(separator = "", transform = { " $it\n" })
                             ?.trimEnd('\n')
@@ -440,7 +440,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                         "=== Live ===",
                         okRequest.logRequestData("[Missing]") {
                             ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess")
+                                    "-Network: $hasNetworkAccess")
                         }
                     )
                     returnResponse = miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
@@ -449,7 +449,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                         "=== Live ===",
                         okRequest.logRequestData(chapter.name) {
                             ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess%s").format(
+                                    "-Network: $hasNetworkAccess%s").format(
                                 if (chapter.uses >= 0)
                                     "\n-Uses: ${chapter.uses}" else ""
                             )
@@ -484,8 +484,8 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                     "=== Await ===",
                     okRequest.logRequestData(chapter.name) {
                         ("-Valid URL: $isValidURL\n" +
-                            "-Network: $hasNetworkAccess\n" +
-                            "%s").format(
+                                "-Network: $hasNetworkAccess\n" +
+                                "%s").format(
                             if (chapter.uses >= 0)
                                 "-Uses: ${chapter.uses}" else ""
                         )
@@ -579,7 +579,7 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                     "=== Live ===",
                     okRequest.logRequestData(it.name) {
                         ("-Valid URL: $isValidURL\n" +
-                            "-Network: $hasNetworkAccess%s").format(
+                                "-Network: $hasNetworkAccess%s").format(
                             if (it.uses >= 0)
                                 "\n-Uses: ${it.uses}" else ""
                         )
@@ -619,8 +619,8 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                     "=== Await ===",
                     okRequest.logRequestData(it.name) {
                         ("-Valid URL: $isValidURL\n" +
-                            "-Network: $hasNetworkAccess\n" +
-                            "%s").format(
+                                "-Network: $hasNetworkAccess\n" +
+                                "%s").format(
                             if (it.uses >= 0)
                                 "-Uses: ${it.uses}" else ""
                         )
@@ -843,13 +843,16 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                             outFile.canWrite()
                         else {
                             outFile.parentFile.mkdirs()
-                            outFile.createNewFile()
+                            tryOrNull { outFile.createNewFile() } ?: false
                         }
 
-                        if (canSaveFile)
-                            outFile.bufferedWriter().jWriter
-                                .also { TapeCatalog.gson.toJson(tree, it) }
-                                .close()
+                        if (canSaveFile) {
+                            tryOrNull {
+                                outFile.bufferedWriter().jWriter
+                                    .also { TapeCatalog.gson.toJson(tree, it) }
+                                    .close()
+                            }
+                        }
                     }
                     savingFile.set(false)
                     println(

@@ -18,6 +18,7 @@ import mimik.networkRouting.FetchResponder
 import mimik.networkRouting.GUIPages.DataGen
 import mimik.networkRouting.GUIPages.TapeRouting
 import mimik.networkRouting.HelpPages.HelpPages
+import mimik.networkRouting.routers.exposeDeclaredStyles
 import mimik.networkRouting.routers.loaders.MimikMock
 import mimik.networkRouting.testingManager.TestManager
 import mimik.tapeItems.MimikContainer
@@ -112,9 +113,7 @@ private fun Route.GUIPaths() {
 
     static("assets") {
         static("libs") { resources("libs") }
-        static("css") {
-            // exposeDeclaredStyles(this)
-        }
+        static("css") { exposeDeclaredStyles() }
     }
 }
 
@@ -153,19 +152,20 @@ private fun Routing.debugging(doDebug: Boolean = true) {
 
 private fun Application.installFeatures() {
     install(DefaultHeaders)
+    install(CachingHeaders)
 
-//    install(Compression) {
-//        gzip {
-//            priority = 1.0
-//        }
-//        deflate {
-//            priority = 5.0
-//            minimumSize(1024) // condition
-//        }
-//        identity{
-//            priority = 10.0
-//        }
-//    }
+    install(Compression) {
+        gzip {
+            priority = 1.0
+        }
+        deflate {
+            priority = 5.0
+            minimumSize(1024) // condition
+        }
+        identity{
+            priority = 10.0
+        }
+    }
 
     // https://ktor.io/servers/features/double-receive.html
     install(DoubleReceive) { receiveEntireContent = true }

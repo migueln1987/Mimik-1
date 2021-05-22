@@ -11,7 +11,7 @@ fun CSSBuilder(
  * - Null strings: "*"
  * - Else: ensure prefix only contains 1 "."
  */
-private val String?.asClassStr: String
+val String?.asClassStr: String
     get() {
         return when (this) {
             null -> "*"
@@ -19,8 +19,25 @@ private val String?.asClassStr: String
         }
     }
 
-fun CSSBuilder.classRule(name: String, block: RuleSet): Rule =
-    rule(".${name.asClassStr}", block)
+/**
+ * Sets the [name] as a class, then appends to the CSS tree.
+ *
+ * Additional; adding multiple [name] will separate them by a comma
+ */
+fun CSSBuilder.ruleClass(vararg name: String, block: RuleSet = {}) {
+    val classNames = name.joinToString { it.asClassStr }
+    rule(classNames, passStaticClassesToParent = false, repeatable = true, block)
+}
+
+/**
+ *  Appends this [name] rule to the CSS tree.
+ *
+ * Additional; adding multiple [name] will separate them by a comma
+ */
+fun CSSBuilder.rule(vararg name: String, block: RuleSet) {
+    val classNames = name.joinToString()
+    rule(classNames, passStaticClassesToParent = false, repeatable = true, block)
+}
 
 // Children & descendants
 fun CSSBuilder.classDescendant(selector: String? = null, block: RuleSet): Rule =
@@ -28,7 +45,7 @@ fun CSSBuilder.classDescendant(selector: String? = null, block: RuleSet): Rule =
 
 // Combinators
 fun CSSBuilder.classAdjacentSibling(selector: String, block: RuleSet) =
-    "+ .${selector.asClassStr}"(block)
+    "+ ${selector.asClassStr}"(block)
 
 fun CSSBuilder.toString(asIndented: Boolean = true): String {
     if (!asIndented) return toString()

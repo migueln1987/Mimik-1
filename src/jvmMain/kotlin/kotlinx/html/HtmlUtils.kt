@@ -393,14 +393,20 @@ inline fun FlowContent.group(crossinline block: FlowContent.() -> Unit = {}) = b
 @HtmlTagMarker
 inline fun FlowOrMetaDataOrPhrasingContent.linkCSS(
     asset: ExportStyles,
-    type: String? = null,
     crossinline block: LINK.(ExportStyles) -> Unit = {}
-): Unit =
-    LINK(attributesMapOf("href", asset.asset, "rel", "stylesheet", "type", type), consumer).visit { block(asset) }
+) {
+    if (!ExportStyles.isExported.contains(asset)) {
+        println("Asset [$asset] was not exported")
+        return
+    }
+    LINK(
+        attributesMapOf("rel", "stylesheet", "href", asset.asset, "type", ContentType.Text.CSS.toString()),
+        consumer
+    ).visit { block(asset) }
+}
 
 @HtmlTagMarker
 inline fun FlowOrMetaDataOrPhrasingContent.linkCSS(
     vararg assets: ExportStyles,
-    type: String? = null,
     crossinline block: LINK.(ExportStyles) -> Unit = {}
-) = assets.forEach { asset -> linkCSS(asset, type, block) }
+) = assets.forEach { asset -> linkCSS(asset, block) }

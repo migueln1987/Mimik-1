@@ -9,12 +9,12 @@ fun StringBuilder.appendLines(vararg lines: String): StringBuilder {
 }
 
 /**
- * The action in [valueAction] is applied to [value].
- * If the result of [valueAction] is a string,
+ * The action in [textAction] is applied to [text].
+ * If the result of [textAction] is a string,
  * then it will be appended and followed by a line separator.
  */
-fun StringBuilder.appendLine(value: String = "", valueAction: StringBuilder.(String) -> Any): StringBuilder {
-    valueAction(this, value).also { if (it is String) appendLine(it) }
+fun StringBuilder.appendLine(text: String = "", textAction: StringBuilder.(String) -> Any): StringBuilder {
+    textAction(this, text).also { if (it is String) appendLine(it) }
     return this
 }
 

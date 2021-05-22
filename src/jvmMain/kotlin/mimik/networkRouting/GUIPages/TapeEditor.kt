@@ -15,6 +15,7 @@ import mimik.networkRouting.routers.StyleUtils.setupStyle
 import mimik.helpers.attractors.RequestAttractors
 import mimik.mockHelpers.MockUseStates
 import mimik.mockHelpers.RecordedInteractions
+import mimik.networkRouting.routers.ExportStyles
 import mimik.tapeItems.BaseTape
 import mimik.networkRouting.routers.editorPages.ActiveData
 import kotlin.math.absoluteValue
@@ -22,8 +23,14 @@ import kotlin.math.max
 
 object TapeEditor : EditorModule() {
     fun HTML.getAllTapesPage() {
+        head {
+            linkCSS(
+                ExportStyles.Common, ExportStyles.Breadcrumb,
+                ExportStyles.Tooltip, ExportStyles.Collapsible, ExportStyles.Callout
+            )
+        }
+
         body {
-            setupStyle()
             BreadcrumbNav()
 
             getForm(action = TapeRouting.RoutePaths.EDIT.path) {
@@ -181,10 +188,13 @@ object TapeEditor : EditorModule() {
                     }
                 """.trimIndent().appendLines(JsUtils.Functions.all)
             }
+            linkCSS(
+                ExportStyles.Common, ExportStyles.Breadcrumb,
+                ExportStyles.Tooltip, ExportStyles.Collapsible, ExportStyles.Callout
+            )
         }
 
         body {
-            setupStyle()
             BreadcrumbNav(pData)
 
             if (!pData.newTape) {
@@ -805,13 +815,13 @@ object TapeEditor : EditorModule() {
             }
 
             td {
-                form(encType = FormEncType.multipartFormData) {
+//                form(encType = FormEncType.multipartFormData) {
                     hiddenInput(name = "tape") { value = tape }
                     hiddenInput(name = "chapter") { value = chap.name }
-                    hiddenInput(name = "afterAction") {
-                        id = name
-                        disabled = true
-                    }
+//                    hiddenInput(name = "afterAction") {
+//                        id = name
+//                        disabled = true
+//                    }
 
                     getButton {
                         formAction = TapeRouting.RoutePaths.EDIT.path
@@ -844,7 +854,7 @@ object TapeEditor : EditorModule() {
                             """
                         +"Delete"
                     }
-                }
+//                }
             }
 
             td {

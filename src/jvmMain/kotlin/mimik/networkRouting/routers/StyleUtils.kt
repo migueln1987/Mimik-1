@@ -4,504 +4,464 @@ import io.ktor.*
 import io.ktor.routing.*
 import kotlinx.css.*
 import kotlinx.css.Float
-import kotlinx.css.properties.TextDecoration
-import kotlinx.css.properties.TextDecorationLine
-import kotlinx.css.properties.lh
-import kotlinx.css.properties.textDecoration
 import kotlinx.html.*
-import org.lesscss.toCSS
+import com.inet.lib.less.less.toCSS
+import kotlinx.css.properties.*
 import java.util.*
+import kotlin.system.measureTimeMillis
 
 // http://w3.org/TR/CSS21/selector.html#pattern-matching
 enum class ExportStyles {
     Common, Breadcrumb, Collapsible,
-    Tooltip, Callout;
+    Tooltip, Callout, Sortable;
+
+    companion object {
+        val isExported = mutableSetOf<ExportStyles>()
+    }
 
     override fun toString(): String = "${name.toLowerCase(Locale.ROOT)}.css"
 
     val asset: String get() = "../assets/css/$this"
 }
 
-interface ExportStyle {
-    val exportName: ExportStyles
-    val data: String
+abstract class ExportStyle(private val exportName: ExportStyles) {
+    abstract val data: CSSBuilder
+    val content by lazy {
+        var result: CssContent
+        measureTimeMillis {
+            result = CssContent(data.toCSS())
+        }.also { println("CSS $exportName: $it ms") }
+        result
+    }
 
     /**
      * Exposes the [data] to [filename] as a `Text/CSS`
      */
-    fun expose(route: Route) = route.cssData(exportName.toString()) { data }
-}
-
-fun exposeDeclaredStyles(route: Route) {
-    route.apply {
-        CommonStyles.expose(this)
-        BreadcrumbStyle.expose(this)
-        CollapsibleDiv.expose(this)
-        TooltipStyle.expose(this)
-        CalloutStyle.expose(this)
+    fun expose(route: Route) {
+        ExportStyles.isExported.add(exportName)
+        route.respondCss(exportName.toString(), content)
     }
+//    fun expose(route: Route) = route.respondCss_b(exportName.toString()) { content }
 }
 
-object CommonStyles : ExportStyle {
-    override val exportName: ExportStyles
-        get() = ExportStyles.Common
-
-    override val data: String
-        get() = """
-            table {
-                    font: 1em Arial;
-                    border: 1px solid black;
-                    width: 100%;
-                }
-                
-                button {
-                    cursor: pointer;
-                }
-                
-                button:disabled {
-                    cursor: default;
-                }
-                
-                .inputButton {
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
-                }
-
-                th {
-                    background-color: #ccc;
-                    width: auto;
-                }
-                td {
-                    background-color: #eee;
-                }
-                th, td {
-                    text-align: left;
-                    padding: 0.4em 0.4em;
-                }
-
-                .btn_50wide {
-                    width: 50%
-                }
-                .tb_25wide {
-                    width: 25%
-                }
-                .center{ text-align: center; }
-                .infoText {
-                    font-size: 14px;
-                    color: #555
-                }
-                
-                .opacity50 { opacity: 0.5; }
-                
-                .radioDiv {
-                    width: 40%;
-                    padding: 6px;
-                }
-                
-                .hoverExpand:hover {
-                    width: -webkit-fill-available;
-                }
-        """.trimIndent()
+fun Route.exposeDeclaredStyles() {
+    CommonStyles.expose(this)
+    BreadcrumbStyle.expose(this)
+    CollapsibleDiv.expose(this)
+    TooltipStyle.expose(this)
+    CalloutStyle.expose(this)
+    Sortable.expose(this)
 }
 
-object BreadcrumbStyle : ExportStyle {
-    override val exportName: ExportStyles
-        get() = ExportStyles.Breadcrumb
+object CommonStyles : ExportStyle(ExportStyles.Common) {
+    override val data
+        get() = CSSBuilder {
+            rule("table") {
+                fontSize = 1.em
+                fontFamily = "Arial"
+                border(1.px, BorderStyle.solid, Color.black)
+                width = 100.pct
+            }
 
-    override val data: String
-        get() = """
-        .breadcrumb {
-            padding: 10px;
-            position: sticky;
-            top: 10px;
-            width: calc(100% - 22px);
-            background-color: #eee;
-            overflow: hidden;
-            border: 1px solid black;
-            border-radius: 5px;
-            z-index: 1;
-        }
-        
-        .breadcrumb div {
-            font-size: 18px;
-        }
-        
-        .breadcrumb .subnav+.subnav:before {
-            content: "/";
-        }
-        
-        .subnav {
-            float: left;
-            overflow: hidden;
-        }
-        
-        .caret-down:after {
-            content: "\25be";
-            line-height: 1;
-            font-style: normal;
-            text-rendering: auto;
-        }
-        
-        .navHeader {
-            color: #0275d8;
-            text-decoration: none;
-        }
-        
-        .navHeader:hover {
-            color: white;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-        
-        .subnav .navHeader {
-            font-size: 16px;  
-            border: none;
-            outline: none;
-            background-color: inherit;
-            font-family: inherit;
-            margin: 0;
-            padding: 4px;
-        }
-        
-        .navHeader:hover, .subnav-content *:hover {
-            background-color: darkslategray;
-        }
-        
-        .subnav-content {
-            position: fixed;
-            left: 5em;
-            top: 42px;
-            width: auto;
-            background-color: slategray;
-            z-index: 1;
-            line-height: 1em;
-            max-height: 10.5em;
-            overflow-y: auto;
-            background-color: transparent;
-            border-top: 12px solid transparent;
-            display: none;
-        }
-        
-        .subnav-content * {
-            cursor: pointer;
-            float: left;
-            color: white;
-            padding: 8px;
-            padding-right: 10em;
-            text-decoration: none;
-            display: inline-flex;
-            background-color: slategrey;
-            border-bottom: 1px solid;
-        }
-        
-        .subnav:hover .subnav-content {
-            display: grid;
-        }
-        """.trimIndent()
+            rule("button") {
+                cursor = Cursor.pointer
+                disabled { cursor = Cursor.default }
+            }
 
-    // https://ktor.io/docs/css-dsl.html#use_css
-    val g_BreadcrumbStyle: String
-        get() {
-            return CSSBuilder {
-                classRule("breadcrumb") {
-                    padding = 10.px.toString()
-                    position = Position.sticky
-                    top = 10.px
-                    width = 100.pct - 22.px
-                    backgroundColor = Color("#eee")
-                    overflow = Overflow.hidden
-                    border = "1px solid black"
-                    borderRadius = 5.px
-                    zIndex = 1
+            ruleClass("inputButton") {
+                border(1.px, BorderStyle.solid, Color("#ccc"), 4.px)
+            }
 
-                    div {
-                        fontSize = 10.px
+            rule("th") {
+                backgroundColor = Color("#ccc")
+                width = LinearDimension.auto
+            }
+
+            rule("td") {
+                backgroundColor = Color("#eee")
+            }
+
+            rule("th", "td") {
+                textAlign = TextAlign.left
+                padding(0.4.em)
+            }
+
+            ruleClass("btn_50wide") { width = 50.pct }
+
+            ruleClass("tb_25wide") { width = 25.pct }
+
+            ruleClass("center") { textAlign = TextAlign.center }
+
+            ruleClass("infoText") {
+                fontSize = 14.px
+                color = Color("#555")
+            }
+
+            ruleClass("opacity50") { opacity = 0.5 }
+
+            ruleClass("radioDiv") {
+                width = 40.pct
+                padding(6.px)
+            }
+
+            ruleClass("hoverExpand") {
+                hover {
+//                    width = LinearDimension.fillAvailable
+                    width = LinearDimension("-webkit-fill-available")
+                }
+            }
+        }
+}
+
+object BreadcrumbStyle : ExportStyle(ExportStyles.Breadcrumb) {
+    override val data
+        get() = CSSBuilder {
+            ruleClass("breadcrumb") {
+                padding = 10.px.toString()
+                position = Position.sticky
+                top = 10.px
+                width = 100.pct - 22.px
+                backgroundColor = Color("#eee")
+                overflow = Overflow.hidden
+                border(1.px, BorderStyle.solid, Color.black, 5.px)
+                zIndex = 1
+
+                div {
+                    fontSize = 14.px
+                }
+
+                classDescendant("subnav") {
+//                    float = Float.left
+//                    overflow = Overflow.hidden
+
+                    // subnav:before
+                    classAdjacentSibling("subnav") {
+                        before { content = "/".quoted }
                     }
+                }
+            }
 
-                    classDescendant("subnav") {
-                        float = Float.left
-                        overflow = Overflow.hidden
+            ruleClass("subnav") {
+                float = Float.left
+                overflow = Overflow.hidden
 
-                        // subnav:before
-                        classAdjacentSibling("subnav") {
-                            before { content = "/".quoted }
-                        }
+                hover {
+                    classDescendant("subnav-content") {
+                        display = Display.grid
                     }
                 }
 
-                classRule("subnav") {
+                classDescendant("navHeader") {
+                    fontSize = 16.px
+                    borderStyle = BorderStyle.none
+                    outline = Outline.none
+                    backgroundColor = Color.inherit
+                    fontFamily = FontStyle.inherit.value
+                    margin = 0.px.toString()
+                    padding = 4.px.toString()
+                }
+            }
+
+            ruleClass("navHeader") {
+                color = Color("#0275d8")
+                textDecoration = TextDecoration.none
+
+                hover {
+                    backgroundColor = Color.darkSlateGray
+                    color = Color.white
+                    cursor = Cursor.pointer
+                    textDecoration(TextDecorationLine.underline)
+                }
+            }
+
+            ruleClass("subnav-content") {
+                position = Position.fixed
+                left = 5.em
+//                top = 42.px
+                width = LinearDimension.auto
+//                backgroundColor = Color.slateGray
+                backgroundColor = Color.transparent
+                zIndex = 1
+                lineHeight = 1.em.lh
+                maxHeight = 10.5.em
+                overflowY = Overflow.auto
+                borderTop(12.px, BorderStyle.solid, Color.transparent)
+                display = Display.none
+
+                universal {
+                    cursor = Cursor.pointer
                     float = Float.left
-                    overflow = Overflow.hidden
-
-                    hover {
-                        classDescendant("subnav-content") {
-                            display = Display.grid
-                        }
-                    }
-
-                    classDescendant("navHeader") {
-                        fontSize = 16.px
-                        border = ""
-                        outline = Outline.none
-                        backgroundColor = Color.inherit
-                        fontFamily = FontStyle.inherit.value
-                        margin = 0.px.toString()
-                        padding = 4.px.toString()
-                    }
-                }
-
-                classRule("navHeader") {
-                    color = Color("#0275d8")
+                    color = Color.white
+                    padding = 8.px.toString()
+                    paddingRight = 10.em
                     textDecoration = TextDecoration.none
+                    display = Display.inlineFlex
+                    backgroundColor = Color.slateGray
+                    borderBottom(1.px, BorderStyle.solid, Color.initial)
 
                     hover {
                         backgroundColor = Color.darkSlateGray
-                        color = Color.white
-                        cursor = Cursor.pointer
-                        textDecoration(TextDecorationLine.underline)
                     }
                 }
+            }
 
-                classRule("subnav-content") {
-                    position = Position.fixed
-                    left = 5.em
-                    top = 42.px
-                    width = LinearDimension.auto
-                    backgroundColor = Color.darkSlateGray
-                    zIndex = 1
-                    lineHeight = 1.em.lh
-                    maxHeight = 10.5.em
-                    overflowY = Overflow.auto
-                    borderTop = "12px solid transparent"
-                    display = Display.none
-
-                    universal {
-                        cursor = Cursor.pointer
-                        float = Float.left
-                        color = Color.white
-                        padding = 8.px.toString()
-                        paddingRight = 10.em
-                        textDecoration = TextDecoration.none
-                        display = Display.inlineFlex
-                        backgroundColor = Color.slateGray
-                        borderBottom = "1px solid"
-
-                        hover {
-                            backgroundColor = Color.darkSlateGray
-                        }
-                    }
+            ruleClass("caret-down") {
+                after {
+                    content = "\\25be".quoted
+                    lineHeight = 1.px.lh
+                    fontStyle = FontStyle.normal
                 }
-
-                classRule("caret-down") {
-                    after {
-                        content = "\\25be".quoted
-                        lineHeight = 1.px.lh
-                        fontStyle = FontStyle.normal
-                    }
-                }
-            }.toCSS()
+            }
         }
 }
 
-object CollapsibleDiv : ExportStyle {
-    override val exportName: ExportStyles
-        get() = ExportStyles.Collapsible
+object CollapsibleDiv : ExportStyle(ExportStyles.Collapsible) {
+    override val data
+        get() = CSSBuilder {
+            // Button style that is used to open and close the collapsible content
+            ruleClass("collapsible") {
+                backgroundColor = Color("#999")
+                color = Color.white
+                cursor = Cursor.pointer
+                padding(8.px, 10.px)
+                marginBottom = 4.px
+                width = 100.pct
+                textAlign = TextAlign.left
+                fontSize = 15.px
 
-    override val data: String
-        get() = """
-            /* Button style that is used to open and close the collapsible content */
-            .collapsible {
-                background-color: #999;
-                color: white;
-                cursor: pointer;
-                padding: 8px 10px;
-                margin-bottom: 4px;
-                width: 100%;
-                text-align: left;
-                font-size: 15px;
+                after {
+                    content = "\\002B".quoted
+                    color = Color.white
+                    fontWeight = FontWeight.bold
+                    float = Float.right
+                    marginLeft = 5.px
+                }
+
+                hover {
+                    backgroundColor = Color("#888")
+                }
             }
-                
-            .collapsible:after {
-                content: '\002B';
-                color: white;
-                font-weight: bold;
-                float: right;
-                margin-left: 5px;
+
+            ruleClass("active") {
+                // background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover)
+                backgroundColor = Color("#888")
+
+                after {
+                    content = "\\2212".quoted
+                }
             }
-            
-            /* Background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
-            .active, .collapsible:hover {
-                background-color: #888;
+
+            // Style the collapsible content. Note: "hidden" by default
+            ruleClass("hideableContent") {
+                padding(6.px)
+                maxHeight = 0.px
+                display = Display.none
+                overflow = Overflow.hidden
+                width = LinearDimension("-webkit-fill-available")
+                backgroundColor = Color("#f4f4f4")
+                transition("max-height", 0.4.s, Timing.easeOut)
             }
-            .active:after {
-                content: "\2212";
-            }
-            
-            /* Style the collapsible content. Note: "hidden" by default */
-            .hideableContent {
-                padding: 6px;
-                max-height: 0;
-                display: none;
-                overflow: hidden;
-                width: -webkit-fill-available;
-                background-color: #f4f4f4;
-                transition: max-height 0.4s ease-out;
-            }
-        """.trimIndent()
+        }
 }
 
-object TooltipStyle : ExportStyle {
-    override val exportName: ExportStyles
-        get() = ExportStyles.Tooltip
+object TooltipStyle : ExportStyle(ExportStyles.Tooltip) {
+    override val data
+        get() = CSSBuilder {
+            ruleClass("tooltip") {
+                position = Position.relative
+                display = Display.inlineBlock
+                borderBottom(1.px, BorderStyle.dotted, Color("#ccc"))
+                color = Color("#006080")
+                cursor = Cursor.default
 
-    override val data: String
-        get() = """
-            .tooltip {
-                position: relative;
-                display: inline-block;
-                border-bottom: 1px dotted #ccc;
-                color: #006080;
-                cursor: default;
+                ruleClass("tooltiptext") {
+                    visibility = Visibility.hidden
+                    position = Position.absolute
+                    width = 30.em
+                    maxWidth = LinearDimension.maxContent
+                    backgroundColor = Color("#555")
+                    color = Color("#fff")
+                    textAlign = TextAlign.center
+                    padding(0.5.em)
+                    borderRadius = 6.px
+                    zIndex = 1
+                    opacity = 0
+                    transition("opacity", 0.3.s)
+                }
+
+                hover {
+                    ruleClass("tooltiptext") {
+                        visibility = Visibility.visible
+                        opacity = 1
+                    }
+                }
             }
-            
-            .tooltip .tooltiptext {
-                visibility: hidden;
-                position: absolute;
-                width: 30em;
-                max-width: max-content;
-                background-color: #555;
-                color: #fff;
-                text-align: center;
-                padding: 0.5em;
-                border-radius: 6px;
-                z-index: 1;
-                opacity: 0;
-                transition: opacity 0.3s;
+
+            ruleClass("tooltip-right") {
+                top = (-5).px
+                left = 125.pct
+
+                after {
+                    content = "".quoted
+                    position = Position.absolute
+                    top = 50.pct
+                    right = 100.pct
+                    marginTop = (-5).px
+                    border(5.px, BorderStyle.solid, Color.transparent)
+                    borderRightColor = Color("#555")
+                }
             }
-            
-            .tooltip:hover .tooltiptext {
-                visibility: visible;
-                opacity: 1;
+
+            ruleClass("tooltip-bottom") {
+                top = 135.pct
+                left = 50.pct
+                marginLeft = (-60).px
+
+                after {
+                    content = "".quoted
+                    position = Position.absolute
+                    bottom = 100.pct
+                    left = 50.pct
+                    marginLeft = (-5).pct
+                    border(5.px, BorderStyle.solid, Color.transparent)
+                    borderBottomColor = Color("#555")
+                }
             }
-            
-            .tooltip-right {
-                top: -5px;
-                left: 125%;  
+
+            ruleClass("tooltip-top") {
+                bottom = 125.pct
+                left = 50.pct
+                marginLeft = (-60).px
+
+                after {
+                    content = "".quoted
+                    position = Position.absolute
+                    top = 100.pct
+                    left = 50.pct
+                    marginLeft = (-5).pct
+                    border(5.px, BorderStyle.solid, Color.transparent)
+                    borderTopColor = Color("#555")
+                }
             }
-            
-            .tooltip-right::after {
-                content: "";
-                position: absolute;
-                top: 50%;
-                right: 100%;
-                margin-top: -5px;
-                border-width: 5px;
-                border-style: solid;
-                border-color: transparent #555 transparent transparent;
+
+            ruleClass("tooltip-left") {
+                top = (-5).pct
+                bottom = LinearDimension.auto
+                right = 128.pct
+
+                after {
+                    content = "".quoted
+                    position = Position.absolute
+                    top = 50.pct
+                    left = 100.pct
+                    marginTop = (-5).pct
+                    border(5.px, BorderStyle.solid, Color.transparent)
+                    borderLeftColor = Color("#555")
+                }
             }
-            
-            .tooltip-bottom {
-                top: 135%;
-                left: 50%;  
-                margin-left: -60px;
-            }
-            
-            .tooltip-bottom::after {
-                content: "";
-                position: absolute;
-                bottom: 100%;
-                left: 50%;
-                margin-left: -5px;
-                border-width: 5px;
-                border-style: solid;
-                border-color: transparent transparent #555 transparent;
-            }
-            
-            .tooltip-top {
-                bottom: 125%;
-                left: 50%;  
-                margin-left: -60px;
-            }
-            
-            .tooltip-top::after {
-                content: "";
-                position: absolute;
-                top: 100%;
-                left: 50%;
-                margin-left: -5px;
-                border-width: 5px;
-                border-style: solid;
-                border-color: #555 transparent transparent transparent;
-            }
-            
-            .tooltip-left {
-                top: -5px;
-                bottom:auto;
-                right: 128%;  
-            }
-            
-            .tooltip-left::after {
-                content: "";
-                position: absolute;
-                top: 50%;
-                left: 100%;
-                margin-top: -5px;
-                border-width: 5px;
-                border-style: solid;
-                border-color: transparent transparent transparent #555;
-            }
-        """.trimIndent()
+        }
 }
 
-object CalloutStyle : ExportStyle {
-    override val exportName: ExportStyles
-        get() = ExportStyles.Callout
+object CalloutStyle : ExportStyle(ExportStyles.Callout) {
+    override val data
+        get() = CSSBuilder {
+            ruleClass("callout") {
+                position = Position.fixed
+                maxWidth = 300.px
+                margin(horizontal = 40.pct)
+                width = 30.pct
+                top = 0.px
+                zIndex = 20
+                transition("top", 0.2.s)
+            }
 
-    override val data: String
-        get() = """
-            .callout {
-                position: fixed;
-                max-width: 300px;
-                margin-left: 40%;
-                margin-right: 40%;
-                width: 30%;
-                top: 0;
-                z-index: 20;
-                transition: top 0.2s;
+            ruleClass("callout-header") {
+                padding(vertical = 2.px) // horizontal = 20.px
+                paddingRight = 30.px
+                paddingLeft = 10.px
+                backgroundColor = Color("#555")
+                fontSize = 30.px
+                color = Color.white
             }
-            
-            .callout-header {
-                padding: 2px 20px;
-                padding-right: 30px;
-                padding-left: 10px;
-                background: #555;
-                font-size: 30px;
-                color: white;
+
+            ruleClass("callout-container") {
+                padding(6.px)
+                backgroundColor = Color("#ccc")
+                color = Color.black
             }
-            
-            .callout-container {
-                padding: 6px;
-                background-color: #ccc;
-                color: black
+
+            ruleClass("closebtn") {
+                position = Position.absolute
+                top = 0.px
+                right = 6.px
+                color = Color.white
+                fontSize = 30.px
+                cursor = Cursor.pointer
+
+                hover {
+                    color = Color.lightGray
+                }
             }
-            
-            .closebtn {
-                position: absolute;
-                top: 0px;
-                right: 6px;
-                color: white;
-                font-size: 30px;
-                cursor: pointer;
+        }
+}
+
+object Sortable : ExportStyle(ExportStyles.Sortable) {
+    override val data
+        get() = CSSBuilder {
+            ruleClass("sjs_ghost") {
+                opacity = 0.5
+                backgroundColor = Color("#C8EBFB")
             }
-            
-            .closebtn:hover {
-                color: lightgrey;
+
+            ruleClass("sjs_group") {
+                paddingLeft = 0.px
+                marginBottom = 0.px
             }
-        """.trimIndent()
+
+            ruleClass("sjs_group-item") {
+                position = Position.relative
+                display = Display.block
+                padding(0.75.rem, 0.5.rem)
+                marginBottom = (-1).px
+                backgroundColor = Color("#fff")
+                border(1.px, BorderStyle.solid, rgba(0, 0, 0, 0.125))
+            }
+
+            ruleClass("nested-sortable", "nested-1", "nested-2", "nested-3") {
+                margin(vertical = 4.px)
+            }
+
+            ruleClass("nested-1") { backgroundColor = Color("#e6e6e6") }
+            ruleClass("nested-2") { backgroundColor = Color("#cccccc") }
+            ruleClass("nested-3") { backgroundColor = Color("#b3b3b3") }
+
+            ruleClass("sjs_col") {
+                flexBasis = FlexBasis.zero
+                flexGrow = 1.0
+                maxWidth = 100.pct
+            }
+
+            ruleClass("sjs_row") {
+                display = Display.flex
+                flexWrap = FlexWrap.wrap
+                margin(horizontal = (-15).px)
+            }
+
+            ruleClass("sjs_handle") {
+                display = Display.inline
+                cursor = Cursor.rowResize
+            }
+
+            ruleClass("sjs_noDrag")
+
+            ruleClass("inline") {
+                display = Display.inline
+            }
+        }
 }
 
 object StyleUtils {
-    @Deprecated("Migrate to css files")
+    @Deprecated("Migrate to css files", level = DeprecationLevel.ERROR)
     fun FlowOrMetaDataContent.setupStyle() {
         unsafeStyle {
             +arrayOf(

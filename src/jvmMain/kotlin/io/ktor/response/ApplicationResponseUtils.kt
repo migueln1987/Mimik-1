@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.util.*
+import kotlinx.ensureSuffix
 
 /**
  * Redirects to an internal path.
@@ -54,7 +55,8 @@ suspend fun ApplicationCall.redirect(
 ) {
     val rootPath = application.environment.rootPath
     val url = url {
-        println("currentPath: $currentPath")
+        println("currentPath: $encodedPath")
+//        println("currentPath: $currentPath")
         encodedPath = when (redirect) {
             Redirect.Absolute -> {
                 if (path.isEmpty())
@@ -62,14 +64,17 @@ suspend fun ApplicationCall.redirect(
             }
             Redirect.Relative -> {
                 if (rootPath.isEmpty()) {
-                    encodedPath.substringBeforeLast("/") + "/$path"
+                    if (path.isEmpty())
+                        encodedPath
+                    else
+                        encodedPath.ensureSuffix("/").substringBeforeLast("/") + "/$path"
                 } else {
                     val subString = encodedPath.substringAfter(rootPath).substringBeforeLast("/").removePrefix("/")
                     "$rootPath/$subString/$path"
                 }
             }
         }.replace("//", "/")
-        println("Redirect to: $currentPath")
+        println("Redirect to: $encodedPath")
         block(this)
     }
 

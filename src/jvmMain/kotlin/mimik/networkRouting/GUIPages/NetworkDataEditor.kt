@@ -7,6 +7,7 @@ import kotlinx.isTrue
 import kotlinx.isValidJSON
 import kotlinx.uppercaseFirstLetter
 import kotlinx.html.*
+import mimik.networkRouting.routers.ExportStyles
 import mimik.networkRouting.routers.JsUtils
 import mimik.networkRouting.routers.JsUtils.disableEnterKey
 import mimik.networkRouting.routers.StyleUtils.setupStyle
@@ -20,6 +21,11 @@ object NetworkDataEditor : EditorModule() {
         val pData = params.toActiveEdit
 
         head {
+            linkCSS(
+                ExportStyles.Common//, ExportStyles.Breadcrumb,
+//                ExportStyles.Tooltip, ExportStyles.Collapsible, ExportStyles.Callout
+            )
+
             unsafeScript {
                 +"""
                     function toParsedUrl(url) {
@@ -30,7 +36,6 @@ object NetworkDataEditor : EditorModule() {
         }
 
         body {
-            setupStyle()
             BreadcrumbNav(pData)
 
             if (pData.loadTape_Failed)

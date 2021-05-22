@@ -69,7 +69,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(kotlin("stdlib-common"))
+                implementation(kotlin("stdlib"))
                 implementation("io.ktor:ktor-client-core", Versions.ktor)
             }
         }
@@ -96,8 +96,7 @@ kotlin {
                 implementation("io.ktor:ktor-html-builder", Versions.ktor)
                 implementation("io.ktor:ktor-locations", Versions.ktor)
                 implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
-                //    implementation("io.bit3:jsass:5.10.4")
-                implementation("org.lesscss:lesscss:1.7.0.1.1")
+                implementation("de.inetsoftware:jlessc:1.10")
 
                 implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
                 implementation("com.airbnb.okreplay:okreplay", Versions.okReply)
@@ -136,13 +135,18 @@ tasks {
     withType<KotlinCompile> {
         kotlinOptions {
             jvmTarget = "1.8"
-            freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
+            freeCompilerArgs = freeCompilerArgs + listOf(
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-XXLanguage:+InlineClasses"
+            )
+//            freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
         }
     }
 
     // include JS artifacts in any JAR/WAR we generate
     withType<Jar> {
         val isWar = archiveExtension.get() == War.WAR_EXTENSION
+//        duplicatesStrategy = DuplicatesStrategy.INCLUDE
 
         doFirst {
             manifest { attributes["Main-Class"] = application.mainClass }
@@ -154,7 +158,6 @@ tasks {
             "jsBrowserProductionWebpack" else "jsBrowserDevelopmentWebpack"
 //        taskName = "jsBrowserProductionWebpack"
 
-        println("Webpack: $taskName")
         val webpackTask = getByName<KotlinWebpack>(taskName)
         dependsOn(webpackTask) // make sure JS gets compiled first
 
