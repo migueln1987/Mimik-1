@@ -8,6 +8,7 @@ import kotlinx.orFalse
 import kotlinx.html.*
 import mimik.helpers.attractors.RequestAttractorBit
 import mimik.networkRouting.routers.JsUtils.disableEnterKey
+import java.util.*
 
 data class TableQueryMatcher(
     /**
@@ -21,7 +22,7 @@ data class TableQueryMatcher(
     var valueIsBody: Boolean = false
 ) {
     val nameShort
-        get() = matcherName.take(2).toUpperCase()
+        get() = matcherName.take(2).uppercase()
 
     private val filterKey = "filter"
     private val filterPrefix

@@ -150,7 +150,7 @@ class RegBuilder(val randomHost: RandomHost = RandomHost()) {
      */
     fun rangeConverter(in_list: List<Char>): String {
         val rejoins = mutableListOf<Pair<Int, Int>>()
-        val inInt_list = in_list.map { it.toInt() }
+        val inInt_list = in_list.map { it.code }
         val reqSpacing = 2 // spacing between ranges; (1)"A-CD" vs (2)"A-D"
         var pre_v = -1
         var steps = 0

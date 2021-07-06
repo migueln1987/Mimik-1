@@ -1,6 +1,7 @@
 package io.ktor.http
 
 import io.ktor.util.*
+import java.util.*
 
 /**
  * Returns the first values for each key
@@ -26,7 +27,7 @@ fun StringValues.limitKeys(vararg keys: String, allowDuplicates: Boolean = false
     val limitParams: MutableList<String> = mutableListOf()
 
     return filter { s, _ ->
-        s.toLowerCase().let { pKey ->
+        s.lowercase().let { pKey ->
             if (keys.contains(pKey)) {
                 if (limitParams.contains(pKey) && !allowDuplicates)
                     return@filter false

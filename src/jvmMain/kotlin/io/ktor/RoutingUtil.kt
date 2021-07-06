@@ -9,7 +9,7 @@ import io.ktor.util.*
 val ApplicationCall.currentPath: String
     get() = URLBuilder.createFromCall(this).currentPath
 
-inline class CssContent(val data: String)
+class CssContent(val data: String)
 
 fun Route.respondCss(path: String, content: CssContent) {
     get(path) {

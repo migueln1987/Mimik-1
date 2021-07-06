@@ -10,11 +10,11 @@ import kotlinx.html.*
 import mimik.networkRouting.routers.ExportStyles
 import mimik.networkRouting.routers.JsUtils
 import mimik.networkRouting.routers.JsUtils.disableEnterKey
-import mimik.networkRouting.routers.StyleUtils.setupStyle
 import okhttp3.RequestData
 import okhttp3.ResponseData
 import okhttp3.hostPath
 import okhttp3.toParameters
+import java.util.*
 
 object NetworkDataEditor : EditorModule() {
     fun HTML.dataEditor(params: Parameters) {
@@ -22,7 +22,7 @@ object NetworkDataEditor : EditorModule() {
 
         head {
             linkCSS(
-                ExportStyles.Common//, ExportStyles.Breadcrumb,
+                ExportStyles.Common // , ExportStyles.Breadcrumb,
 //                ExportStyles.Tooltip, ExportStyles.Collapsible, ExportStyles.Callout
             )
 
@@ -84,9 +84,9 @@ object NetworkDataEditor : EditorModule() {
                                         id = name
                                         HttpMethod.DefaultMethods.forEach {
                                             option {
-                                                if (nData?.method?.toUpperCase() == it.value)
+                                                if (nData?.method?.uppercase() == it.value)
                                                     selected = true
-                                                +it.value.toLowerCase().uppercaseFirstLetter()
+                                                +it.value.lowercase().uppercaseFirstLetter()
                                             }
                                         }
                                     }

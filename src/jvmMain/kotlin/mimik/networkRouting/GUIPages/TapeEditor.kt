@@ -11,7 +11,6 @@ import mimik.tapeItems.MimikContainer
 import mimik.networkRouting.routers.AttractorHtmlUtils.addMatcherRow
 import mimik.networkRouting.routers.JsUtils
 import mimik.networkRouting.routers.JsUtils.disableEnterKey
-import mimik.networkRouting.routers.StyleUtils.setupStyle
 import mimik.helpers.attractors.RequestAttractors
 import mimik.mockHelpers.MockUseStates
 import mimik.mockHelpers.RecordedInteractions

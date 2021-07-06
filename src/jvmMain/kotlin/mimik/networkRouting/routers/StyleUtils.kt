@@ -19,7 +19,7 @@ enum class ExportStyles {
         val isExported = mutableSetOf<ExportStyles>()
     }
 
-    override fun toString(): String = "${name.toLowerCase(Locale.ROOT)}.css"
+    override fun toString(): String = "${name.lowercase()}.css"
 
     val asset: String get() = "../assets/css/$this"
 }

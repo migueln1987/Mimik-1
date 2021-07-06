@@ -22,7 +22,7 @@ fun String.removePrefix(prefix: String, ignoreCase: Boolean): String {
 /**
  * Returns the string with only the first letter in Upper case
  */
-fun String.uppercaseFirstLetter() = take(1).toUpperCase() + drop(1)
+fun String.uppercaseFirstLetter() = take(1).uppercase() + drop(1)
 
 /**
  * If this string starts with the given [prefix] (in order of input), returns a copy of this string
@@ -134,7 +134,7 @@ val String?.isValidJSONMsg: String
 val String.toJsonName: String
     get() = replace(" ", "_")
         .replace("""/(\w)""".toRegex()) {
-            it.groups[1]?.value?.toUpperCase() ?: it.value
+            it.groups[1]?.value?.uppercase() ?: it.value
         }
         .replace("/", "")
         .replace(".", "-")

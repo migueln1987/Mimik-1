@@ -6,12 +6,13 @@ import mimik.helpers.matchers.matchResults
 import mimik.mockHelpers.RecordedInteractions
 import okhttp3.queryItems
 import okhttp3.toStringPairs
+import java.util.*
 
 enum class UniqueTypes {
     Query, Header, Body, Unknown;
 
     val type: String
-        get() = name.toLowerCase()
+        get() = name.lowercase()
 }
 
 class UniqueBit(var searchStr: String? = null, var uniqueType: UniqueTypes? = UniqueTypes.Unknown) {

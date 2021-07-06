@@ -4,13 +4,16 @@ import com.typesafe.config.ConfigFactory
 import io.ktor.*
 import io.ktor.application.*
 import io.ktor.features.*
+import io.ktor.html.*
 import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.*
+import io.kvision.remote.kvisionInit
 import kotlinx.coroutines.runBlocking
+import kotlinx.html.*
 import kotlinx.isNotEmpty
 import mimik.helpers.firstNotNullResult
 import mimik.networkRouting.CallProcessor
@@ -68,6 +71,7 @@ fun main_(args: Array<String> = arrayOf()) = EngineMain.main(args)
 fun Application.MimikModule(testing: Boolean = false) {
     installFeatures()
 
+    kvisionInit(false)
     MimikContainer.init()
     TapeCatalog.isTestRunning = testing
 //    TapeCatalog.Instance // +loads the tape data
@@ -110,6 +114,29 @@ private fun Route.GUIPaths() {
     DataGen().init(this)
     FetchResponder().init(this)
     TestManager().init(this)
+
+    route("ggtest") {
+        get {
+            call.respondHtml {
+                body {
+                    div {
+                        id = "kvision_test"
+                    }
+//                        +"Hello from Ktor"
+//                        div {
+//                            id = "js-response"
+//                            +"Loading..."
+//                        }
+                    script(src = "/assets/libs/mimik.js") {}
+                }
+            }
+        }
+    }
+    get("test") {
+        call.respondText {
+            "I am DATA!!"
+        }
+    }
 
     static("assets") {
         static("libs") { resources("libs") }
@@ -162,7 +189,7 @@ private fun Application.installFeatures() {
             priority = 5.0
             minimumSize(1024) // condition
         }
-        identity{
+        identity {
             priority = 10.0
         }
     }

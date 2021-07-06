@@ -26,6 +26,7 @@ import okhttp3.ResponseData
 import okhttp3.internal.http.HttpMethod
 import okhttp3.toHeaders
 import okhttp3.valueOrNull
+import java.util.*
 
 /**
  * Server handle for creating mock tapes/ chapters from an API call
@@ -147,7 +148,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         Response_Code
         ;
 
-        val value: String get() = _value.valueOrNull ?: name.toLowerCase()
+        val value: String get() = _value.valueOrNull ?: name.lowercase()
     }
 
     operator fun Map<String, String>.get(tag: HeaderTags) = get(tag.value)
@@ -243,7 +244,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         val mockParams = headers.entries().asSequence()
             .filter { it.key.startsWith("mock", true) }
             .associateBy(
-                { it.key.removePrefix("mock", true).toLowerCase() },
+                { it.key.removePrefix("mock", true).lowercase() },
                 { it.value[0] }
             )
 
@@ -470,7 +471,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         var mockParams = headers.entries().asSequence()
             .filter { it.key.startsWith("mock", true) }
             .associateBy(
-                { it.key.removePrefix("mock", true).toLowerCase() },
+                { it.key.removePrefix("mock", true).lowercase() },
                 { it.value[0] }
             )
 
@@ -591,13 +592,13 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
 
             val useRequest = mockParams["use"]
             updateChapter.mockUses = if (mockParams["readonly"].isStrTrue()) {
-                when (useRequest?.toLowerCase()) {
+                when (useRequest?.lowercase()) {
                     "disable" -> MockUseStates.DISABLE
                     else -> MockUseStates.ALWAYS
                 }.state
             } else {
                 useRequest?.toIntOrNull()
-                    ?: when (useRequest?.toLowerCase()) {
+                    ?: when (useRequest?.lowercase()) {
                         "disable" -> MockUseStates.DISABLE
                         "always" -> MockUseStates.ALWAYS
                         else -> MockUseStates.asState(updateChapter.mockUses)
@@ -637,7 +638,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         val filters = headers.entries()
             .filter { it.key.contains(filterKey, true) }
             .associateBy(
-                { it.key.toLowerCase().removePrefix(filterKey) },
+                { it.key.lowercase().removePrefix(filterKey) },
                 { it.value })
 
         // A. url path, single
@@ -673,7 +674,7 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
         val filters = headers.entries()
             .filter { it.key.contains(filterKey, true) }
             .associateBy(
-                { it.key.toLowerCase().removePrefix(filterKey) },
+                { it.key.lowercase().removePrefix(filterKey) },
                 { vMap ->
                     vMap.value.flatMap { it.split(arrayReg) }
                         .filterNot { it.isBlank() }

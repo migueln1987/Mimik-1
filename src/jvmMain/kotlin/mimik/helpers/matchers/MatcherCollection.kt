@@ -24,7 +24,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
      * How many matches this collection contains
      */
     val matchCount: Int
-        get() = matchBundles.sumBy { it.size }
+        get() = matchBundles.sumOf { it.size }
 
     /**
      * True if this collection has any matches
