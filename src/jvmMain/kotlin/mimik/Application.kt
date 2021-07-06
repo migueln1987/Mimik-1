@@ -162,7 +162,7 @@ private fun Application.installFeatures() {
             priority = 5.0
             minimumSize(1024) // condition
         }
-        identity{
+        identity {
             priority = 10.0
         }
     }

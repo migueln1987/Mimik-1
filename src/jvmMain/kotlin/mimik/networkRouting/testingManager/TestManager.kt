@@ -220,7 +220,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
                 if (!replacers.isNullOrEmpty()) {
                     seq_Chapters = replacers.size
                     seq_total = replacers.values.size
-                    seq_totalC = replacers.values.sumBy { it.seqSteps.size }
+                    seq_totalC = replacers.values.sumOf { it.seqSteps.size }
                 }
                 printlnF(
                     "Test Bounds (%s) ready with [%d] tapes:".green() +
@@ -340,7 +340,7 @@ class TestManager : RoutingContract(RoutePaths.rootPath) {
 
                     val seq_Chapters = replacers.size
                     val seq_total = replacers.values.size
-                    val seq_totalC = replacers.values.sumBy { it.seqSteps.size }
+                    val seq_totalC = replacers.values.sumOf { it.seqSteps.size }
 
                     println("Applying the following bound items to test bounds ${testBounds.handle}:".green())
                     println("With:".green())

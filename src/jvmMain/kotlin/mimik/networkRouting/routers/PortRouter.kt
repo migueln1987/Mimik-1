@@ -24,7 +24,7 @@ fun Route.port(vararg port: Int, body: Route.() -> Unit): List<Route> {
  * Evaluates if a route port equals [port]
  * @param port equals [port]
  */
-data class HttpPortRouteSelector(val port: Int) : RouteSelector(RouteSelectorEvaluation.qualityConstant) {
+data class HttpPortRouteSelector(val port: Int) : RouteSelector() {
     override fun evaluate(context: RoutingResolveContext, segmentIndex: Int) =
         if (context.call.request.local.port == port)
             RouteSelectorEvaluation.Constant

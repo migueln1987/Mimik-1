@@ -22,7 +22,6 @@ import mimik.networkRouting.RoutingContract
 import mimik.networkRouting.GUIPages.DataGen.RoutePaths.Response
 import mimik.networkRouting.routers.ExportStyles
 import mimik.networkRouting.routers.JsUtils
-import mimik.networkRouting.routers.StyleUtils.setupStyle
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.*
@@ -300,7 +299,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
 
                                     div(classes = "radioDiv") {
                                         val data = actChap.recentRequest?.method
-                                        val dataDefault = data?.toUpperCase() ?: HttpMethod.Get.value
+                                        val dataDefault = data?.uppercase() ?: HttpMethod.Get.value
                                         radioInput(name = "reqMethod") {
                                             id = "reqMethodCustom"
                                             value = dataDefault
@@ -315,7 +314,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
                                                 option {
                                                     if (dataDefault == it.value)
                                                         selected = true
-                                                    +it.value.toLowerCase().uppercaseFirstLetter()
+                                                    +it.value.lowercase().uppercaseFirstLetter()
                                                 }
                                             }
                                         }
@@ -759,7 +758,7 @@ class DataGen : RoutingContract(RoutePaths.rootPath) {
     }
 
     fun Parameters.asResponseCall(): ResponseResultOf<String> {
-        val method = this["reqMethod"].orEmpty().toUpperCase()
+        val method = this["reqMethod"].orEmpty().uppercase()
         val isLocalhostCall = get("useLocalhost") != null
         val url = get("reqUrl").orEmpty().ensureHttpPrefix.let {
             if (isLocalhostCall) {

@@ -337,7 +337,7 @@ fun List<RequestAttractorBit>?.getMatches(inputs: List<String>?): AttractorMatch
                 Triple(
                     result.first + 1, // is as requested type
                     result.second + pass, // did it pass?
-                    bData.sumBy { it.sumBy { it.litMatchCnt } } // literal matches
+                    bData.sumOf { it.sumOf { it.litMatchCnt } } // literal matches
                 )
             }
     }

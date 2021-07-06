@@ -21,6 +21,7 @@ import okhttp3.RequestData
 import okhttp3.ResponseData
 import okhttp3.internal.http.HttpMethod
 import okhttp3.reQuery
+import java.util.*
 
 /**
  * GUI page for editing tapes and processor of edit commands (action and delete)
@@ -223,7 +224,7 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
 
         val network = when (data["network"]) {
             "request" -> (foundChap.requestData ?: RequestData()).also {
-                it.method = data["requestMethod"]?.toUpperCase()
+                it.method = data["requestMethod"]?.uppercase()
                 it.url = data["requestUrl"]?.ensureHttpPrefix
             }
 
@@ -245,15 +246,15 @@ class TapeRouting : RoutingContract(RoutePaths.rootPath) {
                 val headersData = data["netHeaders"].toPairs().orEmpty()
                 nData.headers = okhttp3.Headers.Builder().also { builder ->
                     headersData.forEach { (key, value) ->
-                        val headName = key.toLowerCase()
-                            .replace("""-([a-z])""".toRegex()) { it.value.toUpperCase() }
+                        val headName = key.lowercase()
+                            .replace("""-([a-z])""".toRegex()) { it.value.uppercase() }
                             .uppercaseFirstLetter()
                         builder.add(headName, value)
                     }
                 }.build()
 
                 nData.body = data["networkBody"].let {
-                    val mm = data["requestMethod"]?.toUpperCase().orEmpty()
+                    val mm = data["requestMethod"]?.uppercase().orEmpty()
                     when {
                         !HttpMethod.permitsRequestBody(mm) && it != null -> null
                         HttpMethod.requiresRequestBody(mm) && it == null -> ""

@@ -5,6 +5,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.internal.http.HttpMethod
 import okreplay.content
 import java.nio.charset.Charset
+import java.util.*
 
 /**
  * Open version of [Request] which has writable fields for:
@@ -40,7 +41,7 @@ class RequestData : NetworkData {
         "%s: %s".format(method, url)
 
     var method: String? = null
-        get() = field?.toUpperCase()
+        get() = field?.uppercase()
 
     /**
      * Full URL

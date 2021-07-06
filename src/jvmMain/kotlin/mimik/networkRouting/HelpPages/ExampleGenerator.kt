@@ -5,13 +5,14 @@ import kotlinx.isNotNull
 import kotlinx.toBase64
 import mimik.helpers.RandomHost
 import mimik.helpers.parser.P4Command
+import java.util.*
 import kotlin.math.absoluteValue
 
 object ExampleGenerator {
     private val rHost = RandomHost()
 
     fun build(create: CreateTypes): String {
-        val createName = create.name.toLowerCase()
+        val createName = create.name.lowercase()
         val sb_heads = StringBuilder()
         val rHost = RandomHost()
 
@@ -45,7 +46,7 @@ object ExampleGenerator {
          * - can add sequences
          */
         val isTapePassthrough = rHost.nextBool() && tapeUrl.isNotNull() &&
-            create == CreateTypes.Tape
+                create == CreateTypes.Tape
 
         sb_heads.appendLine("PUT /mock/$createName HTTP/1.1")
         sb_heads.appendLine("Host: 0.0.0.0:4321")
@@ -100,7 +101,7 @@ object ExampleGenerator {
                 addFilterItem("Query") {
                     (1..rHost.nextInt(4, 1)).joinToString("&") {
                         rHost.valueAsChars(Pool = RandomHost.pool_Letters) + "=" +
-                            rHost.valueAsChars(Pool = RandomHost.pool_Letters)
+                                rHost.valueAsChars(Pool = RandomHost.pool_Letters)
                     }
                 }?.also { sb_heads.appendLine(it) }
             }

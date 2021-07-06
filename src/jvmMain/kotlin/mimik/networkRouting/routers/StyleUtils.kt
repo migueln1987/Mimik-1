@@ -19,7 +19,7 @@ enum class ExportStyles {
         val isExported = mutableSetOf<ExportStyles>()
     }
 
-    override fun toString(): String = "${name.toLowerCase(Locale.ROOT)}.css"
+    override fun toString(): String = "${name.lowercase()}.css"
 
     val asset: String get() = "../assets/css/$this"
 }
@@ -458,19 +458,4 @@ object Sortable : ExportStyle(ExportStyles.Sortable) {
                 display = Display.inline
             }
         }
-}
-
-object StyleUtils {
-    @Deprecated("Migrate to css files", level = DeprecationLevel.ERROR)
-    fun FlowOrMetaDataContent.setupStyle() {
-        unsafeStyle {
-            +arrayOf(
-                CommonStyles.data,
-                BreadcrumbStyle.data,
-                CollapsibleDiv.data,
-                TooltipStyle.data,
-                CalloutStyle.data
-            ).joinToString(separator = "\n")
-        }
-    }
 }
