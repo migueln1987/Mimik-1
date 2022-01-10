@@ -122,12 +122,14 @@ private fun Route.GUIPaths() {
                     div {
                         id = "kvision_test"
                     }
-//                        +"Hello from Ktor"
-//                        div {
-//                            id = "js-response"
-//                            +"Loading..."
-//                        }
+//                    +"Hello from Ktor"
+//                    div {
+//                        id = "js-response"
+//                        +"Loading..."
+//                    }
                     script(src = "/assets/libs/mimik.js") {}
+                    script(src = "https://polyfill.io/v3/polyfill.min.js?features=Promise%2CCustomEvent") {}
+//                    script(src = "mimik.js") {}
                 }
             }
         }
@@ -196,7 +198,7 @@ private fun Application.installFeatures() {
 
     // https://ktor.io/servers/features/double-receive.html
     install(DoubleReceive) { receiveEntireContent = true }
-    // install(LocalDoubleReceive) { receiveEntireContent = true }
+//     install(LocalDoubleReceive) { receiveEntireContent = true }
 
     val deviceIDReg = """uniqueid.*?".+?"([^"]+)""".toRegex(RegexOption.IGNORE_CASE)
     install(CallId) {

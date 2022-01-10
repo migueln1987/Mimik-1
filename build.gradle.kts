@@ -3,13 +3,13 @@ import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer
 
 object Versions {
-    const val kotlin = "1.5.10"
-    const val ktor = "1.6.0"
+    const val kotlin = "1.6.0"
+    const val ktor = "1.6.7"
     const val fuel = "2.3.1"
     const val okReply = "1.6.0"
-    const val kotlin_css = "1.0.0-pre.148-kotlin-1.4.30"
-    const val objectbox = "2.8.1"
-    const val KVision = "4.8.1"
+    const val kotlin_css = "1.0.0-pre.279-kotlin-1.6.0"
+    const val objectbox = "3.0.1"
+    const val KVision = "5.6.1"
 }
 
 group = "mimik"
@@ -22,13 +22,12 @@ buildscript {
 }
 
 plugins {
-    kotlin("plugin.serialization") version "1.5.10"
-    kotlin("multiplatform") version "1.5.10"
+    kotlin("plugin.serialization") version "1.6.0"
+    kotlin("multiplatform") version "1.6.0"
     application
     idea
     war
     id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
-//    id("kvision") version "4.8.1"
 }
 
 apply {
@@ -51,9 +50,8 @@ war {
 
 repositories {
     mavenCentral()
-    maven("https://kotlin.bintray.com/ktor")
-//    maven("https://dl.bintray.com/kotlin/kotlin-eap")
-    maven("https://kotlin.bintray.com/kotlin-js-wrappers/")
+//    maven("https://kotlin.bintray.com/ktor")
+//    maven("https://kotlin.bintray.com/kotlin-js-wrappers/")
     mavenLocal()
 }
 
@@ -74,6 +72,9 @@ kotlin {
 
     js(IR) {
         browser {
+//            commonWebpackConfig {
+//                devtool = org.jetbrains.kotlin.gradle.targets.js.webpack.WebpackDevtool.EVAL_SOURCE_MAP
+//            }
             runTask {
                 outputFileName = "mimik.js"
                 sourceMaps = true
@@ -83,8 +84,8 @@ kotlin {
                     proxy = mutableMapOf(
                         "/mk/*" to "http://localhost:4884",
                         "/mkws/*" to mapOf("target" to "ws://localhost:4884", "ws" to true)
-                    ),
-                    static = mutableListOf("$buildDir/processedResources/js/main")
+                    )
+//                    static = mutableListOf("$buildDir/processedResources/js/main")
                 )
             }
             webpackTask {
@@ -132,7 +133,7 @@ kotlin {
                 implementation("io.ktor:ktor-gson", Versions.ktor)
                 implementation("io.ktor:ktor-html-builder", Versions.ktor)
                 implementation("io.ktor:ktor-locations", Versions.ktor)
-                implementation("org.jetbrains:kotlin-css", Versions.kotlin_css)
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-css", Versions.kotlin_css)
                 implementation("de.inetsoftware:jlessc:1.10")
 
                 implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
@@ -160,10 +161,33 @@ kotlin {
             dependencies {
                 implementation(kotlin("stdlib-js"))
 
+//                implementation("io.kvision:kvision", Versions.KVision)
+//                implementation("io.kvision:kvision-bootstrap", Versions.KVision)
+//                implementation("io.kvision:kvision-bootstrap-css", Versions.KVision)
+//                implementation("io.kvision:kvision-bootstrap-select", Versions.KVision)
+//                implementation("io.kvision:kvision-chart", Versions.KVision)
+                implementation(npm("react-awesome-button", "*"))
+                implementation(npm("prop-types", "*"))
                 implementation("io.kvision:kvision", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-css", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-datetime", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-select", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-spinner", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-upload", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-dialog", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-typeahead", Versions.KVision)
+                implementation("io.kvision:kvision-fontawesome", Versions.KVision)
+                implementation("io.kvision:kvision-i18n", Versions.KVision)
+                implementation("io.kvision:kvision-richtext", Versions.KVision)
+                implementation("io.kvision:kvision-handlebars", Versions.KVision)
+                implementation("io.kvision:kvision-datacontainer", Versions.KVision)
+                implementation("io.kvision:kvision-chart", Versions.KVision)
+                implementation("io.kvision:kvision-tabulator", Versions.KVision)
+                implementation("io.kvision:kvision-pace", Versions.KVision)
+                implementation("io.kvision:kvision-toast", Versions.KVision)
+                implementation("io.kvision:kvision-react", Versions.KVision)
+                implementation("io.kvision:kvision-routing-navigo", Versions.KVision)
             }
         }
 
@@ -176,54 +200,66 @@ kotlin {
     }
 }
 
-tasks {
-    // include JS artifacts in any JAR/WAR we generate
-    fun Jar.webpackRun() {
-//        println("Running webpack")
-        val isWar = archiveExtension.get() == War.WAR_EXTENSION
-
-        doFirst {
-            manifest { attributes["Main-Class"] = application.mainClass }
-            if (!isWar)
-                from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-        }
-
-        val taskName = if (project.hasProperty("isProduction"))
-            "jsBrowserProductionWebpack" else "jsBrowserDevelopmentWebpack"
-//        taskName = "jsBrowserProductionWebpack"
-
-        val webpackTask = getByName<KotlinWebpack>(taskName).also {
-//            it.webpackConfigApplier {}
-        }
-        dependsOn(webpackTask) // make sure JS gets compiled first
-
-        val copyTask: CopySpec.() -> Unit = {
-            val baseConventions = project.convention.plugins["base"] as BasePluginConvention?
-            val distributionDir = project.buildDir.resolve(baseConventions?.distsDirName.orEmpty())
-
-            // from(File(webpackTask.destinationDirectory, webpackTask.outputFileName)) {
-            from(distributionDir) {
-                // copy compiled js to libs folder
-                include("*.js", "*.js.map")
-                if (isWar) into("classes/libs")
-                else into("libs")
-            }
-        }
-
-        (this as? War)?.webInf(copyTask) ?: copyTask()
-    }
-
-    withType<Jar> { webpackRun() }
-
-//    getByName<JavaExec>("run") {
-//        classpath(getByName<Jar>("jvmJar")) // so that the JS artifacts generated by `jvmJar` can be found and served
-//    }
-}
+val webpackType: String
+    get() = if (project.hasProperty("isProduction") && project.property("isProduction") == true)
+        "jsBrowserProductionWebpack" else "jsBrowserDevelopmentWebpack"
 
 afterEvaluate {
     tasks {
-        create("jvmRun", JavaExec::class) {
-            dependsOn("compileKotlinJvm")
+        withType<AbstractCopyTask> {
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
+
+        fun Jar.webpackRun() {
+            val isWar = archiveExtension.get() == War.WAR_EXTENSION
+
+            doFirst {
+                manifest { attributes["Main-Class"] = application.mainClass }
+                if (!isWar) {
+                    from(configurations.runtimeClasspath.get().map {
+                        if (it.isDirectory) it else zipTree(it)
+                    })
+                }
+            }
+
+            val webpackTask = getByName<KotlinWebpack>(webpackType)
+            dependsOn(webpackTask) // make sure JS gets compiled first
+
+            val copyTask: CopySpec.() -> Unit = {
+                from(webpackTask.destinationDirectory) {
+                    // copy compiled js to libs folder
+                    include("*.js", "*.js.map")
+                    if (isWar) into("classes/libs")
+                    else into("libs")
+                }
+
+                from(webpackTask.destinationDirectory) {
+                    // copy compiled js to libs folder
+                    exclude("*.js", "*.js.map")
+                    if (isWar) into("classes/libs")
+                    else into("assets")
+                }
+            }
+
+            (this as? War)?.webInf(copyTask) ?: copyTask()
+        }
+
+        // include JS artifacts in any JAR/WAR we generate
+        withType<Jar> { webpackRun() }
+
+        register<Copy>("copyJsBundleToKtor") {
+            mustRunAfter(webpackType)
+            dependsOn(webpackType)
+
+            project.tasks.getByName<KotlinWebpack>(webpackType) {
+                from(destinationDirectory) { include("*.*") }
+            }
+
+            into("$buildDir/processedResources/jvm/main/libs")
+        }
+
+        getByName<JavaExec>("run") {
+            dependsOn("compileKotlinJvm", "copyJsBundleToKtor")
             group = "run"
             main = application.mainClass.get()
             classpath =
@@ -231,18 +267,6 @@ afterEvaluate {
                         project.tasks["jvmProcessResources"].outputs.files
             workingDir = buildDir
         }
-
-//        getByName("jvmProcessResources", Copy::class) {
-//            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-//        }
-
-//        getByName("compileKotlinJvm") {
-//            dependsOn("compileKotlinMetadata")
-//        }
-//
-//        getByName("compileKotlinJs") {
-//            dependsOn("compileKotlinMetadata")
-//        }
     }
 }
 

@@ -1,11 +1,11 @@
 package kotlinx.css
 
-fun CSSBuilder(
+fun CssBuilder(
     indent: String = "",
     allowClasses: Boolean = true,
     parent: RuleContainer? = null,
     builder: RuleSet
-) = CSSBuilder(indent, allowClasses, parent).apply(builder)
+) = CssBuilder(indent, allowClasses, parent).apply(builder)
 
 /**
  * - Null strings: "*"
@@ -24,7 +24,7 @@ val String?.asClassStr: String
  *
  * Additional; adding multiple [name] will separate them by a comma
  */
-fun CSSBuilder.ruleClass(vararg name: String, block: RuleSet = {}) {
+fun CssBuilder.ruleClass(vararg name: String, block: RuleSet = {}) {
     val classNames = name.joinToString { it.asClassStr }
     rule(classNames, passStaticClassesToParent = false, repeatable = true, block)
 }
@@ -34,20 +34,20 @@ fun CSSBuilder.ruleClass(vararg name: String, block: RuleSet = {}) {
  *
  * Additional; adding multiple [name] will separate them by a comma
  */
-fun CSSBuilder.rule(vararg name: String, block: RuleSet) {
+fun CssBuilder.rule(vararg name: String, block: RuleSet) {
     val classNames = name.joinToString()
     rule(classNames, passStaticClassesToParent = false, repeatable = true, block)
 }
 
 // Children & descendants
-fun CSSBuilder.classDescendant(selector: String? = null, block: RuleSet): Rule =
+fun CssBuilder.classDescendant(selector: String? = null, block: RuleSet): Rule =
     "& ${selector.asClassStr}"(block)
 
 // Combinators
-fun CSSBuilder.classAdjacentSibling(selector: String, block: RuleSet) =
+fun CssBuilder.classAdjacentSibling(selector: String, block: RuleSet) =
     "+ ${selector.asClassStr}"(block)
 
-fun CSSBuilder.toString(asIndented: Boolean = true): String {
+fun CssBuilder.toString(asIndented: Boolean = true): String {
     if (!asIndented) return toString()
 
     return buildString {
@@ -61,10 +61,10 @@ fun CSSBuilder.toString(asIndented: Boolean = true): String {
 }
 
 fun RuleContainer.buildRules(builder: StringBuilder, indent: String) {
-    val resolvedRules = LinkedHashMap<String, CSSBuilder>()
+    val resolvedRules = LinkedHashMap<String, CssBuilder>()
     rules.forEach { (selector, passStaticClassesToParent, block) ->
         if (!resolvedRules.containsKey(selector)) {
-            resolvedRules[selector] = CSSBuilder(
+            resolvedRules[selector] = CssBuilder(
                 "$indent  ",
                 allowClasses = false,
                 parent = if (passStaticClassesToParent) this else null
@@ -81,7 +81,7 @@ fun RuleContainer.buildRules(builder: StringBuilder, indent: String) {
     }
 
     multiRules.forEach { (selector, passStaticClassesToParent, block) ->
-        val blockBuilder = CSSBuilder(
+        val blockBuilder = CssBuilder(
             "$indent  ",
             allowClasses = false,
             parent = if (passStaticClassesToParent) this else null

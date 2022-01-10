@@ -25,7 +25,7 @@ enum class ExportStyles {
 }
 
 abstract class ExportStyle(private val exportName: ExportStyles) {
-    abstract val data: CSSBuilder
+    abstract val data: CssBuilder
     val content by lazy {
         var result: CssContent
         measureTimeMillis {
@@ -55,7 +55,7 @@ fun Route.exposeDeclaredStyles() {
 
 object CommonStyles : ExportStyle(ExportStyles.Common) {
     override val data
-        get() = CSSBuilder {
+        get() = CssBuilder {
             rule("table") {
                 fontSize = 1.em
                 fontFamily = "Arial"
@@ -115,7 +115,7 @@ object CommonStyles : ExportStyle(ExportStyles.Common) {
 
 object BreadcrumbStyle : ExportStyle(ExportStyles.Breadcrumb) {
     override val data
-        get() = CSSBuilder {
+        get() = CssBuilder {
             ruleClass("breadcrumb") {
                 padding = 10.px.toString()
                 position = Position.sticky
@@ -217,7 +217,7 @@ object BreadcrumbStyle : ExportStyle(ExportStyles.Breadcrumb) {
 
 object CollapsibleDiv : ExportStyle(ExportStyles.Collapsible) {
     override val data
-        get() = CSSBuilder {
+        get() = CssBuilder {
             // Button style that is used to open and close the collapsible content
             ruleClass("collapsible") {
                 backgroundColor = Color("#999")
@@ -266,7 +266,7 @@ object CollapsibleDiv : ExportStyle(ExportStyles.Collapsible) {
 
 object TooltipStyle : ExportStyle(ExportStyles.Tooltip) {
     override val data
-        get() = CSSBuilder {
+        get() = CssBuilder {
             ruleClass("tooltip") {
                 position = Position.relative
                 display = Display.inlineBlock
@@ -364,7 +364,7 @@ object TooltipStyle : ExportStyle(ExportStyles.Tooltip) {
 
 object CalloutStyle : ExportStyle(ExportStyles.Callout) {
     override val data
-        get() = CSSBuilder {
+        get() = CssBuilder {
             ruleClass("callout") {
                 position = Position.fixed
                 maxWidth = 300.px
@@ -407,7 +407,7 @@ object CalloutStyle : ExportStyle(ExportStyles.Callout) {
 
 object Sortable : ExportStyle(ExportStyles.Sortable) {
     override val data
-        get() = CSSBuilder {
+        get() = CssBuilder {
             ruleClass("sjs_ghost") {
                 opacity = 0.5
                 backgroundColor = Color("#C8EBFB")
