@@ -70,7 +70,8 @@ kotlin {
         }
     }
 
-    js(IR) {
+//    js(IR) {
+    js(LEGACY) {
         browser {
 //            commonWebpackConfig {
 //                devtool = org.jetbrains.kotlin.gradle.targets.js.webpack.WebpackDevtool.EVAL_SOURCE_MAP
@@ -91,7 +92,8 @@ kotlin {
             webpackTask {
                 outputFileName = "mimik.js"
             }
-            binaries.executable()
+            binaries.executable() // for legacy or IR
+//            binaries.library() // IR only
         }
     }
 
@@ -187,6 +189,7 @@ kotlin {
                 implementation("io.kvision:kvision-pace", Versions.KVision)
                 implementation("io.kvision:kvision-toast", Versions.KVision)
                 implementation("io.kvision:kvision-react", Versions.KVision)
+                implementation("io.kvision:kvision-rest", Versions.KVision)
                 implementation("io.kvision:kvision-routing-navigo", Versions.KVision)
             }
         }

@@ -1,11 +1,12 @@
 package mimik.networkRouting.routers
 
+import com.inet.lib.less.Less
 import io.ktor.*
 import io.ktor.routing.*
 import kotlinx.css.*
 import kotlinx.css.Float
 import kotlinx.html.*
-import com.inet.lib.less.less.toCSS
+// import com.inet.lib.less.less.toCSS
 import kotlinx.css.properties.*
 import java.util.*
 import kotlin.system.measureTimeMillis
@@ -29,7 +30,9 @@ abstract class ExportStyle(private val exportName: ExportStyles) {
     val content by lazy {
         var result: CssContent
         measureTimeMillis {
-            result = CssContent(data.toCSS())
+            val dataAsString = with(data) { Less.compile(null, toString(true), false) }
+            result = CssContent(dataAsString)
+//            result = CssContent(data.toCSS())
         }.also { println("CSS $exportName: $it ms") }
         result
     }

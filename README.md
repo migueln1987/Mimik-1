@@ -55,7 +55,21 @@ The purpose of this server is to
 
 ## How to setup - Mimik server
 ### Starting
-- `./gradlew run`
+- `./gradlew run` : IDE instances of project, for development
+- `./gradlew jar` : JAR file, for local Java instances
+- `./gradlew war` : WAR file, for Tomcat servers
+- Kotlin: IDE instance of Mimik as command line only
+  - Main Class: `mimik.ApplicationKt`
+  - Working directory: `[your repo location]/Mimik`
+  - Use classpath of module: `Mimik.jvmMain`
+  - Before Launch: `build`
+
+### Remote Tomcat debugginng
+- `Remote JVM Debugging`
+  - Mode: `Attach to remote JVM`
+  - Host: `127.0.0.1`
+  - Port: `8000`
+  - Command: `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000`
 
 ### Creating Tapes/ Interactions
 - [Via HTTP page](Docs/mimikHttp.md)
