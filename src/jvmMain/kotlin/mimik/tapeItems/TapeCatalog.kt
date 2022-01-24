@@ -36,6 +36,8 @@ class TapeCatalog {
      * Loads all the *.json tapes within the okreplay.tapeRoot directory
      */
     fun loadTapeData() {
+        val tapePath = MimikContainer.config.tapeRoot.get()?.absolutePath
+        println("Searching for tapes at: $tapePath")
         val files = tapeFiles ?: return
 
         tapes.clear()

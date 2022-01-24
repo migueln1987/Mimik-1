@@ -1,4 +1,4 @@
-package mimik.tabs
+package mimik.kvision_tabs
 
 import io.kvision.core.FlexWrap
 import io.kvision.form.check.CheckBoxStyle
@@ -19,9 +19,7 @@ import io.kvision.toolbar.buttonGroup
 import io.kvision.toolbar.toolbar
 import io.kvision.utils.px
 import kotlinx.browser.window
-import react.ChildrenBuilder
 import react.ComponentClass
-import react.Props
 import react.PropsWithChildren
 
 external interface ReactButtonProps : PropsWithChildren {

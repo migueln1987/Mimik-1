@@ -1,6 +1,6 @@
 @file:UseContextualSerialization(Date::class)
 
-package mimik.tabs
+package mimik.kvision_tabs
 
 import io.kvision.core.onEvent
 import io.kvision.form.InputSize

@@ -1,4 +1,4 @@
-package mimik.tabs
+package mimik.kvision_tabs
 
 import io.kvision.chart.ChartOptions
 import io.kvision.chart.ChartScales

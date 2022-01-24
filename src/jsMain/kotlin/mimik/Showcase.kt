@@ -3,7 +3,6 @@ package mimik
 import io.kvision.Application
 import io.kvision.core.*
 import io.kvision.form.select.select
-import io.kvision.i18n.DefaultI18nManager
 import io.kvision.i18n.I18n
 import io.kvision.pace.Pace
 import io.kvision.panel.root
@@ -14,7 +13,7 @@ import io.kvision.routing.Routing
 import io.kvision.utils.auto
 import io.kvision.utils.perc
 import io.kvision.utils.px
-import mimik.tabs.*
+import mimik.kvision_tabs.*
 
 class Showcase : Application() {
     init {

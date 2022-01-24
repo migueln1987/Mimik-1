@@ -119,21 +119,29 @@ private fun Route.GUIPaths() {
         get {
             call.respondHtml {
                 body {
+                    div { id = "kvision_test" }
                     div {
-                        id = "kvision_test"
+                        id = "js-response"
+                        +"Loading..."
                     }
-//                    +"Hello from Ktor"
-//                    div {
-//                        id = "js-response"
-//                        +"Loading..."
-//                    }
                     script(src = "/assets/libs/mimik.js") {}
                     script(src = "https://polyfill.io/v3/polyfill.min.js?features=Promise%2CCustomEvent") {}
-//                    script(src = "mimik.js") {}
                 }
             }
         }
     }
+
+    route("gui") {
+        get {
+            call.respondHtml {
+                body {
+                    div { id = "gui" }
+                    script(src = "/assets/libs/mimik.js") {}
+                }
+            }
+        }
+    }
+
     get("test") {
         call.respondText {
             "I am DATA!!"

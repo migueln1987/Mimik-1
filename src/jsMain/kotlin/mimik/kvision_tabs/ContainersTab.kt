@@ -1,4 +1,4 @@
-package mimik.tabs
+package mimik.kvision_tabs
 
 import io.kvision.core.Background
 import io.kvision.core.Col

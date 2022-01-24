@@ -1,4 +1,4 @@
-package mimik.tabs
+package mimik.kvision_tabs
 
 import io.kvision.core.*
 import io.kvision.html.ImageShape

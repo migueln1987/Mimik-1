@@ -1,4 +1,4 @@
-package mimik.tabs
+package mimik.kvision_tabs
 
 import io.kvision.core.FlexWrap
 import io.kvision.core.FontWeight

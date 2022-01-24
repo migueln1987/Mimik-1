@@ -1,4 +1,4 @@
-package mimik.tabs
+package mimik.kvision_tabs
 
 import kotlinx.browser.window
 import kotlinx.coroutines.CoroutineScope
