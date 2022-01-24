@@ -143,10 +143,13 @@ class TapeCatalog {
         if (cachedChapter == null && bestChapter != null)
             bestChapter.cachedCalls.add(hashContent)
 
-        return Pair(QueryResponse {
-            item = foundTape
-            status = foundTape?.let { HttpStatusCode.Found } ?: HttpStatusCode.NotFound
-        }, bestChapter)
+        return Pair(
+            QueryResponse {
+                item = foundTape
+                status = foundTape?.let { HttpStatusCode.Found } ?: HttpStatusCode.NotFound
+            },
+            bestChapter
+        )
     }
 
     /**

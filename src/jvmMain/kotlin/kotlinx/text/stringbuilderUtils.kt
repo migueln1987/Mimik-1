@@ -1,10 +1,23 @@
 package kotlinx.text
 
 /**
+ * Appends empty new lines to [this][StringBuilder]
+ */
+fun StringBuilder.appendLines(count: Int): StringBuilder {
+    repeat(count) { appendLine("") }
+    return this
+}
+
+/**
  * Appends multiple [lines] to this [StringBuilder]
  */
-fun StringBuilder.appendLines(vararg lines: String): StringBuilder {
-    lines.forEach { appendLine(it) }
+fun StringBuilder.appendLines(vararg lines: Any): StringBuilder {
+    lines.forEach {
+        when (it) {
+            is Int -> appendLines(it)
+            is String -> appendLine(it)
+        }
+    }
     return this
 }
 

@@ -7,7 +7,7 @@ import io.kvision.core.Container
 import io.kvision.dropdown.dropDown
 import io.kvision.html.div
 import io.kvision.html.h4
-import io.kvision.i18n.I18n
+import io.kvision.i18n.I18n.tr
 import io.kvision.panel.*
 import io.kvision.utils.px
 
@@ -25,7 +25,7 @@ class ContainersTab : SimplePanel() {
     }
 
     private fun Container.addStackPanel() {
-        h4(I18n.tr("Stack panel"))
+        h4(tr("Stack panel"))
         stackPanel {
             route("/containers/blue") {
                 div("&nbsp;", rich = true) {
@@ -41,29 +41,29 @@ class ContainersTab : SimplePanel() {
             }
         }
         dropDown(
-            I18n.tr("Activate panel from the stack"), listOf(
-                I18n.tr("Blue panel") to "#!/containers/blue",
-                I18n.tr("Green panel") to "#!/containers/green"
+            tr("Activate panel from the stack"), listOf(
+                tr("Blue panel") to "#!/containers/blue",
+                tr("Green panel") to "#!/containers/green"
             )
         )
     }
 
     private fun Container.addTabPanel() {
-        h4(I18n.tr("Tab panel with draggable tabs"))
+        h4(tr("Tab panel with draggable tabs"))
         tabPanel(draggableTabs = true) {
-            tab(I18n.tr("Blue panel")) {
+            tab(tr("Blue panel")) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.BLUE))
                     height = 40.px
                 }
             }
-            tab(I18n.tr("Green panel")) {
+            tab(tr("Green panel")) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.GREEN))
                     height = 40.px
                 }
             }
-            tab(I18n.tr("Red panel (closable)"), closable = true) {
+            tab(tr("Red panel (closable)"), closable = true) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.RED))
                     height = 40.px
@@ -73,15 +73,15 @@ class ContainersTab : SimplePanel() {
     }
 
     private fun Container.addTabPanelLeft() {
-        h4(I18n.tr("Tab panel with tabs on the left"))
+        h4(tr("Tab panel with tabs on the left"))
         tabPanel(TabPosition.LEFT, SideTabSize.SIZE_1) {
-            tab(I18n.tr("Blue panel")) {
+            tab(tr("Blue panel")) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.BLUE))
                     height = 140.px
                 }
             }
-            tab(I18n.tr("Green panel")) {
+            tab(tr("Green panel")) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.GREEN))
                     height = 140.px
@@ -91,15 +91,15 @@ class ContainersTab : SimplePanel() {
     }
 
     private fun Container.addTabPanelRight() {
-        h4(I18n.tr("Tab panel with tabs on the right"))
+        h4(tr("Tab panel with tabs on the right"))
         tabPanel(TabPosition.RIGHT, SideTabSize.SIZE_1) {
-            tab(I18n.tr("Blue panel")) {
+            tab(tr("Blue panel")) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.BLUE))
                     height = 140.px
                 }
             }
-            tab(I18n.tr("Green panel")) {
+            tab(tr("Green panel")) {
                 div("&nbsp;", rich = true) {
                     background = Background(Color.name(Col.GREEN))
                     height = 140.px
@@ -109,7 +109,7 @@ class ContainersTab : SimplePanel() {
     }
 
     private fun Container.addVerticalSplitPanel() {
-        h4(I18n.tr("Vertical split panel"))
+        h4(tr("Vertical split panel"))
         splitPanel {
             div("&nbsp;", rich = true) {
                 background = Background(Color.name(Col.BLUE))
@@ -123,7 +123,7 @@ class ContainersTab : SimplePanel() {
     }
 
     private fun Container.addHorizontalSplitPanel() {
-        h4(I18n.tr("Horizontal split panel"))
+        h4(tr("Horizontal split panel"))
         splitPanel(direction = Direction.HORIZONTAL) {
             height = 220.px
             div("&nbsp;", rich = true) {

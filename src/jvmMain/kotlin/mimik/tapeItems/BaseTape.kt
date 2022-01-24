@@ -439,8 +439,10 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                     logBuilder.appendLines(
                         "=== Live ===",
                         okRequest.logRequestData("[Missing]") {
-                            ("-Valid URL: $isValidURL\n" +
-                                    "-Network: $hasNetworkAccess")
+                            buildString {
+                                appendLine("-Valid URL: $isValidURL")
+                                appendLine("-Network: $hasNetworkAccess")
+                            }
                         }
                     )
                     returnResponse = miniResponse(okRequest, HttpStatusCode.BadGateway).toReplayResponse
@@ -448,11 +450,12 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                     logBuilder.appendLines(
                         "=== Live ===",
                         okRequest.logRequestData(chapter.name) {
-                            ("-Valid URL: $isValidURL\n" +
-                                    "-Network: $hasNetworkAccess%s").format(
+                            buildString {
+                                appendLine("-Valid URL: $isValidURL")
+                                appendLine("-Network: $hasNetworkAccess")
                                 if (chapter.uses >= 0)
-                                    "\n-Uses: ${chapter.uses}" else ""
-                            )
+                                    append("-Uses: ${chapter.uses}")
+                            }
                         }
                     )
 
@@ -483,12 +486,12 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 logBuilder.appendLines(
                     "=== Await ===",
                     okRequest.logRequestData(chapter.name) {
-                        ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess\n" +
-                                "%s").format(
+                        buildString {
+                            appendLine("-Valid URL: $isValidURL")
+                            appendLine("-Network: $hasNetworkAccess")
                             if (chapter.uses >= 0)
-                                "-Uses: ${chapter.uses}" else ""
-                        )
+                                append("-Uses: ${chapter.uses}")
+                        }
                     }
                 )
 
@@ -578,11 +581,12 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 logBuilder.appendLines(
                     "=== Live ===",
                     okRequest.logRequestData(it.name) {
-                        ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess%s").format(
+                        buildString {
+                            appendLine("-Valid URL: $isValidURL")
+                            appendLine("-Network: $hasNetworkAccess")
                             if (it.uses >= 0)
-                                "\n-Uses: ${it.uses}" else ""
-                        )
+                                append("-Uses: ${it.uses}")
+                        }
                     }
                 )
 
@@ -618,12 +622,12 @@ class BaseTape private constructor(config: (BaseTape) -> Unit = {}) : Tape {
                 logBuilder.appendLines(
                     "=== Await ===",
                     okRequest.logRequestData(it.name) {
-                        ("-Valid URL: $isValidURL\n" +
-                                "-Network: $hasNetworkAccess\n" +
-                                "%s").format(
+                        buildString {
+                            appendLine("-Valid URL: $isValidURL")
+                            appendLine("-Network: $hasNetworkAccess")
                             if (it.uses >= 0)
-                                "-Uses: ${it.uses}" else ""
-                        )
+                                append(" \"-Uses: ${it.uses}\"")
+                        }
                     }
                 )
 

@@ -4,15 +4,13 @@ import io.ktor.client.*
 import io.ktor.client.engine.js.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.kvision.Application
-import io.kvision.module
+import io.kvision.*
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import io.kvision.panel.root
 import io.kvision.panel.vPanel
-import io.kvision.startApplication
 import mimik.tabs.BasicTab
 
 private val client = HttpClient(Js)
@@ -55,7 +53,22 @@ class kkv : Application() {
 }
 
 fun main() {
-    startApplication(::Showcase, module.hot)
+    startApplication(
+        ::Showcase,
+        module.hot,
+        BootstrapModule,
+        BootstrapCssModule,
+        FontAwesomeModule,
+        BootstrapSelectModule,
+        BootstrapDatetimeModule,
+        BootstrapSpinnerModule,
+        BootstrapTypeaheadModule,
+        BootstrapUploadModule,
+        RichTextModule,
+        ChartModule,
+        TabulatorModule,
+        CoreModule
+    )
 //    println("qq")
 //    document.addEventListener("DOMContentLoaded", {
 //        helloWorld("Hi!")

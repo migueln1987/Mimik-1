@@ -3,13 +3,14 @@ import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer
 
 object Versions {
-    const val kotlin = "1.6.0"
+    const val kotlin = "1.6.10"
     const val ktor = "1.6.7"
     const val fuel = "2.3.1"
     const val okReply = "1.6.0"
-    const val kotlin_css = "1.0.0-pre.279-kotlin-1.6.0"
-    const val objectbox = "3.0.1"
-    const val KVision = "5.6.1"
+    const val kotlin_css = "1.0.0-pre.290-kotlin-1.6.10"
+    const val kotlin_js_extensions = "1.0.1-pre.290-kotlin-1.6.10"
+    const val objectbox = "3.1.0"
+    const val KVision = "5.7.2"
 }
 
 group = "mimik"
@@ -17,21 +18,21 @@ version = "2.x_0321"
 
 buildscript {
     dependencies {
-//        classpath("io.objectbox:objectbox-gradle-plugin:2.8.1")
+        classpath("io.objectbox:objectbox-gradle-plugin:3.1.0")
     }
 }
 
 plugins {
-    kotlin("plugin.serialization") version "1.6.0"
-    kotlin("multiplatform") version "1.6.0"
+    kotlin("plugin.serialization") version "1.6.10"
+    kotlin("multiplatform") version "1.6.10"
     application
     idea
     war
-    id("org.jlleitschuh.gradle.ktlint") version "9.2.1"
+    id("org.jlleitschuh.gradle.ktlint") version "10.2.1"
 }
 
 apply {
-//    plugin("io.objectbox")
+    plugin("io.objectbox")
 }
 
 application {
@@ -54,6 +55,9 @@ repositories {
 //    maven("https://kotlin.bintray.com/kotlin-js-wrappers/")
     mavenLocal()
 }
+
+fun kotlinw(target: String): String =
+    "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
 kotlin {
     jvm {
@@ -135,13 +139,14 @@ kotlin {
                 implementation("io.ktor:ktor-gson", Versions.ktor)
                 implementation("io.ktor:ktor-html-builder", Versions.ktor)
                 implementation("io.ktor:ktor-locations", Versions.ktor)
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-css", Versions.kotlin_css)
+                implementation(kotlinw("css"), Versions.kotlin_css)
+                // implementation(kotlinw("extensions"), Versions.kotlin_js_extensions)
                 implementation("de.inetsoftware:jlessc:1.10")
 
                 implementation("com.github.kittinunf.fuel:fuel", Versions.fuel)
                 implementation("com.airbnb.okreplay:okreplay", Versions.okReply)
-                implementation("com.beust:klaxon:5.4")
-                implementation("org.tukaani:xz:1.8")
+                implementation("com.beust:klaxon:5.5")
+                implementation("org.tukaani:xz:1.9")
 
                 //    implementation("io.objectbox:objectbox-kotlin", Versions.objectbox)
                 //    implementation("io.objectbox:objectbox-linux", Versions.objectbox)
@@ -163,34 +168,30 @@ kotlin {
             dependencies {
                 implementation(kotlin("stdlib-js"))
 
-//                implementation("io.kvision:kvision", Versions.KVision)
-//                implementation("io.kvision:kvision-bootstrap", Versions.KVision)
-//                implementation("io.kvision:kvision-bootstrap-css", Versions.KVision)
-//                implementation("io.kvision:kvision-bootstrap-select", Versions.KVision)
-//                implementation("io.kvision:kvision-chart", Versions.KVision)
                 implementation(npm("react-awesome-button", "*"))
                 implementation(npm("prop-types", "*"))
                 implementation("io.kvision:kvision", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-css", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-datetime", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-dialog", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-select", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-spinner", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-upload", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-dialog", Versions.KVision)
                 implementation("io.kvision:kvision-bootstrap-typeahead", Versions.KVision)
-                implementation("io.kvision:kvision-fontawesome", Versions.KVision)
-                implementation("io.kvision:kvision-i18n", Versions.KVision)
-                implementation("io.kvision:kvision-richtext", Versions.KVision)
-                implementation("io.kvision:kvision-handlebars", Versions.KVision)
-                implementation("io.kvision:kvision-datacontainer", Versions.KVision)
+                implementation("io.kvision:kvision-bootstrap-upload", Versions.KVision)
                 implementation("io.kvision:kvision-chart", Versions.KVision)
-                implementation("io.kvision:kvision-tabulator", Versions.KVision)
+                implementation("io.kvision:kvision-datacontainer", Versions.KVision)
+                implementation("io.kvision:kvision-fontawesome", Versions.KVision)
+                implementation("io.kvision:kvision-handlebars", Versions.KVision)
+                implementation("io.kvision:kvision-i18n", Versions.KVision)
                 implementation("io.kvision:kvision-pace", Versions.KVision)
-                implementation("io.kvision:kvision-toast", Versions.KVision)
                 implementation("io.kvision:kvision-react", Versions.KVision)
                 implementation("io.kvision:kvision-rest", Versions.KVision)
+                implementation("io.kvision:kvision-richtext", Versions.KVision)
                 implementation("io.kvision:kvision-routing-navigo", Versions.KVision)
+                implementation("io.kvision:kvision-state", Versions.KVision)
+                implementation("io.kvision:kvision-tabulator", Versions.KVision)
+                implementation("io.kvision:kvision-toast", Versions.KVision)
             }
         }
 
@@ -219,9 +220,11 @@ afterEvaluate {
             doFirst {
                 manifest { attributes["Main-Class"] = application.mainClass }
                 if (!isWar) {
-                    from(configurations.runtimeClasspath.get().map {
-                        if (it.isDirectory) it else zipTree(it)
-                    })
+                    from(
+                        configurations.runtimeClasspath.get().map {
+                            if (it.isDirectory) it else zipTree(it)
+                        }
+                    )
                 }
             }
 
@@ -265,9 +268,9 @@ afterEvaluate {
             dependsOn("compileKotlinJvm", "copyJsBundleToKtor")
             group = "run"
             main = application.mainClass.get()
-            classpath =
-                configurations["jvmRuntimeClasspath"] + project.tasks["compileKotlinJvm"].outputs.files +
-                        project.tasks["jvmProcessResources"].outputs.files
+            classpath = configurations["jvmRuntimeClasspath"] +
+                project.tasks["compileKotlinJvm"].outputs.files +
+                project.tasks["jvmProcessResources"].outputs.files
             workingDir = buildDir
         }
     }

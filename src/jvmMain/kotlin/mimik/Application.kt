@@ -115,7 +115,7 @@ private fun Route.GUIPaths() {
     FetchResponder().init(this)
     TestManager().init(this)
 
-    route("ggtest") {
+    route("kvision_test") {
         get {
             call.respondHtml {
                 body {

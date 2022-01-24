@@ -40,21 +40,20 @@ class P4MockData(config: (P4MockData) -> Unit = {}) {
             var body: String? = null
 
             fun loadDefaultHeaders() {
-                headers_raw = (if (isRequest)
-                    mapOf(
+                headers_raw = if (isRequest)
+                    mutableMapOf(
                         "a2" to listOf("aaa2"),
                         "a1" to listOf("aaa1"),
                         "aa" to listOf("aaa2"),
                         "22" to listOf("aaaC")
                     )
                 else
-                    mapOf(
+                    mutableMapOf(
                         "b1" to listOf("bbb1"),
                         "b2" to listOf("bbb2"),
                         "qq" to listOf("dup_1", "dup_2"),
                         "33" to listOf("bbbC")
                     )
-                        ).toMutableMap()
             }
 
             /**
@@ -64,17 +63,16 @@ class P4MockData(config: (P4MockData) -> Unit = {}) {
              * - Response; "test: 22 \n final: 44"
              */
             fun loadDefaultBody() {
-                body = (if (isRequest)
+                body = if (isRequest)
                     """
                         code: 14
                         other: 12
-                    """
+                    """.trimIndent()
                 else
                     """
                         test: 22
                         final: 44
-                    """
-                        ).trimIndent()
+                    """.trimIndent()
             }
         }
 
@@ -112,7 +110,12 @@ object MockDataUtils {
 }
 
 /**
- * Creates an mock environment named [name] which
+ * Creates a mock environment named [name] which:
+ * - includes the setup/ expecting items in [mockSetup]
+ * - runs a tests on [this][List<String>]
+ *
+ * Optional [includeCondChk] (when [true][Boolean])
+ * will append a var (named `confirm`) to the results marking if the condition was successful in matching
  */
 fun List<String>.toMockSet(
     name: String = "",
@@ -120,6 +123,12 @@ fun List<String>.toMockSet(
     mockSetup: (P4MockData) -> Unit = {}
 ): MockSet = MockSet(name, this, includeCondChk, mockSetup)
 
+/**
+ * A single test set
+ *
+ * @param name Name of this test set, so easier result viewing
+ * @param commands Actions to run as part of this test
+ */
 class MockSet(
     val name: String,
     var commands: List<String>,

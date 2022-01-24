@@ -3,8 +3,8 @@ package mimik.networkRouting.testingManager
 import javax.util.plus
 import kolor.red
 import kolor.yellow
+import kotlinx.println
 import mimik.helpers.parser.P4Action
-import mimik.helpers.printlnF
 import mimik.mockHelpers.RecordedInteractions
 import mimik.mockHelpers.SeqActionObject
 import mimik.tapeItems.BaseTape
@@ -41,34 +41,26 @@ data class TestBounds(var handle: String, val tapes: MutableList<String> = mutab
                     println("Re-assigning test bound -> Resetting time".yellow())
 
                     val (tStart, tEnd) = startTest()
-                    printlnF(
-                        ("Reset test bounds\n" +
-                            "- Handle: %s\n" +
-                            "- Target ID: (%s)\n" +
-                            "- From: %s\n" +
-                            "- To:   %s").yellow(),
-                        handle,
-                        value,
-                        tStart,
-                        tEnd
-                    )
+                    buildString {
+                        appendLine("Reset test bounds")
+                        appendLine("- Handle: $handle")
+                        appendLine("- Target ID: ($value)")
+                        appendLine("- From: $tStart")
+                        append("- To:   $tEnd")
+                    }.yellow().println()
                 }
                 else -> {
                     field = value
 
                     val (tStart, tEnd) = startTest()
 
-                    printlnF(
-                        ("Starting test bounds\n" +
-                            "- Handle: %s\n" +
-                            "- Target ID: (%s)\n" +
-                            "- From: %s\n" +
-                            "- To:   %s").yellow(),
-                        handle,
-                        value,
-                        tStart,
-                        tEnd
-                    )
+                    buildString {
+                        appendLine("Starting test bounds")
+                        appendLine("- Handle: $handle")
+                        appendLine("- Target ID: ($value)")
+                        appendLine("- From: $tStart")
+                        append("- To:   $tEnd")
+                    }.yellow().println()
                 }
             }
         }
@@ -197,13 +189,8 @@ inline fun <reified T : Any?> TestBounds?.observe(tape: BaseTape, watch: () -> T
     if (this == null) return watch.invoke()
 
     val watcherAct: (RecordedInteractions, Int?) -> Int = { chap, value ->
-        var data = boundData[chap.name]
-        if (data == null) {
-            data = BoundChapterItem().also {
-                it.stateUse = chap.originalMockUses ?: chap.mockUses
-            }
-            boundData[chap.name] = data
-        }
+        val data = boundData.getOrPut(chap.name) { BoundChapterItem() }
+
         if (data.stateUse == null)
             data.stateUse = chap.originalMockUses ?: chap.mockUses
 

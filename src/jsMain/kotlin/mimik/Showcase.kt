@@ -18,8 +18,14 @@ import mimik.tabs.*
 
 class Showcase : Application() {
     init {
+        Routing.init()
+        Pace.init()
         io.kvision.require("css/showcase.css")
         io.kvision.require("react-awesome-button/dist/themes/theme-blue.css")
+        io.kvision.require("moment/locale/pl")
+//        if (!(I18n.language in listOf("en", "pl"))) {
+            I18n.language = "en"
+//        }
     }
 
     override fun start() {
@@ -30,8 +36,6 @@ class Showcase : Application() {
 //                    "en" to io.kvision.require("i18n/messages-en.json")
 //                )
 //            )
-        Routing.init()
-        Pace.init()
         root("kvision_test") {
             vPanel {
                 width = 100.perc
@@ -80,7 +84,7 @@ class Showcase : Application() {
                         add(RestTab())
                     }
                 }
-                select(listOf("en" to I18n.tr("English"), "pl" to I18n.tr("Polish")), I18n.language) {
+                select(listOf("en" to I18n.tr("English")), I18n.language) {
                     width = 300.px
                     marginLeft = auto
                     marginRight = auto

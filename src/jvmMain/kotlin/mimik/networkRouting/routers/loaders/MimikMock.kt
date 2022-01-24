@@ -1,4 +1,5 @@
 @file:Suppress("KDocUnresolvedReference")
+
 package mimik.networkRouting.routers.loaders
 
 import io.ktor.application.ApplicationCall
@@ -679,7 +680,8 @@ class MimikMock : RoutingContract(RoutePaths.rootPath) {
                     vMap.value.flatMap { it.split(arrayReg) }
                         .filterNot { it.isBlank() }
                         .map { it.trim() }
-                })
+                }
+            )
 
         val uQuery = filters["query"]?.map { UniqueBit(it, UniqueTypes.Query) }
         val uHead = filters["head"]?.map { UniqueBit(it, UniqueTypes.Header) }

@@ -1,11 +1,16 @@
 package mimik.tabs
 
-import io.kvision.core.*
+import io.kvision.core.AlignItems
+import io.kvision.core.Border
+import io.kvision.core.BorderStyle
+import io.kvision.core.Col
+import io.kvision.core.Color
+import io.kvision.core.JustifyContent
 import io.kvision.data.BaseDataComponent
 import io.kvision.data.DataContainer
 import io.kvision.html.Align
 import io.kvision.html.Div
-import io.kvision.i18n.I18n
+import io.kvision.i18n.I18n.tr
 import io.kvision.panel.SimplePanel
 import io.kvision.panel.VPanel
 import io.kvision.panel.hPanel
@@ -22,21 +27,21 @@ class DragDropTab : SimplePanel() {
         }
 
         val listGreen = observableListOf(
-            DataModel(I18n.tr("January")),
-            DataModel(I18n.tr("February")),
-            DataModel(I18n.tr("March")),
-            DataModel(I18n.tr("April")),
-            DataModel(I18n.tr("May")),
-            DataModel(I18n.tr("June")),
-            DataModel(I18n.tr("July")),
-            DataModel(I18n.tr("August")),
-            DataModel(I18n.tr("September")),
-            DataModel(I18n.tr("October")),
-            DataModel(I18n.tr("November"))
+            DataModel(tr("January")),
+            DataModel(tr("February")),
+            DataModel(tr("March")),
+            DataModel(tr("April")),
+            DataModel(tr("May")),
+            DataModel(tr("June")),
+            DataModel(tr("July")),
+            DataModel(tr("August")),
+            DataModel(tr("September")),
+            DataModel(tr("October")),
+            DataModel(tr("November"))
         )
 
         val listBlue = observableListOf(
-            DataModel(I18n.tr("December"))
+            DataModel(tr("December"))
         )
 
         val dataContainer1 = DataContainer(listGreen, { _, index, _ ->
@@ -77,7 +82,8 @@ class DragDropTab : SimplePanel() {
             }
         })
 
-        val panel = hPanel(justify = JustifyContent.CENTER, alignItems = AlignItems.FLEXSTART, spacing = 50)
+        val panel =
+            hPanel(justify = JustifyContent.CENTER, alignItems = AlignItems.FLEXSTART, useWrappers = true, spacing = 50)
         panel.add(dataContainer1)
         panel.add(dataContainer2)
 

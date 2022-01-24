@@ -1,13 +1,20 @@
 package mimik.tabs
 
-import io.kvision.dropdown.*
+import io.kvision.dropdown.DD
+import io.kvision.dropdown.Direction
+import io.kvision.dropdown.cmLink
+import io.kvision.dropdown.contextMenu
+import io.kvision.dropdown.ddLink
+import io.kvision.dropdown.dropDown
+import io.kvision.dropdown.header
+import io.kvision.dropdown.separator
 import io.kvision.form.check.checkBox
 import io.kvision.form.text.text
 import io.kvision.html.ButtonStyle
 import io.kvision.html.button
 import io.kvision.html.image
 import io.kvision.html.span
-import io.kvision.i18n.I18n
+import io.kvision.i18n.I18n.tr
 import io.kvision.navbar.nav
 import io.kvision.navbar.navForm
 import io.kvision.navbar.navLink
@@ -15,6 +22,7 @@ import io.kvision.navbar.navbar
 import io.kvision.panel.SimplePanel
 import io.kvision.panel.hPanel
 import io.kvision.panel.vPanel
+import io.kvision.require
 import io.kvision.utils.px
 
 class DropDownTab : SimplePanel() {
@@ -22,76 +30,76 @@ class DropDownTab : SimplePanel() {
         this.marginTop = 10.px
         this.minHeight = 600.px
         vPanel(spacing = 30) {
-            navbar("NavBar") {
+            navbar("NavBar", collapseOnClick = true) {
                 nav {
-                    navLink(I18n.tr("File"), icon = "fas fa-file")
-                    navLink(I18n.tr("Edit"), icon = "fas fa-bars")
+                    navLink(tr("File"), icon = "fas fa-file")
+                    navLink(tr("Edit"), icon = "fas fa-bars")
                     dropDown(
-                        I18n.tr("Favourites"),
-                        listOf(I18n.tr("HTML") to "#!/basic", I18n.tr("Forms") to "#!/forms"),
+                        tr("Favourites"),
+                        listOf(tr("HTML") to "#!/basic", tr("Forms") to "#!/forms"),
                         icon = "fas fa-star",
                         forNavbar = true
                     )
                 }
                 navForm {
-                    text(label = I18n.tr("Search:"))
-                    checkBox(label = I18n.tr("Search")) {
+                    text(label = tr("Search:"))
+                    checkBox(label = tr("Search")) {
                         inline = true
                     }
                 }
                 nav(rightAlign = true) {
-                    navLink(I18n.tr("System"), icon = "fab fa-windows")
+                    navLink(tr("System"), icon = "fab fa-windows")
                 }
             }
             dropDown(
-                I18n.tr("Dropdown with navigation menu"), listOf(
-                    I18n.tr("HTML") to "#!/basic",
-                    I18n.tr("Forms") to "#!/forms",
-                    I18n.tr("Buttons") to "#!/buttons",
-                    I18n.tr("Dropdowns") to "#!/dropdowns",
-                    I18n.tr("Containers") to "#!/containers"
+                tr("Dropdown with navigation menu"), listOf(
+                    tr("HTML") to "#!/basic",
+                    tr("Forms") to "#!/forms",
+                    tr("Buttons") to "#!/buttons",
+                    tr("Dropdowns") to "#!/dropdowns",
+                    tr("Containers") to "#!/containers"
                 ), "fas fa-arrow-right", style = ButtonStyle.SUCCESS
             ).apply {
                 minWidth = 250.px
             }
-            dropDown(I18n.tr("Dropdown with custom list"), icon = "far fa-image", style = ButtonStyle.WARNING) {
+            dropDown(tr("Dropdown with custom list"), icon = "far fa-image", style = ButtonStyle.WARNING) {
                 minWidth = 250.px
-                image(io.kvision.require("img/cat.jpg")) { height = 170.px; margin = 10.px; title = "Cat" }
+                image(require("img/cat.jpg")) { height = 170.px; margin = 10.px; title = "Cat" }
                 separator()
-                image(io.kvision.require("img/dog.jpg")) { height = 170.px; margin = 10.px; title = "Dog" }
+                image(require("img/dog.jpg")) { height = 170.px; margin = 10.px; title = "Dog" }
             }
             hPanel(spacing = 5) {
                 val fdd = dropDown(
-                    I18n.tr("Dropdown with special options"), listOf(
-                        I18n.tr("Header") to DD.HEADER.option,
-                        I18n.tr("HTML") to "#!/basic",
-                        I18n.tr("Forms") to "#!/forms",
-                        I18n.tr("Buttons") to "#!/buttons",
-                        I18n.tr("Separator") to DD.SEPARATOR.option,
-                        I18n.tr("Dropdowns (disabled)") to DD.DISABLED.option,
-                        I18n.tr("Separator") to DD.SEPARATOR.option,
-                        I18n.tr("Containers") to "#!/containers"
+                    tr("Dropdown with special options"), listOf(
+                        tr("Header") to DD.HEADER.option,
+                        tr("HTML") to "#!/basic",
+                        tr("Forms") to "#!/forms",
+                        tr("Buttons") to "#!/buttons",
+                        tr("Separator") to DD.SEPARATOR.option,
+                        tr("Dropdowns (disabled)") to DD.DISABLED.option,
+                        tr("Separator") to DD.SEPARATOR.option,
+                        tr("Containers") to "#!/containers"
                     ), "fas fa-asterisk", style = ButtonStyle.PRIMARY
                 ) {
                     direction = Direction.DROPUP
                     minWidth = 250.px
                 }
-                button(I18n.tr("Toggle dropdown"), style = ButtonStyle.INFO).onClick { e ->
+                button(tr("Toggle dropdown"), style = ButtonStyle.INFO).onClick { e ->
                     fdd.toggle()
                     e.stopPropagation()
                 }
             }
-            span(I18n.tr("Open the context menu with right mouse click."))
+            span(tr("Open the context menu with right mouse click."))
             contextMenu {
-                header(I18n.tr("Menu header"))
-                cmLink(I18n.tr("HTML"), "#!/basic")
-                cmLink(I18n.tr("Forms"), "#!/forms")
-                cmLink(I18n.tr("Buttons"), "#!/buttons")
-                cmLink(I18n.tr("Dropdowns"), "#!/dropdowns")
+                header(tr("Menu header"))
+                cmLink(tr("HTML"), "#!/basic")
+                cmLink(tr("Forms"), "#!/forms")
+                cmLink(tr("Buttons"), "#!/buttons")
+                cmLink(tr("Dropdowns"), "#!/dropdowns")
                 separator()
-                dropDown(I18n.tr("Dropdown"), forDropDown = true) {
-                    ddLink(I18n.tr("Containers"), "#!/containers")
-                    ddLink(I18n.tr("Layout"), "#!/layout")
+                dropDown(tr("Dropdown"), forDropDown = true) {
+                    ddLink(tr("Containers"), "#!/containers")
+                    ddLink(tr("Layout"), "#!/layout")
                 }
             }
         }

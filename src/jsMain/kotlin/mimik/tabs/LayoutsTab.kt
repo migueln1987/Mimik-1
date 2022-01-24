@@ -1,12 +1,26 @@
 package mimik.tabs
 
-import io.kvision.core.*
+import io.kvision.core.AlignItems
+import io.kvision.core.Background
+import io.kvision.core.Col
+import io.kvision.core.Color
+import io.kvision.core.Container
+import io.kvision.core.FlexDirection
+import io.kvision.core.FlexWrap
+import io.kvision.core.JustifyContent
+import io.kvision.core.JustifyItems
 import io.kvision.html.Align
 import io.kvision.html.Tag
 import io.kvision.html.div
 import io.kvision.html.h4
-import io.kvision.i18n.I18n
-import io.kvision.panel.*
+import io.kvision.i18n.I18n.tr
+import io.kvision.panel.SimplePanel
+import io.kvision.panel.dockPanel
+import io.kvision.panel.flexPanel
+import io.kvision.panel.gridPanel
+import io.kvision.panel.hPanel
+import io.kvision.panel.responsiveGridPanel
+import io.kvision.panel.vPanel
 import io.kvision.utils.auto
 import io.kvision.utils.px
 
@@ -30,7 +44,7 @@ class LayoutsTab : SimplePanel() {
     }
 
     private fun Container.addHPanel() {
-        h4(I18n.tr("Horizontal layout"))
+        h4(tr("Horizontal layout"))
         hPanel(spacing = 5) {
             customDiv("1", 100)
             customDiv("2", 150)
@@ -39,7 +53,7 @@ class LayoutsTab : SimplePanel() {
     }
 
     private fun Container.addVPanel() {
-        h4(I18n.tr("Vertical layout"))
+        h4(tr("Vertical layout"))
         vPanel(spacing = 5) {
             customDiv("1", 100)
             customDiv("2", 150)
@@ -48,7 +62,7 @@ class LayoutsTab : SimplePanel() {
     }
 
     private fun Container.addFlexPanel1() {
-        h4(I18n.tr("CSS flexbox layouts"))
+        h4(tr("CSS flexbox layouts"))
         flexPanel(
             FlexDirection.ROW, FlexWrap.WRAP, JustifyContent.FLEXEND, AlignItems.CENTER,
             spacing = 5
@@ -116,7 +130,7 @@ class LayoutsTab : SimplePanel() {
     }
 
     private fun Container.addGridPanel1() {
-        h4(I18n.tr("CSS grid layouts"))
+        h4(tr("CSS grid layouts"))
         gridPanel(columnGap = 5, rowGap = 5, justifyItems = JustifyItems.CENTER) {
             background = Background(Color.name(Col.KHAKI))
             options(1, 1) {
@@ -150,7 +164,7 @@ class LayoutsTab : SimplePanel() {
     }
 
     private fun Container.addRespGridPanel() {
-        h4(I18n.tr("Responsive grid layout"))
+        h4(tr("Responsive grid layout"))
         responsiveGridPanel {
             background = Background(Color.name(Col.SILVER))
             options(1, 1) {
@@ -169,23 +183,23 @@ class LayoutsTab : SimplePanel() {
     }
 
     private fun Container.addDockPanel() {
-        h4(I18n.tr("Dock layout"))
+        h4(tr("Dock layout"))
         dockPanel {
             background = Background(Color.name(Col.YELLOW))
             center {
-                customDiv(I18n.tr("CENTER"), 150).apply { margin = auto }
+                customDiv(tr("CENTER"), 150).apply { margin = auto }
             }
             left {
-                customDiv(I18n.tr("LEFT"), 150)
+                customDiv(tr("LEFT"), 150)
             }
             right {
-                customDiv(I18n.tr("RIGHT"), 150)
+                customDiv(tr("RIGHT"), 150)
             }
             up {
-                customDiv(I18n.tr("UP"), 150).apply { margin = auto; marginBottom = 10.px }
+                customDiv(tr("UP"), 150).apply { margin = auto; marginBottom = 10.px }
             }
             down {
-                customDiv(I18n.tr("DOWN"), 150).apply { margin = auto; marginTop = 10.px }
+                customDiv(tr("DOWN"), 150).apply { margin = auto; marginTop = 10.px }
             }
         }
     }

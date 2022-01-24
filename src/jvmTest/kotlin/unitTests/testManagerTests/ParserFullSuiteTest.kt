@@ -9,6 +9,8 @@ import kolor.green
 import kolor.yellow
 import kotlinx.ensurePrefix
 import kotlinx.isNotNull
+import kotlinx.text.appendLine
+import kotlinx.text.appendLines
 import mimik.helpers.parser.P4Action
 import mimik.helpers.parser.Parser_v4
 import mimik.helpers.toJson
@@ -179,9 +181,9 @@ class ParserFullSuiteTest {
                 listOf("response:body:{(test: )(\\d+)}->{@{1}done}").toMockSet("2.2.2.B.b") {
                     it.activeData.response.loadDefaultBody()
                     it.expectedData.response.body = """
-                            test: done
-                            final: 44
-                        """.trimIndent()
+                        test: done
+                        final: 44
+                    """.trimIndent()
                 }
             )
                 .also { runTests.addAll(it) }
@@ -795,9 +797,14 @@ class ParserFullSuiteTest {
             val steps = commands.asSequence()
                 .map { it to Parser_v4.parseToCommand(it) }
                 .onEach { (input, parsed) ->
-                    fun errorMsg() = "$testStr\nProcessed command does not match input" +
-                        "\nInput: $input" +
-                        "\nParsed: $parsed\n"
+                    fun errorMsg() = buildString {
+                        appendLine(testStr)
+                        appendLine("Processed command does not match input")
+                        appendLines(
+                            "Input: $input",
+                            "Parsed: $parsed"
+                        )
+                    }
 
                     if (parsed.toString() != "Invalid")
                         Assert.assertEquals(
@@ -820,23 +827,28 @@ class ParserFullSuiteTest {
 
             variableTests.forEach { (name, expect, actual) ->
                 expect.forEach { (key, value) ->
-                    fun errorMsg_1() = ("%s\n== %s\n" +
-                        "Missing:\n [%s] = %s" +
-                        "\n\nResult Vars:\n%s\n").format(
-                        testStr,
-                        name,
-                        key, value,
-                        actual.toJson
-                    )
+                    fun errorMsg_1() = buildString {
+                        appendLine(testStr)
+                        appendLine("== $name")
+                        appendLine("Missing:")
+                        append("[$key] = $value")
+                        appendLines(2, "Result Vars:")
+                        appendLines(actual.toJson, "")
+                    }
 
                     Assert.assertTrue(
                         errorMsg_1(),
                         actual.containsKey(key)
                     )
-                    fun errorMsg_2() = "$testStr\nResult's $name Variables don't match" +
-                        "\nExpected: [$key] = $value" +
-                        "\nFound: [$key] = ${actual[key]}" +
-                        "\n\nResult vars:\n${actual.toJson}\n\n"
+                    fun errorMsg_2() = buildString {
+                        appendLine(testStr)
+                        appendLine("Result's $name Variables don't match")
+                        appendLines(
+                            "Expected: [$key] = $value",
+                            "Found: [$key] = ${actual[key]}"
+                        )
+                        appendLines(2, "Result vars:", actual.toJson, 2)
+                    }
 
                     Assert.assertEquals(
                         errorMsg_2(),
