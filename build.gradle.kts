@@ -14,7 +14,7 @@ object Versions {
 }
 
 group = "mimik"
-version = "2.x_0321"
+version = "2.x_2201.06"
 
 buildscript {
     dependencies {
@@ -59,6 +59,9 @@ repositories {
 fun kotlinw(target: String): String =
     "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
+fun kvision(target: String): String =
+    "io.kvision:kvision-$target"
+
 kotlin {
     jvm {
         withJava()
@@ -74,8 +77,11 @@ kotlin {
         }
     }
 
+
 //    js(IR) {
     js(LEGACY) {
+        useCommonJs()
+        nodejs()
         browser {
 //            commonWebpackConfig {
 //                devtool = org.jetbrains.kotlin.gradle.targets.js.webpack.WebpackDevtool.EVAL_SOURCE_MAP
@@ -96,18 +102,22 @@ kotlin {
             webpackTask {
                 outputFileName = "mimik.js"
             }
-            binaries.executable() // for legacy or IR
-//            binaries.library() // IR only
         }
+
+        binaries.executable() // for legacy or IR
+//      binaries.library() // IR only
     }
 
     @Suppress("UNUSED_VARIABLE")
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(kotlin("stdlib"))
+                implementation(kotlin("stdlib", Versions.kotlin))
+                implementation(kotlin("reflect", "1.6.0"))
+                implementation(kotlin("script-runtime", Versions.kotlin))
+                implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
                 implementation("io.ktor:ktor-client-core", Versions.ktor)
-                api("io.kvision:kvision-server-ktor", Versions.KVision)
+                api(kvision("server-ktor"), Versions.KVision)
             }
             kotlin.srcDir("build/generated-src/common")
         }
@@ -122,7 +132,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(kotlin("stdlib-jdk8"))
-                implementation(kotlin("reflect"))
+//                implementation(kotlin("reflect"))
 
 //                implementation("ch.qos.logback:logback-classic:1.2.3")
 //                implementation("io.github.microutils:kotlin-logging:1.7.6")
@@ -171,34 +181,34 @@ kotlin {
                 implementation(npm("react-awesome-button", "*"))
                 implementation(npm("prop-types", "*"))
                 implementation("io.kvision:kvision", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-css", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-datetime", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-dialog", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-select", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-spinner", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-typeahead", Versions.KVision)
-                implementation("io.kvision:kvision-bootstrap-upload", Versions.KVision)
-                implementation("io.kvision:kvision-chart", Versions.KVision)
-                implementation("io.kvision:kvision-datacontainer", Versions.KVision)
-                implementation("io.kvision:kvision-fontawesome", Versions.KVision)
-                implementation("io.kvision:kvision-handlebars", Versions.KVision)
-                implementation("io.kvision:kvision-i18n", Versions.KVision)
-                implementation("io.kvision:kvision-pace", Versions.KVision)
-                implementation("io.kvision:kvision-react", Versions.KVision)
-                implementation("io.kvision:kvision-rest", Versions.KVision)
-                implementation("io.kvision:kvision-richtext", Versions.KVision)
-                implementation("io.kvision:kvision-routing-navigo", Versions.KVision)
-                implementation("io.kvision:kvision-state", Versions.KVision)
-                implementation("io.kvision:kvision-tabulator", Versions.KVision)
-                implementation("io.kvision:kvision-toast", Versions.KVision)
+                implementation(kvision("bootstrap"), Versions.KVision)
+                implementation(kvision("bootstrap-css"), Versions.KVision)
+                implementation(kvision("bootstrap-datetime"), Versions.KVision)
+                implementation(kvision("bootstrap-dialog"), Versions.KVision)
+                implementation(kvision("bootstrap-select"), Versions.KVision)
+                implementation(kvision("bootstrap-spinner"), Versions.KVision)
+                implementation(kvision("bootstrap-typeahead"), Versions.KVision)
+                implementation(kvision("bootstrap-upload"), Versions.KVision)
+                implementation(kvision("chart"), Versions.KVision)
+                implementation(kvision("datacontainer"), Versions.KVision)
+                implementation(kvision("fontawesome"), Versions.KVision)
+                implementation(kvision("handlebars"), Versions.KVision)
+                implementation(kvision("i18n"), Versions.KVision)
+                implementation(kvision("pace"), Versions.KVision)
+                implementation(kvision("react"), Versions.KVision)
+                implementation(kvision("rest"), Versions.KVision)
+                implementation(kvision("richtext"), Versions.KVision)
+                implementation(kvision("routing-navigo"), Versions.KVision)
+                implementation(kvision("state"), Versions.KVision)
+                implementation(kvision("tabulator"), Versions.KVision)
+                implementation(kvision("toast"), Versions.KVision)
             }
         }
 
         val jsTest by getting {
             dependencies {
                 implementation(kotlin("test-js"))
-                implementation("io.kvision:kvision-testutils", Versions.KVision)
+                implementation(kvision("testutils"), Versions.KVision)
             }
         }
     }

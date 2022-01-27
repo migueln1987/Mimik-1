@@ -2,9 +2,8 @@
 
 package mimik.helpers.matchers
 
+import helpers.accessField
 import kotlinx.ranges.size
-import kotlinx.tryCast
-import mimik.helpers.accessField
 import java.util.regex.Matcher
 
 /**
@@ -207,8 +206,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
         matcher?.also { mm ->
             inputStr = (mm.accessField("text") as? String).orEmpty()
 
-            val namedGroups = mm.pattern().accessField("namedGroups")
-                .tryCast<Map<String, Int>>().orEmpty()
+            val namedGroups: Map<String, Int> = mm.pattern().accessField("namedGroups") ?: mapOf()
 
             val toAddList = (0..mm.groupCount()).mapNotNull {
                 mm.group(it)
@@ -242,7 +240,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
         ): MutableList<List<MatcherResult?>> {
             if (matchResult == null) return mutableListOf()
             val resultData: MutableList<List<MatcherResult?>> = mutableListOf()
-            val matcher = matchResult.accessField("matcher") as? Matcher
+            val matcher = matchResult.accessField<Matcher>("matcher")
 
             if (matcher?.groupCount() == 0 && matcher.group(0) == "") {
                 // regex match which allows an empty body
@@ -256,8 +254,7 @@ class MatcherCollection(filterText: String? = null) : Iterable<MatcherResult> {
             }
 
             matcher?.also { mm ->
-                val namedGroups = mm.pattern().accessField("namedGroups")
-                    .tryCast<Map<String, Int>>().orEmpty()
+                val namedGroups: Map<String, Int> = mm.pattern().accessField("namedGroups") ?: mapOf()
 
                 val toAddList = (0..mm.groupCount()).mapNotNull {
                     mm.group(it)

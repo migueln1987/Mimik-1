@@ -61,7 +61,19 @@ fun main() {
 
     startApplication(
         ::MimikGUI,
-        module.hot
+        module.hot,
+        BootstrapModule,
+        BootstrapCssModule,
+        FontAwesomeModule,
+        BootstrapSelectModule,
+        BootstrapDatetimeModule,
+        BootstrapSpinnerModule,
+        BootstrapTypeaheadModule,
+        BootstrapUploadModule,
+        RichTextModule,
+        ChartModule,
+        TabulatorModule,
+        CoreModule
     )
 
 //    document.addEventListener("DOMContentLoaded", {

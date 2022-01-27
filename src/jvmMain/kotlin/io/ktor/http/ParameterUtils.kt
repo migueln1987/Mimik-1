@@ -24,16 +24,18 @@ val StringValues.toParameters: Parameters
  * Limits the input [StringValues] to only those with the following [keys]
  */
 fun StringValues.limitKeys(vararg keys: String, allowDuplicates: Boolean = false): Parameters {
-    val limitParams: MutableList<String> = mutableListOf()
+    val limitParams = mutableListOf<String>()
 
     return filter { s, _ ->
         s.lowercase().let { pKey ->
-            if (keys.contains(pKey)) {
-                if (limitParams.contains(pKey) && !allowDuplicates)
-                    return@filter false
-                limitParams.add(pKey)
-                return@filter true
-            } else false
+            when {
+                !keys.contains(pKey) -> false
+                limitParams.contains(pKey) && !allowDuplicates -> false
+                else -> {
+                    limitParams.add(pKey)
+                    true
+                }
+            }
         }
     }.toParameters
 }
